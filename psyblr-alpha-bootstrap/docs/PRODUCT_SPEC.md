@@ -14,8 +14,8 @@ A world-first, asynchronous summon battler where players build a protected core 
 8. Return to camp, merge identical summons F→E→D→C; explain immediate upgrade and future silhouettes.
 9. Enter Raid Gate. Deploy and resolve a 2v2 field, then a 4v4 field, then a 6v6 field. Repetition across rounds is allowed, but a Summon cannot occupy two slots in the same field.
 10. Each field computes Origin and Combat Function synergies from the deployed Summons only. Resolve the best-of-three raid after the final field.
-11. A raid victory creates an opponent-camp handoff with one potential exposed-Summon claim. The opponent-camp visit, claim selection, and transfer are explicitly deferred to the next PR.
-12. Tutorial ends and navigation unlocks after the raid resolution.
+11. A raid victory travels directly into that opponent's read-only Camp. Illuminati occupants are protected; one exposed Summon may be selected and explicitly claimed.
+12. Return home, configure a 2/4/6 defensive formation with the same spatial Raid placement interaction, save it, then finish the tutorial and unlock navigation.
 
 ## Core spatial model
 ### Campaign Arena
@@ -121,10 +121,9 @@ Visual forms are shared across tier bands: F/E, D/C/B, A/S/SS, SSS.
 - Origin and Combat Function synergies are evaluated from the current field and apply only to that round's combat snapshot. Content thresholds provide stronger implications as matching field members rise from 2 to 4 to 6.
 - Server simulates each locked field from immutable snapshots + content version + a raid-session RNG seed; the final result is the deterministic best-of-three resolution.
 - Client shows each resolved field as a semi-automatic authoritative combat replay and keeps the active Origin/Combat Function synergy panel visible during the fight.
-- A raid victory records a pending opponent-camp handoff for one steal; the post-raid camp UI and claim transaction are next-PR work.
+- A Raid victory records a pending opponent-camp handoff for one steal. Claim input contains only action, Raid, and target IDs; authority revalidates the Raid win, defender ownership, exposed placement, capacity, and idempotency in one transaction.
 
-## Steal rules (next PR)
-The claim flow is deliberately not exposed in this PR. These rules remain the contract for the following opponent-camp implementation.
+## Steal rules
 Eligible if the target summon:
 - is owned by defender,
 - is placed in defender camp,
@@ -132,7 +131,7 @@ Eligible if the target summon:
 - is not already involved in a completed steal,
 - still exists at claim time.
 
-The ownership transfer and raid claim state update occur in one transaction.
+The ownership transfer, destination placement, steal record, and consumed claim state update occur in one transaction. Defense snapshots use normalized player-side 2/4/6 cells and mirror onto the enemy half when attacked.
 
 ## Production blindspots already resolved
 - Spawn weights total 100%.

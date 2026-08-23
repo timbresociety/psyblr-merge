@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RaidSquadSnapshot } from '@psyblr/contracts';
-import { canonicalSquad, deriveRoundSeed, resolveRaidOutcome, simulateRaid } from './index';
+import { buildRaidRoundSnapshotFromPlacements, canonicalSquad, deriveRoundSeed, mirrorDefenseCell, resolveRaidOutcome, simulateRaid } from './index';
 
 const squad: RaidSquadSnapshot = {
   clientActionId: 'test-action', contentVersion: '1',
@@ -19,5 +19,11 @@ describe('raid core', () => {
   it('reduces wins, losses, draws, and equal records correctly', () => {
     expect(resolveRaidOutcome([{ outcome: 'win' }, { outcome: 'draw' }, { outcome: 'win' }])).toBe('win');
     expect(resolveRaidOutcome([{ outcome: 'win' }, { outcome: 'loss' }, { outcome: 'draw' }])).toBe('draw');
+  });
+  it('preserves attacker cells and mirrors normalized defense cells', () => {
+    const snapshot = buildRaidRoundSnapshotFromPlacements([{ summon: squad.round1[0]!, cell: { x: 0, z: 7 } }, { summon: squad.round1[1]!, cell: { x: 7, z: 6 } }], [{ summon: squad.round1[0]!, cell: { x: 1, z: 6 } }, { summon: squad.round1[1]!, cell: { x: 6, z: 5 } }], { id: 'round1', number: 1, slotCount: 2 }, 'raid');
+    expect(snapshot.units.filter((unit) => unit.side === 'player').map((unit) => unit.spawnCell)).toEqual([{ x: 7, z: 6 }, { x: 0, z: 7 }]);
+    expect(snapshot.units.filter((unit) => unit.side === 'enemy').map((unit) => unit.spawnCell)).toEqual([{ x: 6, z: 2 }, { x: 1, z: 1 }]);
+    expect(mirrorDefenseCell({ x: 3, z: 6 })).toEqual({ x: 3, z: 1 });
   });
 });

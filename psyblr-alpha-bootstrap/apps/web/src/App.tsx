@@ -12,10 +12,13 @@ import { initializeTutorialController } from './tutorial/controller';
 import { SpawnMachineOverlay } from './ui/SpawnMachineOverlay';
 import { TierProgressionPanel } from './ui/TierProgressionPanel';
 import { RaidSquadBuilder } from './ui/RaidSquadBuilder';
+import { OpponentCampOverlay } from './ui/OpponentCampOverlay';
 import './raid.css';
 import './raid-replay.css';
 import './raid-field.css';
 import './tutorial-interaction.css';
+import './opponent-camp.css';
+import './arena-layout.css';
 
 export function App() {
   const toggleDebug = useGameStore((state) => state.toggleDebug);
@@ -43,6 +46,7 @@ export function App() {
     <SpawnMachineOverlay />
     <TierProgressionPanel />
     <RaidSquadBuilder />
+    <OpponentCampOverlay />
     <DebugPanel />
     <TutorialOverlay />
     <OrientationGate />

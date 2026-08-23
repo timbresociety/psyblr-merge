@@ -1,7 +1,10 @@
-export type CameraPresetId = 'campaign_overview' | 'base_reveal' | 'base_overview' | 'spawn_focus' | 'raid_overview';
+export type CameraPresetId = 'campaign_deployment' | 'campaign_overview' | 'base_reveal' | 'base_overview' | 'spawn_focus' | 'raid_overview';
 export type CameraPreset = { position: [number, number, number]; rotation: [number, number, number]; fov: number; durationMs: number };
 
 export const CAMERA_PRESETS: Readonly<Record<CameraPresetId, CameraPreset>> = {
+  // During deployment, crop the enemy half and keep all four player rows large
+  // enough to be reliable drag targets on short landscape screens.
+  campaign_deployment: { position: [0, 8.8, 11], rotation: [-53, 0, 0], fov: 44, durationMs: 360 },
   campaign_overview: { position: [0, 9, 11], rotation: [-40, 0, 0], fov: 42, durationMs: 450 },
   base_reveal: { position: [0, 15, 17], rotation: [-40, 0, 0], fov: 48, durationMs: 450 },
   base_overview: { position: [0, 10.8, 12.5], rotation: [-42, 0, 0], fov: 42, durationMs: 1100 },

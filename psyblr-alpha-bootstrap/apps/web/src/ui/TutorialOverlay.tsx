@@ -46,7 +46,9 @@ export function TutorialOverlay() {
   useEffect(() => { if (rect && step?.highlightTarget) document.querySelector<HTMLElement>(`[data-tutorial-target="${step.highlightTarget}"]`)?.focus?.(); }, [rect, step?.highlightTarget]);
   if (!step || cameraTransitioning || step.id === 'campaign_wait_skill' || step.id === 'campaign_complete' || step.id === 'base_intro') return null;
   const continuation = step.allowedActions.includes('TUTORIAL_CONTINUE');
-  const cardStyle = !rect && step?.id === 'raid_open' ? { left: Math.max(12, window.innerWidth - 300), top: 72 } : rect ? (() => {
+  const gameplayHint = !continuation && allowsPlacement;
+  // Interaction lessons use one stable side hint so playable cells stay clear.
+  const cardStyle = gameplayHint ? { left: 12, top: window.innerHeight <= 450 ? 148 : 184, width: 'min(210px, calc(100vw - 24px))', padding: '8px 10px' } : !rect && step?.id === 'raid_open' ? { left: Math.max(12, window.innerWidth - 300), top: 72 } : rect ? (() => {
     const margin = 12;
     // The card height varies with copy and viewport typography. Reserve enough
     // space for its largest tutorial variant, then let CSS scroll only if the
@@ -62,12 +64,21 @@ export function TutorialOverlay() {
     // Raid placement needs the player-side half of the arena clear. Keep the
     // explanatory copy in the upper-right, where it does not cover blue cells.
     if (step.id === 'raid_open') return { left: Math.max(margin, window.innerWidth - reservedWidth - margin), top: Math.max(72, margin) };
+    // Camp interaction remains spatial for several consecutive tutorial beats.
+    // Do not chase cells or world bounds with the coach card: a stable side slot
+    // prevents it from jumping across or obscuring the Camp while the player moves.
+    if (step.scene === 'base' || step.scene === 'opponentCamp') return { left: margin, top: window.innerHeight <= 450 ? 148 : 184 };
+    // Campaign placement uses the same lower (blue) deployment half. Keep its
+    // coach card over the enemy half so valid cells remain directly tappable.
+    if (step.highlightTarget === 'battle-grid-valid-cells') return { left: Math.max(margin, window.innerWidth - reservedWidth - margin), top: Math.max(72, margin) };
     // The placement tray contains the only selectable cards in this step. Keep
     // its coach card in the world space above it, even if a transient layout
     // measurement makes the generic wide-panel heuristic choose the lower lane.
     if (step.highlightTarget === 'summon-tray') {
       const height = Math.min(reservedHeight, fallbackHeight);
-      return { left: margin, top: Math.max(margin, rect.top - height - margin) };
+      // Keep loadout coaching away from the left HUD so camp/synergy labels
+      // retain a stable vertical alignment with the brand.
+      return { left: Math.max(margin, window.innerWidth - reservedWidth - margin), top: Math.max(72, rect.top - height - margin) };
     }
     const aboveFits = rect.top - margin >= reservedHeight;
     const belowFits = window.innerHeight - rect.bottom - margin >= reservedHeight;
@@ -88,8 +99,8 @@ export function TutorialOverlay() {
   })() : undefined;
   return <div className="tutorial-layer" aria-live="polite">
     {rect && <>{!allowsPlacement && <><div className="tutorial-blocker top" style={{ height: rect.top }} /><div className="tutorial-blocker bottom" style={{ top: rect.bottom }} /><div className="tutorial-blocker left" style={{ top: rect.top, height: rect.height, width: rect.left }} /><div className="tutorial-blocker right" style={{ top: rect.top, left: rect.right, height: rect.height }} /></>}<div className="tutorial-focus" style={{ left: rect.left - 4, top: rect.top - 4, width: rect.width + 8, height: rect.height + 8 }} /></>}
-    <section ref={cardRef} className="tutorial-card" style={cardStyle} data-continuation={continuation} data-testid="tutorial-coach">
-      <span>ONBOARDING</span><strong>{step.title}</strong>{step.body && <p>{step.body}</p>}
+    <section ref={cardRef} className={`tutorial-card${gameplayHint ? ' tutorial-gameplay-hint' : ''}`} style={cardStyle} data-continuation={continuation} data-testid="tutorial-coach">
+      <span>ONBOARDING</span><strong>{step.title}</strong>{step.body && <p>{gameplayHint && step.id === 'raid_open' ? 'Drag 2 Summons onto blue cells.' : step.body}</p>}
       {continuation && <button type="button" onClick={continueTutorial}>CONTINUE</button>}
     </section>
   </div>;

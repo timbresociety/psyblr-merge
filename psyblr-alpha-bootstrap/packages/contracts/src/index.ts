@@ -183,6 +183,13 @@ export const RaidSquadSchema = z.object({
 export type RaidSquad = z.infer<typeof RaidSquadSchema>;
 export const RaidSummonSnapshotSchema = z.object({ instanceId: z.string().min(1), definitionId: z.string().min(1), tier: TierSchema });
 export type RaidSummonSnapshot = z.infer<typeof RaidSummonSnapshotSchema>;
+/** A locked Raid participant keeps its player-selected world cell.  The cell is
+ * gameplay state, rather than presentation data, and is resolved by authority. */
+export const RaidFormationPlacementSchema = z.object({
+  summon: RaidSummonSnapshotSchema,
+  cell: BattleCellSchema.refine((cell) => cell.z >= 4, 'Raid attacker cells must be on the player half'),
+});
+export type RaidFormationPlacement = z.infer<typeof RaidFormationPlacementSchema>;
 export const RaidSquadSnapshotSchema = z.object({
   clientActionId: z.string().min(1), contentVersion: z.string().min(1),
   round1: z.array(RaidSummonSnapshotSchema).length(2).refine(v => new Set(v.map(s => s.instanceId)).size === 2, 'Round 1 summons must be unique'),
@@ -270,9 +277,9 @@ export const StartRaidRequestSchema = z.object({
 });
 export type StartRaidRequest = z.infer<typeof StartRaidRequestSchema>;
 export const StartRaidRoundRequestSchema = z.discriminatedUnion('roundId', [
-  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round1'), attacker: z.array(RaidSummonSnapshotSchema).length(2) }),
-  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round2'), attacker: z.array(RaidSummonSnapshotSchema).length(4) }),
-  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round3'), attacker: z.array(RaidSummonSnapshotSchema).length(6) }),
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round1'), attacker: z.array(RaidSummonSnapshotSchema).length(2), attackerPlacements: z.array(RaidFormationPlacementSchema).length(2) }),
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round2'), attacker: z.array(RaidSummonSnapshotSchema).length(4), attackerPlacements: z.array(RaidFormationPlacementSchema).length(4) }),
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round3'), attacker: z.array(RaidSummonSnapshotSchema).length(6), attackerPlacements: z.array(RaidFormationPlacementSchema).length(6) }),
 ]);
 export type StartRaidRoundRequest = z.infer<typeof StartRaidRoundRequestSchema>;
 export const RaidRoundResultSchema = z.object({
@@ -286,9 +293,30 @@ export const RaidRoundResultSchema = z.object({
 export type RaidRoundResult = z.infer<typeof RaidRoundResultSchema>;
 export const RaidRoundResolutionSchema = z.object({
   raidId: z.string().min(1), clientActionId: z.string().min(1), contentVersion: z.string().min(1), rootSeed: RaidSeedSchema,
-  opponent: RaidOpponentSchema, attacker: z.array(RaidSummonSnapshotSchema).min(1), defender: z.array(RaidSummonSnapshotSchema).min(1), round: RaidRoundResultSchema,
+  opponent: RaidOpponentSchema, attacker: z.array(RaidSummonSnapshotSchema).min(1), defender: z.array(RaidSummonSnapshotSchema).min(1),
+  attackerPlacements: z.array(RaidFormationPlacementSchema).min(1), defenderPlacements: z.array(RaidFormationPlacementSchema).min(1), round: RaidRoundResultSchema,
 });
 export type RaidRoundResolution = z.infer<typeof RaidRoundResolutionSchema>;
+
+export const OpponentCampSummonSchema = z.object({
+  summonInstanceId: z.string().min(1), definitionId: z.string().min(1), tier: TierSchema, cell: CampCellSchema,
+  protected: z.boolean(), selectableForSteal: z.boolean(), pendingSteal: z.boolean().default(false),
+});
+export type OpponentCampSummon = z.infer<typeof OpponentCampSummonSchema>;
+export const OpponentCampHandoffSchema = z.object({ raidId: z.string().min(1), opponent: RaidOpponentSchema, summons: z.array(OpponentCampSummonSchema), claimConsumed: z.boolean().default(false) });
+export type OpponentCampHandoff = z.infer<typeof OpponentCampHandoffSchema>;
+export const ClaimRaidStealRequestSchema = z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), targetSummonInstanceId: z.string().min(1) });
+export type ClaimRaidStealRequest = z.infer<typeof ClaimRaidStealRequestSchema>;
+export const ClaimRaidStealResultSchema = z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), claimedSummon: SummonInstanceSchema, destination: CampPlacementSchema, completed: z.literal(true) });
+export type ClaimRaidStealResult = z.infer<typeof ClaimRaidStealResultSchema>;
+export const DefenseFieldSchema = z.object({ roundId: RaidRoundIdSchema, placements: z.array(RaidFormationPlacementSchema) });
+export type DefenseField = z.infer<typeof DefenseFieldSchema>;
+export const DefenseSnapshotSchema = z.object({ clientActionId: z.string().min(1), contentVersion: z.string().min(1), fields: z.tuple([
+  z.object({ roundId: z.literal('round1'), placements: z.array(RaidFormationPlacementSchema).length(2) }),
+  z.object({ roundId: z.literal('round2'), placements: z.array(RaidFormationPlacementSchema).length(4) }),
+  z.object({ roundId: z.literal('round3'), placements: z.array(RaidFormationPlacementSchema).length(6) }),
+]) });
+export type DefenseSnapshot = z.infer<typeof DefenseSnapshotSchema>;
 export const RaidResultSchema = z.object({
   raidId: z.string().min(1),
   clientActionId: z.string().min(1),

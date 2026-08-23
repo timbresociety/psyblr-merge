@@ -1,0 +1,38 @@
+/* Tactics-table composition: the board is the visual anchor and the roster is
+   a compact bench, never a modal that overwhelms the field. */
+.hud-top{padding:0 8px;pointer-events:none}.brand,.scene-pill,.resource-pill{background:rgba(7,13,27,.88);border-color:rgba(96,165,250,.34)}.scene-pill{letter-spacing:.08em}.synergy-panel{width:172px;top:76px;background:rgba(7,13,27,.82)}
+.summon-tray{z-index:5;left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));width:min(790px,calc(100vw - 216px));max-height:132px;transform:translateX(-50%);padding:8px 10px;border-radius:15px;background:linear-gradient(180deg,rgba(12,22,39,.97),rgba(5,10,20,.97));border-color:rgba(125,211,252,.35)}
+.summon-tray[data-persistent=true]{box-shadow:0 -8px 28px rgba(0,0,0,.3)}.summon-tray-header{margin-bottom:5px}.summon-tray-header span{font-size:8px}.summon-tray-header strong{font-size:10px}.summon-tray .icon-button{width:26px;height:26px;border-radius:8px;font-size:18px}.summon-card-row{gap:7px}.summon-card{flex-basis:118px;min-height:70px;padding:6px;gap:6px;border-radius:10px;background:rgba(25,41,65,.86)}.summon-portrait-card{width:38px;height:48px;border-radius:9px}.summon-portrait-placeholder strong{font-size:12px}.summon-card-copy{gap:3px}.summon-card-copy strong{font-size:11px}.summon-card-tags{font-size:8px;line-height:1.15}.summon-card-tags b{padding:1px 4px;font-size:8px}.summon-card em{font-size:8px}
+.nav-dock{bottom:18px;z-index:7}.action-stack{z-index:8}.summons-action{min-height:40px;padding:9px 13px;border-radius:12px}
+.tutorial-card{z-index:8}.tutorial-card[data-continuation=false]{pointer-events:none}
+@media(max-width:980px){.summon-tray{width:min(710px,calc(100vw - 32px));bottom:54px}.nav-dock{bottom:9px}.synergy-panel{width:146px;top:58px}.summon-card{flex-basis:108px}.brand{font-size:12px}}
+@media(max-height:450px){.summon-tray{height:95px;max-height:95px;bottom:47px;padding:6px 8px}.summon-tray-header{margin-bottom:3px}.summon-card{flex-basis:100px;min-height:57px;padding:5px}.summon-portrait-card{width:31px;height:39px}.summon-card-copy strong{font-size:10px}.summon-card-tags{font-size:7px}.summon-tray .icon-button{width:21px;height:21px;font-size:14px}.summon-tray-header strong{font-size:9px}.synergy-panel{top:50px;width:130px}}
+
+/* Icon-led Camp loadout and an information-dense synergy key. */
+.summon-tray{max-height:118px}.summon-card-title{display:flex;align-items:center;gap:3px;min-width:0}.summon-card-title>strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.summon-card .tier-badge{margin:0;padding:1px 4px;font-size:8px}.summon-affinities{display:flex;gap:3px}.affinity-icon{display:grid;place-items:center;width:16px;height:16px;border:1px solid;border-radius:5px;font-style:normal;font-size:10px;line-height:1}.affinity-icon.origin{color:#a5f3fc;border-color:#0891b2;background:rgba(8,145,178,.16)}.affinity-icon.function{color:#fde68a;border-color:#d97706;background:rgba(217,119,6,.16)}
+.synergy-panel div{grid-template-columns:18px minmax(0,1fr) auto;align-items:center;column-gap:5px}.synergy-panel div>span{display:grid;gap:1px}.synergy-panel div em{font-style:normal;color:#64748b;font-size:7px;font-weight:900;letter-spacing:.08em}.synergy-panel .synergy-icon{display:grid;place-items:center;width:17px;height:17px;border-radius:5px;background:rgba(59,130,246,.18);color:#bfdbfe;font-style:normal;font-size:11px}.synergy-panel .synergy-icon.combatFunction{background:rgba(217,119,6,.16);color:#fde68a}.synergy-panel small{grid-column:2/-1}
+@media(max-height:450px){.summon-tray{left:50%;right:auto;width:calc(100vw - 32px);transform:translateX(-50%);height:80px;max-height:80px;bottom:45px;padding:5px 8px}.summon-tray-header{margin-bottom:2px}.summon-card{flex-basis:96px;min-height:48px;padding:4px}.summon-portrait-card{width:28px;height:34px}.summon-card-copy strong{font-size:9px}.summon-card .tier-badge{font-size:7px}.affinity-icon{width:13px;height:13px;font-size:8px}.summon-tray .icon-button{width:21px;height:21px;font-size:14px}.summon-tray-header strong{font-size:9px}.synergy-panel{top:50px;width:130px}}
+
+/* Raid uses the same Camp-loadout bench rather than a second, screen-covering
+   squad-builder pattern. The live round/status remains visible above it. */
+.raid-builder{left:50%;right:auto;bottom:max(14px,env(safe-area-inset-bottom));width:min(790px,calc(100vw - 216px));max-height:112px;transform:translateX(-50%);padding:7px 10px;border-radius:15px}.raid-builder header{position:fixed;right:0;bottom:calc(100% + 10px);min-width:230px;padding:8px 10px;border:1px solid rgba(147,197,253,.42);border-radius:12px;background:rgba(7,13,27,.9);backdrop-filter:blur(12px)}.raid-builder header small{display:none}.raid-round-tabs,.raid-field-help{display:none}.raid-builder .summon-card{flex-basis:118px;min-height:70px}.raid-builder footer{position:fixed;right:0;bottom:calc(100% + 10px);margin:0}.raid-builder footer p{display:none}.raid-builder .raid-start{min-height:38px;padding:8px 12px;font-size:10px}
+@media(max-width:980px){.raid-builder{width:min(710px,calc(100vw - 32px));bottom:47px}.raid-builder header{right:auto;left:0;bottom:calc(100% + 8px);min-width:0;max-width:250px}.raid-builder footer{right:0;bottom:calc(100% + 8px)}}
+@media(max-height:450px){.raid-builder{left:50%;right:auto;width:calc(100vw - 32px);transform:translateX(-50%);height:80px;max-height:80px;padding:5px 8px}.raid-builder .summon-card{flex-basis:96px;min-height:48px}.raid-builder .summon-card .summon-portrait-card{width:28px;height:34px}.raid-builder header{padding:5px 7px}.raid-builder header strong{font-size:9px}.raid-builder header span{font-size:7px}.raid-builder .raid-start{min-height:31px;padding:6px 10px;font-size:9px}}
+
+/* This specificity deliberately beats the original short-landscape defaults,
+   which otherwise set `left: 8px` after this stylesheet is loaded. */
+main.app-shell .summon-tray,main.app-shell .raid-builder{left:50%;right:auto;transform:translateX(-50%)}
+@media(max-height:450px){main.app-shell .summon-tray,main.app-shell .raid-builder{left:50%;right:auto;transform:translateX(-50%)}}
+
+/* A loadout is a six-slot Camp bench, not a horizontally spilling carousel. */
+main.app-shell .summon-tray .summon-card-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;overflow:hidden;padding:0;scroll-snap-type:none}
+main.app-shell .summon-tray .summon-card{width:100%;min-width:0;flex:initial}
+main.app-shell .summon-tray .summon-card-copy{min-width:0}
+
+/* Preserve a clear logo → synergy column on short landscape screens. */
+main.app-shell .synergy-panel{left:max(34px,env(safe-area-inset-left));width:172px}
+main.app-shell .synergy-panel div{display:grid;grid-template-columns:19px minmax(0,1fr) auto;align-items:center;column-gap:6px;padding:4px 0}
+main.app-shell .synergy-panel div>span{display:grid;grid-column:2;gap:1px;text-align:left}
+main.app-shell .synergy-panel div>b{grid-column:3;grid-row:1 / span 2;font-size:10px}
+main.app-shell .synergy-panel div>small{grid-column:2/-1}
+@media(max-height:450px){main.app-shell .synergy-panel{left:34px;width:156px}main.app-shell .synergy-panel div{grid-template-columns:17px minmax(0,1fr) auto;padding:3px 0}main.app-shell .synergy-panel .synergy-icon{width:16px;height:16px}main.app-shell .synergy-panel div>b{font-size:9px}}

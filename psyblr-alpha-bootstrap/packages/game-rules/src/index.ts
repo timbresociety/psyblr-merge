@@ -1,4 +1,4 @@
-import { RaidSquadDraftSchema, RaidSquadSnapshotSchema, type BattleCell, type BattlefieldPlacement, type CampCell, type CampPlacement, type CombatFunctionDefinition, type OriginDefinition, type RaidRoundDefinition, type RaidRoundId, type RaidSquadDraft, type RaidSquadSnapshot, type RaidSummonSnapshot, type SummonDefinition, type SummonInstance, type SynergyEffect, type Tier } from '@psyblr/contracts';
+import { DefenseSnapshotSchema, RaidSquadDraftSchema, RaidSquadSnapshotSchema, type BattleCell, type BattlefieldPlacement, type CampCell, type CampPlacement, type CombatFunctionDefinition, type DefenseSnapshot, type OriginDefinition, type RaidRoundDefinition, type RaidRoundId, type RaidSquadDraft, type RaidSquadSnapshot, type RaidSummonSnapshot, type SummonDefinition, type SummonInstance, type SynergyEffect, type Tier } from '@psyblr/contracts';
 
 export const TIERS: readonly Tier[] = ['F','E','D','C','B','A','S','SS','SSS'];
 export const TIER_MULTIPLIER: Record<Tier, number> = {F:1,E:1.15,D:1.35,C:1.6,B:1.9,A:2.25,S:2.65,SS:3.1,SSS:3.65};
@@ -156,6 +156,18 @@ export function finalizeRaidSquadDraft(draftValue: unknown, inventory: readonly 
   const candidate = { clientActionId, contentVersion, round1: resolve('round1'), round2: resolve('round2'), round3: resolve('round3') };
   if (candidate.round1.some((item) => item === null) || candidate.round2.some((item) => item === null) || candidate.round3.some((item) => item === null)) return { ok: false, error: 'A selected Summon is no longer owned.' };
   const snapshot = RaidSquadSnapshotSchema.safeParse(candidate); return snapshot.success ? { ok: true, snapshot: JSON.parse(JSON.stringify(snapshot.data)) as RaidSquadSnapshot } : { ok: false, error: 'Raid squad is invalid.' };
+}
+/** Validates a complete 2/4/6 defense before a persistence adapter replaces it atomically. */
+export function validateDefenseSnapshot(value: unknown, inventory: readonly SummonInstance[]): { ok: true; snapshot: DefenseSnapshot } | { ok: false; error: string } {
+  const parsed = DefenseSnapshotSchema.safeParse(value); if (!parsed.success) return { ok: false, error: 'Defense must contain complete 2/4/6 fields.' };
+  const owned = new Set(inventory.map((summon) => summon.id));
+  for (const field of parsed.data.fields) {
+    const ids = field.placements.map((entry) => entry.summon.instanceId); const cells = field.placements.map((entry) => `${entry.cell.x}:${entry.cell.z}`);
+    if (new Set(ids).size !== ids.length) return { ok: false, error: 'A Summon can appear only once per defense field.' };
+    if (new Set(cells).size !== cells.length) return { ok: false, error: 'Defense field cells must be unique.' };
+    if (field.placements.some((entry) => !owned.has(entry.summon.instanceId))) return { ok: false, error: 'Defense contains a Summon you no longer own.' };
+  }
+  return { ok: true, snapshot: parsed.data };
 }
 
 export type ResolvedSynergy = {

@@ -1,6 +1,6 @@
 # Codex Build Plan
 
-Execute these as isolated PRs. Do not combine later PRs because an earlier PR feels small.
+Historical execution plan. The final alpha completion task intentionally combines PR10–PR12 while preserving the records below.
 
 ## PR 01 — Foundation + battlefield shell
 Deliver:

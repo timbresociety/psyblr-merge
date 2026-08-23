@@ -1,7 +1,7 @@
 import { runCombatAutoCast } from '@psyblr/combat-core';
 import { combatFunctionDefinitions, getSkillDefinition, getSummonDefinition, originDefinitions } from '@psyblr/game-content';
 import { resolveFormationSynergies, resolveTierStats, RAID_ROUND_DEFINITIONS } from '@psyblr/game-rules';
-import type { CombatSnapshot, CombatUnitSnapshot, RaidCanonicalSquad, RaidOutcome, RaidRoundDefinition, RaidRoundId, RaidRoundResult, RaidSeed, RaidSquadSnapshot, RaidSummonSnapshot } from '@psyblr/contracts';
+import type { BattleCell, CombatSnapshot, CombatUnitSnapshot, RaidCanonicalSquad, RaidFormationPlacement, RaidOutcome, RaidRoundDefinition, RaidRoundId, RaidRoundResult, RaidSeed, RaidSquadSnapshot, RaidSummonSnapshot } from '@psyblr/contracts';
 
 export const RAID_FORMATIONS: Record<2 | 4 | 6, { player: ReadonlyArray<{ x: number; z: number }>; enemy: ReadonlyArray<{ x: number; z: number }> }> = {
   2: { player: [{ x: 2, z: 6 }, { x: 5, z: 6 }], enemy: [{ x: 2, z: 1 }, { x: 5, z: 1 }] },
@@ -22,6 +22,11 @@ export function seedToNumber(seed: RaidSeed): number {
   for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
   return hash >>> 0;
 }
+/** Store formations in an unambiguous deterministic order for replay/event IDs. */
+export function stableFormation<T extends { summon: RaidSummonSnapshot; cell: BattleCell }>(placements: readonly T[]): T[] {
+  return [...placements].sort((a, b) => a.cell.z - b.cell.z || a.cell.x - b.cell.x || a.summon.instanceId.localeCompare(b.summon.instanceId));
+}
+export function mirrorDefenseCell(cell: BattleCell): BattleCell { return { x: cell.x, z: 7 - cell.z }; }
 function asUnit(summon: RaidSummonSnapshot, side: 'player' | 'enemy', spawnCell: { x: number; z: number }, id: string, modifiers: ReturnType<typeof resolveFormationSynergies>['byDefinitionId'][string]): CombatUnitSnapshot {
   const definition = getSummonDefinition(summon.definitionId);
   const skill = getSkillDefinition(definition.skills.skill1);
@@ -43,6 +48,16 @@ export function buildRaidRoundSnapshotFromSummons(attacker: RaidSummonSnapshot[]
   const defenderUnits = sideUnits(defender, 'enemy', formation.enemy, round.id);
   return { battleId: `${raidId}:${round.id}`, mode: 'raid', units: [...attackerUnits, ...defenderUnits] };
 }
+/** Uses selected player cells verbatim. Defender cells are stored player-normalized
+ * and mirrored onto the enemy half at battle time. */
+export function buildRaidRoundSnapshotFromPlacements(attacker: readonly RaidFormationPlacement[], defender: readonly RaidFormationPlacement[], round: RaidRoundDefinition, raidId: string): CombatSnapshot {
+  if (attacker.length !== round.slotCount || defender.length !== round.slotCount) throw new Error(`Expected ${round.slotCount} placements for ${round.id}.`);
+  const player = stableFormation(attacker);
+  const enemy = stableFormation(defender).map((placement) => ({ ...placement, cell: mirrorDefenseCell(placement.cell) }));
+  const attackerUnits = sideUnits(player.map((entry) => entry.summon), 'player', player.map((entry) => entry.cell), round.id);
+  const defenderUnits = sideUnits(enemy.map((entry) => entry.summon), 'enemy', enemy.map((entry) => entry.cell), round.id);
+  return { battleId: `${raidId}:${round.id}`, mode: 'raid', units: [...attackerUnits, ...defenderUnits] };
+}
 export function combatWinnerToRaidOutcome(winner: 'player' | 'enemy' | 'draw' | null): RaidOutcome { return winner === 'player' ? 'win' : winner === 'enemy' ? 'loss' : 'draw'; }
 export function resolveRaidOutcome(rounds: readonly Pick<RaidRoundResult, 'outcome'>[]): RaidOutcome {
   const wins = rounds.filter((round) => round.outcome === 'win').length;
@@ -53,6 +68,13 @@ export type RaidSimulationOptions = { transformSnapshot?: (snapshot: CombatSnaps
 export function simulateRaidRound(attacker: RaidSummonSnapshot[], defender: RaidSummonSnapshot[], rootSeed: RaidSeed, raidId: string, round: RaidRoundDefinition, options: RaidSimulationOptions = {}): RaidRoundResult {
   const seed = deriveRoundSeed(rootSeed, round.id);
   const input = buildRaidRoundSnapshotFromSummons(attacker, defender, round, raidId);
+  const combatSnapshot = options.transformSnapshot ? options.transformSnapshot(structuredClone(input), round) : input;
+  const state = runCombatAutoCast(combatSnapshot, seedToNumber(seed));
+  return { roundId: round.id, roundSize: round.slotCount, seed, outcome: combatWinnerToRaidOutcome(state.winner), combatSnapshot, events: structuredClone(state.events) };
+}
+export function simulateRaidRoundFromPlacements(attacker: readonly RaidFormationPlacement[], defender: readonly RaidFormationPlacement[], rootSeed: RaidSeed, raidId: string, round: RaidRoundDefinition, options: RaidSimulationOptions = {}): RaidRoundResult {
+  const seed = deriveRoundSeed(rootSeed, round.id);
+  const input = buildRaidRoundSnapshotFromPlacements(attacker, defender, round, raidId);
   const combatSnapshot = options.transformSnapshot ? options.transformSnapshot(structuredClone(input), round) : input;
   const state = runCombatAutoCast(combatSnapshot, seedToNumber(seed));
   return { roundId: round.id, roundSize: round.slotCount, seed, outcome: combatWinnerToRaidOutcome(state.winner), combatSnapshot, events: structuredClone(state.events) };

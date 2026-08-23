@@ -10,7 +10,7 @@ let repository: TutorialProgressRepository = localTutorialProgress;
 let transitionTimer: number | null = null;
 function save() {
   const state = useGameStore.getState();
-  repository.save({ schemaVersion: 7, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, spawn: state.spawn, merge: state.merge, raidDraft: state.raidDraft, raidSnapshot: state.raidSnapshot, raidResult: state.raidResult, battle: getCampaignBattleCheckpoint() });
+  repository.save({ schemaVersion: 8, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, spawn: state.spawn, merge: state.merge, raidDraft: state.raidDraft, raidSnapshot: state.raidSnapshot, raidResult: state.raidResult, opponentCamp: state.opponentCamp, selectedStealTargetId: state.selectedStealTargetId, battle: getCampaignBattleCheckpoint() });
 }
 function currentState() { const state = useGameStore.getState(); return { currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext }; }
 function enterBase(replayReveal: boolean) {
@@ -35,7 +35,12 @@ function handle(event: TutorialEvent) {
   if (event.type === 'SUMMON_PLACED' && before.currentStepId === 'campaign_place_first' && event.summonInstanceId !== before.context.firstSummonInstanceId) return;
   const next = applyTutorialEvent(before, event, tutorialDefinitions);
   if (next === before) { if (event.type === 'CAMP_SUMMON_MOVED') save(); return; }
-  useGameStore.getState().setTutorial(next.currentStepId, next.completedStepIds, next.context);
+  const store = useGameStore.getState();
+  store.setTutorial(next.currentStepId, next.completedStepIds, next.context);
+  // The first placement lesson cannot assume the player will discover that the
+  // picker was closed by the details lesson. Keep the cards immediately
+  // available, then collapse the tray after the card is picked for the field.
+  if (next.currentStepId === 'campaign_place_first') store.openSummonTray();
   if (next.currentStepId === 'spawn_open') useGameStore.getState().setCameraPreset('spawn_focus');
   if (next.currentStepId?.startsWith('merge_')) { useGameStore.getState().closeSpawnMachine(); useGameStore.getState().setCameraPreset('base_overview'); }
   if (event.type === 'FIRST_SKILL_READY') pauseCampaignBattle();
@@ -47,6 +52,7 @@ function handle(event: TutorialEvent) {
 export function dispatchTutorialEvent(event: TutorialEvent) { handle(event); }
 function restoreBaseForStep(stepId: string | null) {
   if (stepId === 'raid_open') { const store = useGameStore.getState(); store.setSceneInternal('raid'); store.setCameraPreset('raid_overview', false); return; }
+  if (stepId?.startsWith('opponent_camp') || stepId?.startsWith('steal_')) { const store = useGameStore.getState(); store.setSceneInternal('opponentCamp'); store.setCameraPreset('base_overview', false); return; }
   if (!stepId?.startsWith('base_') && !stepId?.startsWith('spawn_') && !stepId?.startsWith('merge_') && stepId !== 'raid_gate_open') return;
   enterBase(stepId === 'base_intro');
   if (stepId?.startsWith('spawn_')) { useGameStore.getState().setCameraPreset('spawn_focus', false); useGameStore.setState({ spawnOpen: true }); }
@@ -57,6 +63,7 @@ export function initializeTutorialController(progress = localTutorialProgress) {
   const checkpoint = repository.load();
   if (checkpoint) {
     useGameStore.getState().restoreSetup(checkpoint.inventory, checkpoint.placements, checkpoint.campPlacements, checkpoint.spawn, checkpoint.merge, checkpoint.raidDraft, checkpoint.raidSnapshot, checkpoint.raidResult);
+    useGameStore.setState({ opponentCamp: checkpoint.opponentCamp, selectedStealTargetId: checkpoint.selectedStealTargetId });
     useGameStore.getState().setTutorial(checkpoint.currentStepId, checkpoint.completedStepIds, checkpoint.context);
     if (checkpoint.battle) restoreCampaignBattle(checkpoint.battle);
     restoreBaseForStep(checkpoint.currentStepId);
@@ -76,7 +83,7 @@ export function resetTutorial() {
   // A fresh tutorial must not inherit generated, merged, or stolen Summons
   // from the run it replaces.
   const initial = createTutorialState('campaign_open_inventory'); const inventory = createStarterSummonInstances();
-  useGameStore.getState().restoreSetup(inventory, [], []); useGameStore.getState().setSceneInternal('campaign'); useGameStore.getState().setCameraPreset('campaign_overview', false); useGameStore.getState().setTutorial(initial.currentStepId, initial.completedStepIds, initial.context);
+  useGameStore.getState().restoreSetup(inventory, [], []); useGameStore.getState().setSceneInternal('campaign'); useGameStore.getState().setCameraPreset('campaign_deployment', false); useGameStore.getState().setTutorial(initial.currentStepId, initial.completedStepIds, initial.context);
 }
 export function retryTutorialBattle() { resetCampaignBattleToSetup(); const state = useGameStore.getState(); useGameStore.getState().setTutorial('campaign_start', state.tutorialCompletedStepIds.filter((id) => !['campaign_wait_skill', 'campaign_manual_skill', 'campaign_autocast', 'campaign_complete'].includes(id)), state.tutorialContext); save(); }
 export function tutorialControllerDebug() { const state = useGameStore.getState(); return { active, stepId: state.tutorialStepId, allowed: tutorialDefinitions.find((step) => step.id === state.tutorialStepId)?.allowedActions ?? [], paused: isCampaignBattlePaused(), adapter: 'localStorage' }; }

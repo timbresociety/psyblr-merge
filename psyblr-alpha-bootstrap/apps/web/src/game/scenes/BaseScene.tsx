@@ -18,9 +18,13 @@ function CampCellEntity({ cell, material, protectedMaterial, moveMaterial, merge
   </Entity>;
 }
 export function BaseScene() {
-  const campPlacements = useGameStore((state) => state.campPlacements);
-  const inventory = useGameStore((state) => state.inventory);
-  const selectedId = useGameStore((state) => state.selectedCampSummonInstanceId);
+  const opponentMode = useGameStore((state) => state.scene === 'opponentCamp');
+  const opponentCamp = useGameStore((state) => state.opponentCamp);
+  const ownCampPlacements = useGameStore((state) => state.campPlacements);
+  const ownInventory = useGameStore((state) => state.inventory);
+  const campPlacements = opponentMode ? (opponentCamp?.summons.map((summon) => ({ summonInstanceId: summon.summonInstanceId, cell: summon.cell })) ?? []) : ownCampPlacements;
+  const inventory = opponentMode ? (opponentCamp?.summons.map((summon) => ({ id: summon.summonInstanceId, definitionId: summon.definitionId, tier: summon.tier })) ?? []) : ownInventory;
+  const selectedId = useGameStore((state) => state.scene === 'opponentCamp' ? state.selectedStealTargetId : state.selectedCampSummonInstanceId);
   const tutorialStepId = useGameStore((state) => state.tutorialStepId);
   const mode = useGameStore((state) => state.campInteractionMode);
   const hovered = useGameStore((state) => state.hoveredCampCell);
@@ -35,13 +39,11 @@ export function BaseScene() {
   const gate = useMaterial({ diffuse: '#312e81', emissive: '#8b5cf6', emissiveIntensity: .55, gloss: .65 });
   const selectedPlacement = selectedId ? getCampPlacementForSummon(selectedId, campPlacements) : undefined;
   const canRepositionDuringMerge = Boolean(selectedPlacement && tutorialStepId?.startsWith('merge_'));
-  return <Entity name="base-scene">
+  return <Entity name={opponentMode ? "opponent-camp-scene" : "base-scene"}>
     <Ground scale={[24, .22, 20]} />
     {Array.from({ length: 36 }, (_, index) => { const cell = { x: index % 6, y: Math.floor(index / 6) }; const occupant = campPlacements.find((placement) => placement.cell.x === cell.x && placement.cell.y === cell.y); const source = inventory.find((entry) => entry.id === selectedId); const target = occupant && inventory.find((entry) => entry.id === occupant.summonInstanceId); const valid = Boolean(selectedPlacement && mode !== 'idle' && canPlaceCampSummon(selectedPlacement.summonInstanceId, cell, campPlacements) && (canRepositionDuringMerge || isIlluminatiCell(cell) && !isIlluminatiCell(selectedPlacement.cell))); const mergeCandidate = Boolean(tutorialStepId?.startsWith('merge_') && source && target && source.id !== target.id && canMerge(source, target)); const candidate = Boolean(hovered?.x === cell.x && hovered.y === cell.y && valid); return <CampCellEntity key={`${cell.x}-${cell.y}`} cell={cell} material={ordinary} protectedMaterial={protectedMaterial} moveMaterial={moveMaterial} mergeMaterial={mergeMaterial} hoverMaterial={hoverMaterial} valid={valid} candidate={candidate} mergeCandidate={mergeCandidate} />; })}
     {campPlacements.map((placement) => { const instance = inventory.find((entry) => entry.id === placement.summonInstanceId); if (!instance) return null; const [x, y, z] = campCellToWorld(placement.cell); return <SummonWorldEntity key={instance.id} instance={instance} position={[x, y + .17, z]} selected={instance.id === selectedId} protected={isIlluminatiCell(placement.cell)} mergePulse={mergePresentation?.upgradedTarget.id === instance.id} />; })}
-    {BASE_LAYOUT.buildingSockets.filter((socket) => socket.kind === 'future').map((socket) => <Entity key={socket.id} name={socket.id} position={socket.position} scale={[socket.footprint[0], .08, socket.footprint[1]]}><Render type="cylinder" material={future} /></Entity>)}
-    <SpawnMachineWorld />
-    <Entity name="raid-gate" position={[-6.4, 1.65, 0]} rotation={[0, 18, 0]} scale={[1.5, 3.25, .55]}><Render type="box" material={gate} /></Entity>
-    <Entity name="raid-gate-core" position={[-6.4, 1.65, -.33]} scale={[.68, 1.7, .08]}><Render type="box" material={protectedMaterial} /></Entity>
+    {!opponentMode && <>{BASE_LAYOUT.buildingSockets.filter((socket) => socket.kind === 'future').map((socket) => <Entity key={socket.id} name={socket.id} position={socket.position} scale={[socket.footprint[0], .08, socket.footprint[1]]}><Render type="cylinder" material={future} /></Entity>)}
+    <SpawnMachineWorld /><Entity name="raid-gate" position={[-6.4, 1.65, 0]} rotation={[0, 18, 0]} scale={[1.5, 3.25, .55]}><Render type="box" material={gate} /></Entity><Entity name="raid-gate-core" position={[-6.4, 1.65, -.33]} scale={[.68, 1.7, .08]}><Render type="box" material={protectedMaterial} /></Entity></>}
   </Entity>;
 }

@@ -11,7 +11,8 @@ export type GameInteraction =
   | { type: 'CAMP_SUMMON_MOVED'; summonInstanceId: string; from: CampCell; to: CampCell }
   | { type: 'MERGE_COMPLETED'; definitionId: string; sourceId: string; targetId: string; fromTier: string; toTier: string }
   | { type: 'ILLUMINATI_FULL' } | { type: 'SPAWN_UI_OPENED' } | { type: 'BALL_DROPPED' } | { type: 'CAMP_FULL' }
-  | { type: 'RAID_GATE_OPENED' } | { type: 'RAID_SUMMON_SELECTED'; roundId: string; summonInstanceId: string } | { type: 'RAID_STARTED'; clientActionId: string } | { type: 'RAID_WON'; raidId: string };
+  | { type: 'RAID_GATE_OPENED' } | { type: 'RAID_SUMMON_SELECTED'; roundId: string; summonInstanceId: string } | { type: 'RAID_STARTED'; clientActionId: string } | { type: 'RAID_WON'; raidId: string }
+  | { type: 'STEAL_TARGET_SELECTED'; summonInstanceId: string } | { type: 'STEAL_COMPLETED'; summonInstanceId: string } | { type: 'DEFENSE_SAVED' };
 
 export const GAME_INTERACTION_EVENT = 'psyblr:game-interaction';
 

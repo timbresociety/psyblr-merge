@@ -1,6 +1,7 @@
 import { combatFunctionDefinitions, getSummonDefinition, originDefinitions } from '@psyblr/game-content';
 import { resolveFormationSynergies } from '@psyblr/game-rules';
 import { useGameStore } from '../stores/gameStore';
+import { affinityIcon } from './summons/SummonAffinities';
 
 export function FormationSynergyPanel() {
   const scene = useGameStore((state) => state.scene);
@@ -17,6 +18,6 @@ export function FormationSynergyPanel() {
   const synergies = resolveFormationSynergies(definitions, originDefinitions, combatFunctionDefinitions);
   return <aside className="synergy-panel" data-tutorial-target="synergy-panel" aria-label="Formation synergies">
     <strong>{scene === 'raid' ? 'FIELD SYNERGIES' : 'SYNERGIES'}</strong>
-    {synergies.entries.map((entry) => <div key={`${entry.kind}-${entry.id}`} data-active={Boolean(entry.activeThreshold)}><span>{entry.name}</span><b>{entry.count}/{entry.activeThreshold?.count ?? entry.nextThreshold?.count ?? '—'} {entry.activeThreshold ? '✓' : ''}</b>{entry.activeThreshold && <small>{entry.activeThreshold.effect}</small>}</div>)}
+    {synergies.entries.map((entry) => <div key={`${entry.kind}-${entry.id}`} data-active={Boolean(entry.activeThreshold)}><i className={`synergy-icon ${entry.kind}`}>{affinityIcon(entry.kind, entry.id)}</i><span><em>{entry.kind === 'origin' ? 'ORIGIN' : 'FUNCTION'}</em>{entry.name}</span><b>{entry.count}/{entry.activeThreshold?.count ?? entry.nextThreshold?.count ?? '—'} {entry.activeThreshold ? '✓' : ''}</b>{entry.activeThreshold && <small>{entry.activeThreshold.effect}</small>}</div>)}
   </aside>;
 }

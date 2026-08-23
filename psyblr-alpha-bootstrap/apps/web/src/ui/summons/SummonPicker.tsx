@@ -18,7 +18,7 @@ export function SummonPicker({ mode, inventory, selectedInstanceIds, deployedIns
     {instances.map((instance) => {
       try {
         const definition = getSummonDefinition(instance.definitionId);
-        return <SummonCard key={instance.id} instance={instance} definition={definition} origin={getOriginDefinition(definition.originId)} combatFunction={getCombatFunctionDefinition(definition.combatFunctionId)} deployed={deployedInstanceIds.includes(instance.id)} selected={selectedInstanceIds.includes(instance.id)} onSelect={onSelect} onDragStart={mode === 'campaign' ? onDragStart : undefined} onDragCancel={onDragCancel} selectionLabel={selectionLabel?.(instance.id)} />;
+        return <SummonCard key={instance.id} instance={instance} definition={definition} origin={getOriginDefinition(definition.originId)} combatFunction={getCombatFunctionDefinition(definition.combatFunctionId)} deployed={deployedInstanceIds.includes(instance.id)} selected={selectedInstanceIds.includes(instance.id)} onSelect={onSelect} onDragStart={onDragStart} onDragCancel={onDragCancel} selectionLabel={selectionLabel?.(instance.id)} />;
       } catch { return <div className="summon-card summon-card-unavailable" key={instance.id}>Unavailable summon content</div>; }
     })}
   </div>;

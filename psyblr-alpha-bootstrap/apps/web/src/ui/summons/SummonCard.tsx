@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { PointerEvent } from 'react';
 import type { CombatFunctionDefinition, OriginDefinition, SummonDefinition, SummonInstance } from '@psyblr/contracts';
 import { SummonPortrait } from './SummonPortrait';
+import { SummonAffinities } from './SummonAffinities';
 
 const DRAG_THRESHOLD_PX = 8;
 
@@ -47,6 +48,10 @@ export function SummonCard({
     // toward the board rather than accidentally treating a sideways swipe as placement.
     if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX || Math.abs(dy) <= Math.abs(dx) || dy >= 0) return;
     gesture.current = { ...current, dragging: true };
+    // The card initially captures the pointer to distinguish a deliberate drag
+    // from a tray scroll. Release it once lifted so pointerup targets the 3D
+    // canvas; WorldPointerBridge can then resolve the exact battlefield cell.
+    event.currentTarget.releasePointerCapture(event.pointerId);
     onDragStart(instance.id);
   };
   const onPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
@@ -82,8 +87,8 @@ export function SummonCard({
   >
     <SummonPortrait definition={definition} />
     <span className="summon-card-copy">
-      <strong>{definition.displayName}</strong>
-      <span className="summon-card-tags"><b>{instance.tier}</b>{origin.name} · {combatFunction.name}</span>
+      <span className="summon-card-title"><strong>{definition.displayName}</strong><b className="tier-badge">{instance.tier}</b></span>
+      <SummonAffinities originId={origin.id} combatFunctionId={combatFunction.id} />
       {deployed && <em>DEPLOYED</em>}
       {selectionLabel && <em>{selectionLabel}</em>}
     </span>

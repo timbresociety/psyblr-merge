@@ -2,7 +2,7 @@ import { createCombatState, stepCombat, type CombatState } from '@psyblr/combat-
 import { combatFunctionDefinitions, getCreepDefinition, getSkillDefinition, getSummonDefinition, originDefinitions } from '@psyblr/game-content';
 import { resolveFormationSynergies } from '@psyblr/game-rules';
 import type { CombatCommand, CombatSnapshot, CombatUnitSnapshot } from '@psyblr/contracts';
-import { emitCampaignInteraction } from './interactionEvents';
+import { emitGameInteraction } from './interactionEvents';
 import { tutorialAllows, useGameStore, type BattleUnitView } from '../stores/gameStore';
 
 const CREEP_FORMATION = [
@@ -63,11 +63,11 @@ function advance() {
   const result = stepCombat(runtime, currentCommands.map((entry) => entry.command));
   const acceptedManual = result.acceptedCommands.some((command) => currentCommands.some((entry) => entry.manual && entry.command.actorId === command.actorId));
   const acceptedManualActor = result.acceptedCommands.find((command) => currentCommands.some((entry) => entry.manual && entry.command.actorId === command.actorId))?.actorId;
-  if (acceptedManualActor) emitCampaignInteraction({ type: 'SKILL_1_CAST_MANUAL', actorId: acceptedManualActor });
+  if (acceptedManualActor) emitGameInteraction({ type: 'SKILL_1_CAST_MANUAL', actorId: acceptedManualActor });
   const firstReadyActor = result.events.find((entry) => entry.type === 'skill_ready' && runtime!.units.find((unit) => unit.id === entry.actorId)?.side === 'player')?.actorId;
   if (!firstReadyEmitted && firstReadyActor) {
     firstReadyEmitted = true;
-    emitCampaignInteraction({ type: 'FIRST_SKILL_READY', actorId: firstReadyActor });
+    emitGameInteraction({ type: 'FIRST_SKILL_READY', actorId: firstReadyActor });
   }
   const readySkillActorIds = runtime.units.filter((unit) => unit.side === 'player' && !unit.dead && unit.skill1 && unit.skillReadyAnnounced && unit.nextSkillReadyTick <= runtime!.tick).map((unit) => unit.id).sort();
   const deadUnitIds = runtime.units.filter((unit) => unit.dead).map((unit) => unit.id).sort();
@@ -76,7 +76,7 @@ function advance() {
     stopTimer();
     const phase = runtime.winner === 'player' ? 'victory' : runtime.winner === 'enemy' ? 'defeat' : 'draw';
     store.finishBattle(phase, []);
-    emitCampaignInteraction({ type: 'BATTLE_ENDED', outcome: phase });
+    emitGameInteraction({ type: 'BATTLE_ENDED', outcome: phase });
   }
 }
 export function startCampaignBattle() {
@@ -85,7 +85,7 @@ export function startCampaignBattle() {
   stopTimer(); queuedCommands = []; firstReadyEmitted = false; pausedByTutorial = false;
   runtime = createCombatState(snapshot, seedFrom(useGameStore.getState().simulationSeed));
   useGameStore.getState().beginBattle(snapshot, runtime.events.slice(), viewUnits(runtime));
-  emitCampaignInteraction({ type: 'BATTLE_STARTED' });
+  emitGameInteraction({ type: 'BATTLE_STARTED' });
   startTimer();
   return true;
 }
@@ -99,7 +99,7 @@ export function requestManualSkillCast(actorId: string) {
 export function setBattleAutoCast(enabled: boolean) {
   if (enabled && !tutorialAllows('TOGGLE_AUTO_CAST')) return;
   useGameStore.getState().setAutoCast(enabled);
-  if (enabled) emitCampaignInteraction({ type: 'AUTO_CAST_ENABLED' });
+  if (enabled) emitGameInteraction({ type: 'AUTO_CAST_ENABLED' });
 }
 export function pauseCampaignBattle() { if (runtime && !runtime.ended) pausedByTutorial = true; }
 export function resumeCampaignBattle() { pausedByTutorial = false; }

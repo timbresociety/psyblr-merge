@@ -93,6 +93,31 @@ export type SkillDefinition = z.infer<typeof SkillDefinitionSchema>;
 export const CampCellSchema = z.object({ x: z.number().int().min(0).max(5), y: z.number().int().min(0).max(5) });
 export type CampCell = z.infer<typeof CampCellSchema>;
 
+export const CampPlacementSchema = z.object({
+  summonInstanceId: z.string().min(1),
+  cell: CampCellSchema,
+});
+export type CampPlacement = z.infer<typeof CampPlacementSchema>;
+
+export const BaseBuildingSocketSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['battle_camp', 'spawn_machine', 'raid_gate', 'future']),
+  position: z.tuple([z.number(), z.number(), z.number()]),
+  rotationY: z.number(),
+  footprint: z.tuple([z.number().positive(), z.number().positive()]),
+});
+export type BaseBuildingSocket = z.infer<typeof BaseBuildingSocketSchema>;
+
+export const BaseLayoutDefinitionSchema = z.object({
+  version: z.literal(1),
+  camp: z.object({
+    origin: z.tuple([z.number(), z.number(), z.number()]),
+    cellSize: z.number().positive(),
+  }),
+  buildingSockets: z.array(BaseBuildingSocketSchema),
+});
+export type BaseLayoutDefinition = z.infer<typeof BaseLayoutDefinitionSchema>;
+
 export const RaidSquadSchema = z.object({
   round1: z.array(z.string()).length(1),
   round2: z.array(z.string()).length(3).refine(v => new Set(v).size === 3, 'Round 2 summons must be unique'),
@@ -102,7 +127,7 @@ export const RaidSquadSchema = z.object({
 export const TutorialActionSchema = z.enum([
   'OPEN_INVENTORY', 'SELECT_SUMMON', 'VIEW_STATS', 'VIEW_SKILLS', 'PLACE_SUMMON', 'REPOSITION_SUMMON',
   'RECALL_SUMMON', 'INSPECT_SUMMON', 'VIEW_SYNERGIES', 'START_BATTLE', 'CAST_SKILL_1', 'TOGGLE_AUTO_CAST',
-  'TUTORIAL_CONTINUE', 'MOVE_CAMP_SUMMON', 'OPEN_SPAWN_MACHINE', 'DROP_BALL', 'LONG_PRESS_DROP', 'MERGE_SUMMONS',
+  'TUTORIAL_CONTINUE', 'SELECT_CAMP_SUMMON', 'MOVE_CAMP_SUMMON', 'OPEN_SPAWN_MACHINE', 'DROP_BALL', 'LONG_PRESS_DROP', 'MERGE_SUMMONS',
   'VIEW_PROGRESS', 'SELECT_RAID_SUMMON', 'START_RAID', 'SELECT_STEAL', 'CONFIRM_STEAL', 'SELECT_DEFENSE_SUMMON', 'SAVE_DEFENSE',
 ]);
 export type TutorialAction = z.infer<typeof TutorialActionSchema>;

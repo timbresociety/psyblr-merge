@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { tutorialDefinitions } from '@psyblr/game-content';
 import { useGameStore } from '../stores/gameStore';
 import { continueTutorial } from '../tutorial/controller';
+import { WORLD_TARGETS_EVENT, type WorldTargetRect } from '../game/worldTargets';
 
 type Rect = { left: number; top: number; right: number; bottom: number; width: number; height: number };
 function findTarget(id: string | null, readyActorId: string | undefined): HTMLElement | null {
@@ -12,19 +13,21 @@ export function TutorialOverlay() {
   const stepId = useGameStore((state) => state.tutorialStepId);
   const context = useGameStore((state) => state.tutorialContext);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [worldRects, setWorldRects] = useState<Record<string, WorldTargetRect>>({});
   const step = tutorialDefinitions.find((entry) => entry.id === stepId) ?? null;
-  const allowsPlacement = Boolean(step?.allowedActions.includes('PLACE_SUMMON') || step?.allowedActions.includes('REPOSITION_SUMMON'));
+  const allowsPlacement = Boolean(step?.allowedActions.includes('PLACE_SUMMON') || step?.allowedActions.includes('REPOSITION_SUMMON') || step?.allowedActions.includes('SELECT_CAMP_SUMMON') || step?.allowedActions.includes('MOVE_CAMP_SUMMON'));
+  useEffect(() => { const onTargets = (event: Event) => setWorldRects((event as CustomEvent<Record<string, WorldTargetRect>>).detail); window.addEventListener(WORLD_TARGETS_EVENT, onTargets); const frame = window.requestAnimationFrame(() => window.dispatchEvent(new Event('resize'))); return () => { window.cancelAnimationFrame(frame); window.removeEventListener(WORLD_TARGETS_EVENT, onTargets); }; }, []);
   useLayoutEffect(() => {
     if (!step?.highlightTarget) { setRect(null); return; }
     let observer: ResizeObserver | undefined; let mutation: MutationObserver | undefined;
     const update = () => {
       const target = findTarget(step.highlightTarget, context.readySkillActorId);
-      setRect(target ? target.getBoundingClientRect() : null);
+      setRect(target ? target.getBoundingClientRect() : worldRects[step.highlightTarget!] ?? null);
       if (target && !observer) { observer = new ResizeObserver(update); observer.observe(target); }
     };
     update(); window.addEventListener('resize', update); mutation = new MutationObserver(update); mutation.observe(document.body, { childList: true, subtree: true });
     return () => { window.removeEventListener('resize', update); observer?.disconnect(); mutation?.disconnect(); };
-  }, [step?.highlightTarget, context.readySkillActorId]);
+  }, [step?.highlightTarget, context.readySkillActorId, worldRects]);
   useEffect(() => { if (rect && step?.highlightTarget) document.querySelector<HTMLElement>(`[data-tutorial-target="${step.highlightTarget}"]`)?.focus?.(); }, [rect, step?.highlightTarget]);
   if (!step || step.id === 'campaign_wait_skill' || step.id === 'campaign_complete' || step.id === 'base_intro') return null;
   const continuation = step.allowedActions.includes('TUTORIAL_CONTINUE');

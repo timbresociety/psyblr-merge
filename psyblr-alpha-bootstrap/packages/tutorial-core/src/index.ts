@@ -1,6 +1,6 @@
 import type { TutorialAction, TutorialStep } from '@psyblr/contracts';
 
-export type TutorialEvent = { type: string } & Record<string, string | number | boolean | null | undefined>;
+export type TutorialEvent = { type: string } & Record<string, unknown>;
 export type TutorialContext = { firstSummonInstanceId?: string; readySkillActorId?: string };
 export type TutorialState = { currentStepId: string | null; completedStepIds: string[]; context: TutorialContext };
 

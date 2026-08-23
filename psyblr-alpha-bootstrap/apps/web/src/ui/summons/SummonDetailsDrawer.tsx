@@ -3,7 +3,7 @@ import { getCombatFunctionDefinition, getOriginDefinition, getSkillDefinition, g
 import type { SummonDefinition } from '@psyblr/contracts';
 import { useGameStore } from '../../stores/gameStore';
 import { SummonPortrait } from './SummonPortrait';
-import { emitCampaignInteraction } from '../../game/interactionEvents';
+import { emitGameInteraction } from '../../game/interactionEvents';
 import { tutorialAllows } from '../../stores/gameStore';
 
 type DetailTab = 'overview' | 'stats' | 'skills';
@@ -57,8 +57,8 @@ export function SummonDetailsDrawer() {
             if (item === 'stats' && !tutorialAllows('VIEW_STATS')) return;
             if (item === 'skills' && !tutorialAllows('VIEW_SKILLS')) return;
             setTab(item);
-            if (item === 'stats') emitCampaignInteraction({ type: 'STATS_VIEWED', summonInstanceId: instance.id });
-            if (item === 'skills') emitCampaignInteraction({ type: 'SKILLS_VIEWED', summonInstanceId: instance.id });
+            if (item === 'stats') emitGameInteraction({ type: 'STATS_VIEWED', summonInstanceId: instance.id });
+            if (item === 'skills') emitGameInteraction({ type: 'SKILLS_VIEWED', summonInstanceId: instance.id });
           }}
         >{item.toUpperCase()}</button>)}
       </div>

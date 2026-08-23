@@ -1,9 +1,41 @@
 import { Entity } from '@playcanvas/react';
 import { Render } from '@playcanvas/react/components';
+import { useMaterial } from '@playcanvas/react/hooks';
+import { canPlaceCampSummon, getCampPlacementForSummon, isIlluminatiCell } from '@psyblr/game-rules';
+import type { CampCell } from '@psyblr/contracts';
+import type { StandardMaterial } from 'playcanvas';
+import { BASE_LAYOUT, campCellToWorld } from '../baseLayout';
+import { SummonWorldEntity } from '../entities/SummonWorldEntity';
 import { Ground } from '../GameCanvas';
-const CELL=1.2;
-export function BaseScene(){return <Entity name="base-scene"><Ground scale={[14,0.2,14]}/>
- {Array.from({length:36},(_,i)=>{const x=i%6,y=Math.floor(i/6);return <Entity key={i} name={`camp-${x}-${y}`} position={[(x-2.5)*CELL,0,(y-2.5)*CELL]} scale={[1.0, y===0?0.12:0.06,1.0]}><Render type="box"/></Entity>})}
- <Entity name="spawn-machine" position={[5,1.2,0]} scale={[1.6,2.4,1.4]}><Render type="box"/></Entity>
- <Entity name="raid-gate" position={[-5,1.5,-1]} scale={[1.4,3,0.6]}><Render type="box"/></Entity>
- </Entity>}
+import { useGameStore } from '../../stores/gameStore';
+
+function CampCellEntity({ cell, material, protectedMaterial, candidate, valid }: { cell: CampCell; material: StandardMaterial; protectedMaterial: StandardMaterial; candidate: boolean; valid: boolean }) {
+  const [x, , z] = campCellToWorld(cell); const illuminated = isIlluminatiCell(cell);
+  return <Entity name={`camp-${cell.x}-${cell.y}`} position={[x, illuminated ? .12 : 0, z]} scale={[1.08, illuminated ? .15 : .07, 1.08]}>
+    <Render type="box" material={candidate || illuminated || valid ? protectedMaterial : material} />
+    {illuminated && <Entity position={[0, .12, 0]} scale={[.72, .028, .72]}><Render type="cylinder" material={protectedMaterial} /></Entity>}
+  </Entity>;
+}
+export function BaseScene() {
+  const campPlacements = useGameStore((state) => state.campPlacements);
+  const inventory = useGameStore((state) => state.inventory);
+  const selectedId = useGameStore((state) => state.selectedCampSummonInstanceId);
+  const mode = useGameStore((state) => state.campInteractionMode);
+  const hovered = useGameStore((state) => state.hoveredCampCell);
+  const ordinary = useMaterial({ diffuse: '#233043', gloss: .28 });
+  const protectedMaterial = useMaterial({ diffuse: '#1d7a73', emissive: '#3de7c7', emissiveIntensity: .5, gloss: .75 });
+  const future = useMaterial({ diffuse: '#293241', emissive: '#334155', emissiveIntensity: .14 });
+  const building = useMaterial({ diffuse: '#334155', emissive: '#1d4ed8', emissiveIntensity: .32, gloss: .5 });
+  const gate = useMaterial({ diffuse: '#312e81', emissive: '#8b5cf6', emissiveIntensity: .55, gloss: .65 });
+  const selectedPlacement = selectedId ? getCampPlacementForSummon(selectedId, campPlacements) : undefined;
+  return <Entity name="base-scene">
+    <Ground scale={[24, .22, 20]} />
+    {Array.from({ length: 36 }, (_, index) => { const cell = { x: index % 6, y: Math.floor(index / 6) }; const valid = Boolean(selectedPlacement && mode !== 'idle' && canPlaceCampSummon(selectedPlacement.summonInstanceId, cell, campPlacements) && isIlluminatiCell(cell) && !isIlluminatiCell(selectedPlacement.cell)); const candidate = hovered?.x === cell.x && hovered.y === cell.y; return <CampCellEntity key={`${cell.x}-${cell.y}`} cell={cell} material={ordinary} protectedMaterial={protectedMaterial} valid={valid} candidate={candidate} />; })}
+    {campPlacements.map((placement) => { const instance = inventory.find((entry) => entry.id === placement.summonInstanceId); if (!instance) return null; const [x, y, z] = campCellToWorld(placement.cell); return <SummonWorldEntity key={instance.id} instance={instance} position={[x, y + .17, z]} selected={instance.id === selectedId} protected={isIlluminatiCell(placement.cell)} />; })}
+    {BASE_LAYOUT.buildingSockets.filter((socket) => socket.kind === 'future').map((socket) => <Entity key={socket.id} name={socket.id} position={socket.position} scale={[socket.footprint[0], .08, socket.footprint[1]]}><Render type="cylinder" material={future} /></Entity>)}
+    <Entity name="spawn-machine" position={[6.4, 1.25, 0]} rotation={[0, -18, 0]} scale={[1.65, 2.5, 1.4]}><Render type="box" material={building} /></Entity>
+    <Entity name="spawn-machine-cap" position={[6.4, 2.65, 0]} scale={[.95, .34, .95]}><Render type="sphere" material={protectedMaterial} /></Entity>
+    <Entity name="raid-gate" position={[-6.4, 1.65, 0]} rotation={[0, 18, 0]} scale={[1.5, 3.25, .55]}><Render type="box" material={gate} /></Entity>
+    <Entity name="raid-gate-core" position={[-6.4, 1.65, -.33]} scale={[.68, 1.7, .08]}><Render type="box" material={protectedMaterial} /></Entity>
+  </Entity>;
+}

@@ -1,7 +1,6 @@
 import { Entity } from '@playcanvas/react';
 import { Render } from '@playcanvas/react/components';
 import { useMaterial } from '@playcanvas/react/hooks';
-import { getSummonDefinition } from '@psyblr/game-content';
 import { canDeploySummon, isBattleCellOccupied, isPlayerDeploymentCell } from '@psyblr/game-rules';
 import type { BattleCell, SummonInstance } from '@psyblr/contracts';
 import type { StandardMaterial } from 'playcanvas';
@@ -9,6 +8,7 @@ import { battleCellToWorld } from '../battlefield';
 import { getSummonPresentation } from '../summonPresentation';
 import { Ground } from '../GameCanvas';
 import { useGameStore } from '../../stores/gameStore';
+import { SummonWorldEntity } from '../entities/SummonWorldEntity';
 
 type TacticalCellProps = {
   cell: BattleCell;
@@ -28,26 +28,8 @@ function TacticalCell({ cell, material }: TacticalCellProps) {
 }
 
 function DeployedSummon({ instance, cell, selected }: { instance: SummonInstance; cell: BattleCell; selected: boolean }) {
-  const definition = getSummonDefinition(instance.definitionId);
-  const presentation = getSummonPresentation(definition.id);
-  const summonMaterial = useMaterial({ diffuse: presentation.accent, emissive: presentation.accent, emissiveIntensity: 0.12, gloss: 0.65 });
-  const ringMaterial = useMaterial({ diffuse: '#f8fafc', emissive: presentation.accent, emissiveIntensity: 0.9, gloss: 0.9 });
   const [x, , z] = battleCellToWorld(cell);
-
-  return <Entity
-    name={`deployed-summon-${instance.id}`}
-    position={[x, 0.08, z]}
-  >
-    {selected && <Entity name={`selected-ring-${instance.id}`} position={[0, -0.045, 0]} scale={[0.62, 0.03, 0.62]}>
-      <Render type="cylinder" material={ringMaterial} />
-    </Entity>}
-    <Entity name={`${definition.id}-base`} scale={[0.45, 0.14, 0.45]}>
-      <Render type="cylinder" material={summonMaterial} />
-    </Entity>
-    <Entity name={`${definition.id}-body`} position={[0, 0.55, 0]} scale={[0.45, 0.98, 0.45]}>
-      <Render type="capsule" material={summonMaterial} />
-    </Entity>
-  </Entity>;
+  return <SummonWorldEntity instance={instance} position={[x, .08, z]} selected={selected} />;
 }
 
 function Combatant({ id, definitionId, side, x, z, hp, maxHp, dead, shield }: { id: string; definitionId: string; side: 'player' | 'enemy'; x: number; z: number; hp: number; maxHp: number; dead: boolean; shield: number }) {

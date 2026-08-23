@@ -1,4 +1,4 @@
-import type { BattleCell, BattlefieldPlacement, CampCell, CombatFunctionDefinition, OriginDefinition, SummonDefinition, SynergyEffect, Tier } from '@psyblr/contracts';
+import type { BattleCell, BattlefieldPlacement, CampCell, CampPlacement, CombatFunctionDefinition, OriginDefinition, SummonDefinition, SynergyEffect, Tier } from '@psyblr/contracts';
 
 export const TIERS: readonly Tier[] = ['F','E','D','C','B','A','S','SS','SSS'];
 export const TIER_MULTIPLIER: Record<Tier, number> = {F:1,E:1.15,D:1.35,C:1.6,B:1.9,A:2.25,S:2.65,SS:3.1,SSS:3.65};
@@ -8,8 +8,37 @@ export function nextTier(tier: Tier): Tier | null {
   return i >= 0 && i < TIERS.length - 1 ? TIERS[i + 1]! : null;
 }
 
+export const CAMP_SIZE = 6;
+export const CAMP_CAPACITY = CAMP_SIZE * CAMP_SIZE;
+export const ILLUMINATI_CAPACITY = CAMP_SIZE;
+
+export function isCampCell(cell: { x: number; y: number }): cell is CampCell {
+  return Number.isInteger(cell.x) && Number.isInteger(cell.y) && cell.x >= 0 && cell.x < CAMP_SIZE && cell.y >= 0 && cell.y < CAMP_SIZE;
+}
 export function isIlluminatiCell(cell: CampCell): boolean { return cell.y === 0; }
 export function canBeStolen(cell: CampCell): boolean { return !isIlluminatiCell(cell); }
+export function isCampCellOccupied(cell: CampCell, placements: readonly CampPlacement[]): boolean {
+  return placements.some((placement) => placement.cell.x === cell.x && placement.cell.y === cell.y);
+}
+export function getCampPlacementForSummon(summonInstanceId: string, placements: readonly CampPlacement[]): CampPlacement | undefined {
+  return placements.find((placement) => placement.summonInstanceId === summonInstanceId);
+}
+export function canPlaceCampSummon(summonInstanceId: string, cell: { x: number; y: number }, placements: readonly CampPlacement[]): boolean {
+  if (!summonInstanceId || !isCampCell(cell)) return false;
+  const current = getCampPlacementForSummon(summonInstanceId, placements);
+  if (current?.cell.x === cell.x && current.cell.y === cell.y) return true;
+  if (placements.some((placement) => placement.summonInstanceId !== summonInstanceId && placement.cell.x === cell.x && placement.cell.y === cell.y)) return false;
+  return current !== undefined || placements.length < CAMP_CAPACITY;
+}
+export function moveCampSummon(summonInstanceId: string, cell: { x: number; y: number }, placements: readonly CampPlacement[]): CampPlacement[] {
+  if (!canPlaceCampSummon(summonInstanceId, cell, placements)) return [...placements];
+  const current = getCampPlacementForSummon(summonInstanceId, placements);
+  if (current?.cell.x === cell.x && current.cell.y === cell.y) return [...placements];
+  return [...placements.filter((placement) => placement.summonInstanceId !== summonInstanceId), { summonInstanceId, cell }];
+}
+export function countCampOccupancy(placements: readonly CampPlacement[]): number { return placements.length; }
+export function countIlluminatiOccupancy(placements: readonly CampPlacement[]): number { return placements.filter((placement) => isIlluminatiCell(placement.cell)).length; }
+export function isIlluminatiFull(placements: readonly CampPlacement[]): boolean { return countIlluminatiOccupancy(placements) === ILLUMINATI_CAPACITY; }
 
 export function canMerge(a: {definitionId:string;tier:Tier}, b: {definitionId:string;tier:Tier}): boolean {
   return a.definitionId === b.definitionId && a.tier === b.tier && nextTier(a.tier) !== null;

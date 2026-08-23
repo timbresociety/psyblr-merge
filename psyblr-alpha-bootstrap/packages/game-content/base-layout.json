@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "camp": { "origin": [0, 0, 0], "cellSize": 1.25 },
+  "buildingSockets": [
+    { "id": "battle_camp", "kind": "battle_camp", "position": [0, 0, 0], "rotationY": 0, "footprint": [8, 8] },
+    { "id": "spawn_machine", "kind": "spawn_machine", "position": [6.4, 0, 0], "rotationY": -18, "footprint": [2.5, 2.5] },
+    { "id": "raid_gate", "kind": "raid_gate", "position": [-6.4, 0, 0], "rotationY": 18, "footprint": [2.5, 2.5] },
+    { "id": "future_north", "kind": "future", "position": [0, 0, -6.2], "rotationY": 0, "footprint": [2.2, 2.2] },
+    { "id": "future_northeast", "kind": "future", "position": [6.0, 0, -5.6], "rotationY": 0, "footprint": [2.2, 2.2] },
+    { "id": "future_southeast", "kind": "future", "position": [6.0, 0, 5.6], "rotationY": 0, "footprint": [2.2, 2.2] },
+    { "id": "future_south", "kind": "future", "position": [0, 0, 6.2], "rotationY": 0, "footprint": [2.2, 2.2] },
+    { "id": "future_southwest", "kind": "future", "position": [-6.0, 0, 5.6], "rotationY": 0, "footprint": [2.2, 2.2] },
+    { "id": "future_northwest", "kind": "future", "position": [-6.0, 0, -5.6], "rotationY": 0, "footprint": [2.2, 2.2] }
+  ]
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BattlefieldPlacement } from '@psyblr/contracts';
+import type { BattlefieldPlacement, CampPlacement } from '@psyblr/contracts';
 import { combatFunctionDefinitions, originDefinitions, summonDefinitions } from '@psyblr/game-content';
 import {
   canDeploySummon,
@@ -8,6 +8,16 @@ import {
   MAX_PLAYER_DEPLOYED_SUMMONS,
   recallBattlefieldPlacement,
   resolveFormationSynergies,
+  canBeStolen,
+  canPlaceCampSummon,
+  countCampOccupancy,
+  countIlluminatiOccupancy,
+  getCampPlacementForSummon,
+  isCampCell,
+  isCampCellOccupied,
+  isIlluminatiCell,
+  isIlluminatiFull,
+  moveCampSummon,
 } from './index';
 
 const placement = (summonInstanceId: string, x: number, z: number): BattlefieldPlacement => ({
@@ -57,5 +67,45 @@ describe('battlefield placement rules', () => {
     const placements = Array.from({ length: MAX_PLAYER_DEPLOYED_SUMMONS }, (_, index) => placement(`starter:${index}`, index, 4));
     const afterRecall = recallBattlefieldPlacement('starter:0', placements);
     expect(canDeploySummon('starter:new', { x: 6, z: 4 }, afterRecall)).toBe(true);
+  });
+});
+
+const camp = (summonInstanceId: string, x: number, y: number): CampPlacement => ({ summonInstanceId, cell: { x, y } });
+describe('camp placement rules', () => {
+  it('validates the 6 by 6 grid and protects only row zero', () => {
+    expect(isCampCell({ x: 0, y: 0 })).toBe(true);
+    expect(isCampCell({ x: 5, y: 5 })).toBe(true);
+    expect(isCampCell({ x: 6, y: 0 })).toBe(false);
+    expect(isCampCell({ x: 0, y: -1 })).toBe(false);
+    expect(isCampCell({ x: 1.5, y: 2 })).toBe(false);
+    expect(isIlluminatiCell({ x: 2, y: 0 })).toBe(true);
+    expect(canBeStolen({ x: 2, y: 0 })).toBe(false);
+    expect(canBeStolen({ x: 2, y: 1 })).toBe(true);
+  });
+
+  it('enforces one summon per cell and one cell per summon', () => {
+    const placements = [camp('a', 0, 3)];
+    expect(isCampCellOccupied({ x: 0, y: 3 }, placements)).toBe(true);
+    expect(canPlaceCampSummon('b', { x: 0, y: 3 }, placements)).toBe(false);
+    expect(canPlaceCampSummon('a', { x: 1, y: 3 }, placements)).toBe(true);
+    expect(canPlaceCampSummon('', { x: 1, y: 3 }, placements)).toBe(false);
+  });
+
+  it('moves by replacing the previous placement and treats the current cell as a safe no-op', () => {
+    const initial = [camp('a', 0, 3), camp('b', 1, 3)];
+    const moved = moveCampSummon('a', { x: 0, y: 0 }, initial);
+    expect(moved).toEqual([camp('b', 1, 3), camp('a', 0, 0)]);
+    expect(getCampPlacementForSummon('a', moved)).toEqual(camp('a', 0, 0));
+    expect(moveCampSummon('a', { x: 0, y: 0 }, moved)).toEqual(moved);
+    expect(moveCampSummon('a', { x: 1, y: 3 }, moved)).toEqual(moved);
+    expect(moveCampSummon('a', { x: 9, y: 3 }, moved)).toEqual(moved);
+  });
+
+  it('counts total and protected occupancy and becomes full only with six unique protected placements', () => {
+    const protectedPlacements = Array.from({ length: 6 }, (_, x) => camp(`starter:${x}`, x, 0));
+    expect(countCampOccupancy(protectedPlacements)).toBe(6);
+    expect(countIlluminatiOccupancy(protectedPlacements)).toBe(6);
+    expect(isIlluminatiFull(protectedPlacements)).toBe(true);
+    expect(isIlluminatiFull(protectedPlacements.slice(0, 5))).toBe(false);
   });
 });

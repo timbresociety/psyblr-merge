@@ -1,4 +1,4 @@
-import { tutorialAllows, useGameStore } from '../stores/gameStore';
+import { getCampCounters, tutorialAllows, useGameStore } from '../stores/gameStore';
 import { getSkillDefinition, getSummonDefinition } from '@psyblr/game-content';
 import { requestManualSkillCast, setBattleAutoCast, startCampaignBattle } from '../game/battleSession';
 import { retryTutorialBattle } from '../tutorial/controller';
@@ -17,6 +17,13 @@ export function GameHud() {
   const openSummonTray = useGameStore((state) => state.openSummonTray);
   const teamReady = placements.length === 6;
   const tutorialActive = useGameStore((state) => state.tutorialStepId !== null);
+  const campPlacements = useGameStore((state) => state.campPlacements);
+  const selectedCampSummonInstanceId = useGameStore((state) => state.selectedCampSummonInstanceId);
+  const cancelCampInteraction = useGameStore((state) => state.cancelCampInteraction);
+  const inventory = useGameStore((state) => state.inventory);
+  const tutorialStepId = useGameStore((state) => state.tutorialStepId);
+  const camp = getCampCounters(campPlacements);
+  const selectedCampSummon = inventory.find((entry) => entry.id === selectedCampSummonInstanceId);
 
   return <section className="hud" aria-label="Game controls">
     <div className="hud-top">
@@ -29,6 +36,12 @@ export function GameHud() {
       <button onClick={() => setScene('base')} data-active={scene === 'base'} disabled={tutorialActive} title={tutorialActive ? 'Complete Campaign onboarding first' : undefined}>Camp</button>
       <button onClick={() => setScene('raid')} data-active={scene === 'raid'} disabled={tutorialActive} title={tutorialActive ? 'Complete Campaign onboarding first' : undefined}>Raid</button>
     </nav>
+    {scene === 'base' && <aside className="base-hud" aria-label="Battle Camp status" data-testid="base-hud">
+      <strong>BATTLE CAMP <span>{camp.campOccupancy} / {camp.campCapacity}</span></strong>
+      <strong>ILLUMINATI <span>{camp.illuminatiOccupancy} / {camp.illuminatiCapacity}</span></strong>
+      {(tutorialStepId === 'base_illuminati_explain' || tutorialStepId === 'base_move_illuminati' || camp.illuminatiOccupancy > 0) && <small>◈ Shield = protected from raid steals</small>}
+      {selectedCampSummon && <div>{getSummonDefinition(selectedCampSummon.definitionId).displayName} · {selectedCampSummon.tier}<button type="button" onClick={cancelCampInteraction}>CANCEL</button></div>}
+    </aside>}
     <div className="action-stack">
       {scene === 'campaign' && battlePhase === 'setup' && <button
         type="button"
@@ -52,7 +65,7 @@ export function GameHud() {
         <button type="button" className="auto-cast" data-enabled={autoCast} data-testid="battle-auto-cast" data-tutorial-target="autocast-toggle" disabled={!tutorialAllows('TOGGLE_AUTO_CAST') && !autoCast} onClick={() => setBattleAutoCast(!autoCast)}>AUTO {autoCast ? 'ON' : 'OFF'}</button>
       </div>}
       {scene === 'campaign' && (battlePhase === 'victory' || battlePhase === 'defeat' || battlePhase === 'draw') && <div className="battle-result" data-testid="battle-result">{battlePhase.toUpperCase()}{battlePhase !== 'victory' && <button type="button" onClick={retryTutorialBattle}>RETRY</button>}</div>}
-      {battlePhase === 'setup' && <button
+      {scene !== 'base' && battlePhase === 'setup' && <button
         type="button"
         className="primary-action"
         id="start-battle-button"
@@ -61,7 +74,7 @@ export function GameHud() {
         disabled={scene === 'campaign' && !teamReady}
         title={scene === 'campaign' && !teamReady ? 'Deploy 6 Summons first' : undefined}
         onClick={scene === 'campaign' ? () => startCampaignBattle() : undefined}
-      >{scene === 'campaign' ? 'START BATTLE' : scene === 'base' ? 'SUMMONS' : 'SELECT TEAM'}</button>
+      >{scene === 'campaign' ? 'START BATTLE' : 'SELECT TEAM'}</button>
       }
     </div>
   </section>;

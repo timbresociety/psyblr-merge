@@ -160,17 +160,41 @@ export const BaseLayoutDefinitionSchema = z.object({
 });
 export type BaseLayoutDefinition = z.infer<typeof BaseLayoutDefinitionSchema>;
 
-export const RaidSquadSchema = z.object({
-  round1: z.array(z.string()).length(1),
-  round2: z.array(z.string()).length(3).refine(v => new Set(v).size === 3, 'Round 2 summons must be unique'),
-  round3: z.array(z.string()).length(6).refine(v => new Set(v).size === 6, 'Round 3 summons must be unique')
+export const RaidRoundIdSchema = z.enum(['round1', 'round2', 'round3']);
+export type RaidRoundId = z.infer<typeof RaidRoundIdSchema>;
+export const RaidRoundDefinitionSchema = z.object({ id: RaidRoundIdSchema, number: z.number().int().min(1).max(3), slotCount: z.union([z.literal(1), z.literal(3), z.literal(6)]) });
+export type RaidRoundDefinition = z.infer<typeof RaidRoundDefinitionSchema>;
+
+/** Editable selection state intentionally permits empty slots. Slot arrays are always ordered. */
+export const RaidSquadDraftSchema = z.object({
+  round1: z.array(z.string().min(1).nullable()).length(1),
+  round2: z.array(z.string().min(1).nullable()).length(3),
+  round3: z.array(z.string().min(1).nullable()).length(6),
 });
+export type RaidSquadDraft = z.infer<typeof RaidSquadDraftSchema>;
+
+/** Complete ID-only squad shape retained for callers that only need the selection. */
+export const RaidSquadSchema = z.object({
+  round1: z.array(z.string().min(1)).length(1).refine(v => new Set(v).size === 1, 'Round 1 summons must be unique'),
+  round2: z.array(z.string().min(1)).length(3).refine(v => new Set(v).size === 3, 'Round 2 summons must be unique'),
+  round3: z.array(z.string().min(1)).length(6).refine(v => new Set(v).size === 6, 'Round 3 summons must be unique'),
+});
+export type RaidSquad = z.infer<typeof RaidSquadSchema>;
+export const RaidSummonSnapshotSchema = z.object({ instanceId: z.string().min(1), definitionId: z.string().min(1), tier: TierSchema });
+export type RaidSummonSnapshot = z.infer<typeof RaidSummonSnapshotSchema>;
+export const RaidSquadSnapshotSchema = z.object({
+  clientActionId: z.string().min(1), contentVersion: z.string().min(1),
+  round1: z.array(RaidSummonSnapshotSchema).length(1).refine(v => new Set(v.map(s => s.instanceId)).size === 1, 'Round 1 summons must be unique'),
+  round2: z.array(RaidSummonSnapshotSchema).length(3).refine(v => new Set(v.map(s => s.instanceId)).size === 3, 'Round 2 summons must be unique'),
+  round3: z.array(RaidSummonSnapshotSchema).length(6).refine(v => new Set(v.map(s => s.instanceId)).size === 6, 'Round 3 summons must be unique'),
+});
+export type RaidSquadSnapshot = z.infer<typeof RaidSquadSnapshotSchema>;
 
 export const TutorialActionSchema = z.enum([
   'OPEN_INVENTORY', 'SELECT_SUMMON', 'VIEW_STATS', 'VIEW_SKILLS', 'PLACE_SUMMON', 'REPOSITION_SUMMON',
   'RECALL_SUMMON', 'INSPECT_SUMMON', 'VIEW_SYNERGIES', 'START_BATTLE', 'CAST_SKILL_1', 'TOGGLE_AUTO_CAST',
   'TUTORIAL_CONTINUE', 'SELECT_CAMP_SUMMON', 'MOVE_CAMP_SUMMON', 'OPEN_SPAWN_MACHINE', 'DROP_BALL', 'LONG_PRESS_DROP', 'MERGE_SUMMONS',
-  'VIEW_PROGRESS', 'SELECT_RAID_SUMMON', 'START_RAID', 'SELECT_STEAL', 'CONFIRM_STEAL', 'SELECT_DEFENSE_SUMMON', 'SAVE_DEFENSE',
+  'VIEW_PROGRESS', 'OPEN_RAID_GATE', 'SELECT_RAID_SUMMON', 'START_RAID', 'SELECT_STEAL', 'CONFIRM_STEAL', 'SELECT_DEFENSE_SUMMON', 'SAVE_DEFENSE',
 ]);
 export type TutorialAction = z.infer<typeof TutorialActionSchema>;
 

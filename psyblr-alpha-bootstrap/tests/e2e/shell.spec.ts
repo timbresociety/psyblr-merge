@@ -125,7 +125,7 @@ test('desktop camp merge chain reaches C with the protected target surviving', a
   await expect(page.getByTestId('base-hud')).toContainText('BATTLE CAMP 35 / 36'); await expect(page.getByTestId('tier-progress')).toContainText('Goku · E');
   await merge([0, 1], [2, 1]); await merge([3, 1], [4, 1]); await merge([5, 1], [0, 2]);
   await merge([2, 1], [0, 0]); await merge([4, 1], [0, 2]); await merge([0, 2], [0, 0]);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').currentStepId)).toBe('raid_open');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').currentStepId)).toBe('raid_gate_open');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').inventory.find((entry: { id: string }) => entry.id === 'starter:goku:001')?.tier)).toBe('C');
   expect(errors).toEqual([]);
 });
@@ -144,6 +144,27 @@ test('mobile landscape keeps the first inspection flow usable', async ({ page })
   await fresh(page); await page.getByRole('button', { name: 'SUMMONS', exact: true }).click(); await select(page, 'goku');
   await page.getByRole('button', { name: 'CONTINUE' }).click(); await page.getByRole('tab', { name: 'STATS' }).click();
   await expect(page.getByText('Attack Speed', { exact: true })).toBeVisible();
+});
+
+function raidCheckpoint(step: 'raid_gate_open' | 'raid_open' = 'raid_gate_open') {
+  const ids = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']; const inventory = ids.map((definitionId) => ({ id: `starter:${definitionId}:001`, definitionId, tier: definitionId === 'goku' ? 'C' : 'F' }));
+  return { schemaVersion: 5, tutorialVersion: 1, currentStepId: step, completedStepIds: ['campaign_complete', 'base_intro', 'base_camp_explain', 'base_illuminati_explain', 'base_move_illuminati', 'spawn_open', 'spawn_drop_one', 'spawn_long_press', 'merge_first', 'merge_to_c'], context: {}, inventory, placements: [], campPlacements: [], spawn: { balls: 70, ballCapacity: 100, dailyPool: [], blobProgress: {}, tutorialDropIndex: 30, appliedActionIds: [] }, merge: { appliedActionIds: [] }, raidDraft: { round1: [null], round2: [null, null, null], round3: [null, null, null, null, null, null] }, raidSnapshot: null, battle: null };
+}
+async function enterRaidFromGate(page: Page) {
+  const target = await page.evaluate(() => new Promise<{ left: number; top: number; width: number; height: number }>((resolve) => { window.addEventListener('psyblr:world-target-rects', (event) => resolve((event as CustomEvent<Record<string, { left: number; top: number; width: number; height: number }>>).detail['raid-gate']!), { once: true }); window.dispatchEvent(new Event('resize')); }));
+  await page.mouse.click(target.left + target.width / 2, target.top + target.height / 2); await expect(page.getByText('RAID', { exact: true })).toBeVisible(); await expect(page.getByTestId('raid-squad-builder')).toBeVisible({ timeout: 4_000 });
+}
+test('Raid Gate opens a 1/3/6 builder that locks an immutable squad', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop-chromium', 'Desktop projected world target coverage'); const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), raidCheckpoint()); await page.goto('/'); await enterRaidFromGate(page);
+  const builder = page.getByTestId('raid-squad-builder'); const start = page.getByTestId('raid-start'); await expect(start).toBeDisabled();
+  await page.getByTestId('summon-card-starter:goku:001').click(); await builder.getByRole('tab').nth(1).click(); for (const id of ['goku', 'naruto', 'luffy']) await page.getByTestId(`summon-card-starter:${id}:001`).click(); await builder.getByRole('tab').nth(2).click(); for (const id of ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']) await page.getByTestId(`summon-card-starter:${id}:001`).click();
+  await expect(start).toBeEnabled(); await start.click(); await expect(page.getByTestId('tutorial-coach')).toContainText('Take the win');
+  const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}')); expect(checkpoint.currentStepId).toBe('raid_complete'); expect(checkpoint.raidSnapshot.round1).toHaveLength(1); expect(checkpoint.raidSnapshot.round2).toHaveLength(3); expect(checkpoint.raidSnapshot.round3).toHaveLength(6); expect(checkpoint.raidSnapshot.round1[0].instanceId).toBe(checkpoint.raidSnapshot.round2[0].instanceId); expect(new Set(checkpoint.raidSnapshot.round3.map((entry: { instanceId: string }) => entry.instanceId)).size).toBe(6); expect(errors).toEqual([]);
+});
+test('mobile landscape raid builder restores partial selection without horizontal page overflow', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage'); const checkpoint = raidCheckpoint('raid_open'); checkpoint.raidDraft.round1[0] = 'starter:goku:001';
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), checkpoint); await page.goto('/'); const builder = page.getByTestId('raid-squad-builder'); await expect(builder).toBeVisible(); await builder.getByRole('tab').nth(2).click(); for (const id of ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']) await page.getByTestId(`summon-card-starter:${id}:001`).tap(); await expect(builder).toContainText('6 / 6'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test.describe('portrait orientation gate', () => {

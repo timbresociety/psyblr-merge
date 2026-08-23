@@ -1,4 +1,4 @@
-export type CameraPresetId = 'campaign_overview' | 'base_reveal' | 'base_overview' | 'spawn_focus';
+export type CameraPresetId = 'campaign_overview' | 'base_reveal' | 'base_overview' | 'spawn_focus' | 'raid_overview';
 export type CameraPreset = { position: [number, number, number]; rotation: [number, number, number]; fov: number; durationMs: number };
 
 export const CAMERA_PRESETS: Readonly<Record<CameraPresetId, CameraPreset>> = {
@@ -6,6 +6,7 @@ export const CAMERA_PRESETS: Readonly<Record<CameraPresetId, CameraPreset>> = {
   base_reveal: { position: [0, 15, 17], rotation: [-40, 0, 0], fov: 48, durationMs: 450 },
   base_overview: { position: [0, 10.8, 12.5], rotation: [-42, 0, 0], fov: 42, durationMs: 1100 },
   spawn_focus: { position: [6.4, 6.6, 9.2], rotation: [-32, -28, 0], fov: 38, durationMs: 700 },
+  raid_overview: { position: [0, 10.8, 12.5], rotation: [-43, 0, 0], fov: 43, durationMs: 850 },
 };
 
 export function nextCameraPreset(preset: CameraPresetId): CameraPresetId | null {

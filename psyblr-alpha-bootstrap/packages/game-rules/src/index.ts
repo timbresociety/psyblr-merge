@@ -1,4 +1,4 @@
-import type { BattleCell, BattlefieldPlacement, CampCell, CampPlacement, CombatFunctionDefinition, OriginDefinition, SummonDefinition, SynergyEffect, Tier } from '@psyblr/contracts';
+import { RaidSquadDraftSchema, RaidSquadSnapshotSchema, type BattleCell, type BattlefieldPlacement, type CampCell, type CampPlacement, type CombatFunctionDefinition, type OriginDefinition, type RaidRoundDefinition, type RaidRoundId, type RaidSquadDraft, type RaidSquadSnapshot, type SummonDefinition, type SummonInstance, type SynergyEffect, type Tier } from '@psyblr/contracts';
 
 export const TIERS: readonly Tier[] = ['F','E','D','C','B','A','S','SS','SSS'];
 export const TIER_MULTIPLIER: Record<Tier, number> = {F:1,E:1.15,D:1.35,C:1.6,B:1.9,A:2.25,S:2.65,SS:3.1,SSS:3.65};
@@ -112,6 +112,43 @@ export function recallBattlefieldPlacement(
   placements: readonly BattlefieldPlacement[],
 ): BattlefieldPlacement[] {
   return placements.filter((placement) => placement.summonInstanceId !== summonInstanceId);
+}
+
+export const RAID_ROUND_DEFINITIONS: readonly RaidRoundDefinition[] = [
+  { id: 'round1', number: 1, slotCount: 1 },
+  { id: 'round2', number: 2, slotCount: 3 },
+  { id: 'round3', number: 3, slotCount: 6 },
+] as const;
+export function getRaidRoundDefinition(id: RaidRoundId): RaidRoundDefinition { return RAID_ROUND_DEFINITIONS.find((round) => round.id === id)!; }
+export function createEmptyRaidSquadDraft(): RaidSquadDraft { return { round1: [null], round2: [null, null, null], round3: [null, null, null, null, null, null] }; }
+function cloneRaidDraft(draft: RaidSquadDraft): RaidSquadDraft { return { round1: [...draft.round1], round2: [...draft.round2], round3: [...draft.round3] }; }
+export function isRaidRoundComplete(draft: RaidSquadDraft, roundId: RaidRoundId): boolean { return draft[roundId].every((id): id is string => id !== null) && new Set(draft[roundId]).size === draft[roundId].length; }
+export function isRaidDraftComplete(draft: RaidSquadDraft): boolean { return RAID_ROUND_DEFINITIONS.every((round) => isRaidRoundComplete(draft, round.id)); }
+export function sanitizeRaidDraft(value: unknown, inventory: readonly SummonInstance[]): { draft: RaidSquadDraft; error: string | null } {
+  const parsed = RaidSquadDraftSchema.safeParse(value); if (!parsed.success) return { draft: createEmptyRaidSquadDraft(), error: 'Raid squad draft was invalid and was reset.' };
+  const owned = new Set(inventory.map((instance) => instance.id)); const draft = cloneRaidDraft(parsed.data); let stale = false;
+  for (const round of RAID_ROUND_DEFINITIONS) for (let index = 0; index < draft[round.id].length; index += 1) { const id = draft[round.id][index]; if (id && !owned.has(id)) { draft[round.id][index] = null; stale = true; } }
+  return { draft, error: stale ? 'Unavailable Summons were removed from the raid draft.' : null };
+}
+export type RaidDraftMutation = { draft: RaidSquadDraft; error: string | null };
+export function selectRaidSummon(draft: RaidSquadDraft, roundId: RaidRoundId, instanceId: string, inventory: readonly SummonInstance[]): RaidDraftMutation {
+  if (!inventory.some((instance) => instance.id === instanceId)) return { draft, error: 'That Summon is no longer owned.' };
+  const slots = draft[roundId]; if (slots.includes(instanceId)) return { draft, error: 'This Summon already occupies a slot in this round.' };
+  const emptyIndex = slots.findIndex((id) => id === null); if (emptyIndex < 0) return { draft, error: 'Round full — remove a Summon first.' };
+  const next = cloneRaidDraft(draft); next[roundId][emptyIndex] = instanceId; return { draft: next, error: null };
+}
+export function removeRaidSummon(draft: RaidSquadDraft, roundId: RaidRoundId, slotIndex: number): RaidDraftMutation {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= draft[roundId].length) return { draft, error: 'That raid slot is unavailable.' };
+  const next = cloneRaidDraft(draft); next[roundId][slotIndex] = null; return { draft: next, error: null };
+}
+export function finalizeRaidSquadDraft(draftValue: unknown, inventory: readonly SummonInstance[], clientActionId: string, contentVersion: string): { ok: true; snapshot: RaidSquadSnapshot } | { ok: false; error: string } {
+  const parsed = RaidSquadDraftSchema.safeParse(draftValue); if (!parsed.success) return { ok: false, error: 'Raid squad draft is malformed.' };
+  const draft = parsed.data; if (!isRaidDraftComplete(draft)) return { ok: false, error: 'Complete every raid round before starting.' };
+  const byId = new Map(inventory.map((instance) => [instance.id, instance]));
+  const resolve = (roundId: RaidRoundId) => draft[roundId].map((instanceId) => { const instance = instanceId && byId.get(instanceId); return instance ? { instanceId: instance.id, definitionId: instance.definitionId, tier: instance.tier } : null; });
+  const candidate = { clientActionId, contentVersion, round1: resolve('round1'), round2: resolve('round2'), round3: resolve('round3') };
+  if (candidate.round1.some((item) => item === null) || candidate.round2.some((item) => item === null) || candidate.round3.some((item) => item === null)) return { ok: false, error: 'A selected Summon is no longer owned.' };
+  const snapshot = RaidSquadSnapshotSchema.safeParse(candidate); return snapshot.success ? { ok: true, snapshot: JSON.parse(JSON.stringify(snapshot.data)) as RaidSquadSnapshot } : { ok: false, error: 'Raid squad is invalid.' };
 }
 
 export type ResolvedSynergy = {

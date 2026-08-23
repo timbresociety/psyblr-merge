@@ -10,11 +10,12 @@ type SummonCardProps = {
   definition: SummonDefinition;
   origin: OriginDefinition;
   combatFunction: CombatFunctionDefinition;
-  deployed: boolean;
+  deployed?: boolean | undefined;
   selected: boolean;
   onSelect: (instanceId: string) => void;
-  onDragStart: (instanceId: string) => void;
-  onDragCancel: () => void;
+  onDragStart?: ((instanceId: string) => void) | undefined;
+  onDragCancel?: (() => void) | undefined;
+  selectionLabel?: string | undefined;
 };
 
 export function SummonCard({
@@ -27,19 +28,20 @@ export function SummonCard({
   onSelect,
   onDragStart,
   onDragCancel,
+  selectionLabel,
 }: SummonCardProps) {
   const gesture = useRef({ pointerId: -1, startX: 0, startY: 0, dragging: false });
   const suppressClick = useRef(false);
 
   const resetGesture = () => { gesture.current = { pointerId: -1, startX: 0, startY: 0, dragging: false }; };
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
-    if (deployed) return;
+    if (deployed || !onDragStart) return;
     gesture.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, dragging: false };
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     const current = gesture.current;
-    if (deployed || current.pointerId !== event.pointerId || current.dragging) return;
+    if (deployed || !onDragStart || current.pointerId !== event.pointerId || current.dragging) return;
     if (Math.hypot(event.clientX - current.startX, event.clientY - current.startY) < DRAG_THRESHOLD_PX) return;
     gesture.current = { ...current, dragging: true };
     onDragStart(instance.id);
@@ -50,7 +52,7 @@ export function SummonCard({
     resetGesture();
   };
   const onPointerCancel = () => {
-    if (gesture.current.dragging) onDragCancel();
+    if (gesture.current.dragging) onDragCancel?.();
     resetGesture();
   };
 
@@ -79,6 +81,7 @@ export function SummonCard({
       <strong>{definition.displayName}</strong>
       <span className="summon-card-tags"><b>{instance.tier}</b>{origin.name} · {combatFunction.name}</span>
       {deployed && <em>DEPLOYED</em>}
+      {selectionLabel && <em>{selectionLabel}</em>}
     </span>
   </button>;
 }

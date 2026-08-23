@@ -1,0 +1,18 @@
+import { describe, expect, it } from 'vitest';
+import { createEmptyRaidSquadDraft, finalizeRaidSquadDraft, isRaidDraftComplete, RAID_ROUND_DEFINITIONS, selectRaidSummon } from './index';
+
+const inventory = [
+  { id: 'goku-a', definitionId: 'goku', tier: 'C' as const }, { id: 'goku-b', definitionId: 'goku', tier: 'F' as const },
+  { id: 'naruto', definitionId: 'naruto', tier: 'F' as const }, { id: 'luffy', definitionId: 'luffy', tier: 'F' as const },
+  { id: 'eren', definitionId: 'eren', tier: 'F' as const }, { id: 'l', definitionId: 'l', tier: 'F' as const }, { id: 'lelouch', definitionId: 'lelouch', tier: 'F' as const },
+];
+function select(draft = createEmptyRaidSquadDraft(), round: 'round1' | 'round2' | 'round3', id: string) { return selectRaidSummon(draft, round, id, inventory).draft; }
+function completeDraft() { let draft = createEmptyRaidSquadDraft(); draft = select(draft, 'round1', 'goku-a'); for (const id of ['goku-a', 'goku-b', 'naruto']) draft = select(draft, 'round2', id); for (const id of ['goku-a', 'goku-b', 'naruto', 'luffy', 'eren', 'l']) draft = select(draft, 'round3', id); return draft; }
+
+describe('raid squad rules', () => {
+  it('defines exactly the 1/3/6 round sizes', () => expect(RAID_ROUND_DEFINITIONS.map((round) => round.slotCount)).toEqual([1, 3, 6]));
+  it('rejects duplicate instances within round 2 and round 3', () => { const round2 = select(createEmptyRaidSquadDraft(), 'round2', 'goku-a'); expect(selectRaidSummon(round2, 'round2', 'goku-a', inventory).error).toMatch(/already/); const round3 = select(createEmptyRaidSquadDraft(), 'round3', 'goku-a'); expect(selectRaidSummon(round3, 'round3', 'goku-a', inventory).error).toMatch(/already/); });
+  it('allows a same instance across rounds and separate instances of one definition in a round', () => { let draft = select(undefined, 'round1', 'goku-a'); draft = select(draft, 'round2', 'goku-a'); draft = select(draft, 'round2', 'goku-b'); expect(draft.round2).toEqual(['goku-a', 'goku-b', null]); });
+  it('rejects stale ownership and detects completion deterministically', () => { expect(selectRaidSummon(createEmptyRaidSquadDraft(), 'round1', 'gone', inventory).error).toMatch(/owned/); expect(isRaidDraftComplete(completeDraft())).toBe(true); });
+  it('rejects incomplete drafts and preserves a detached serializable completed snapshot', () => { expect(finalizeRaidSquadDraft(createEmptyRaidSquadDraft(), inventory, 'a', 'content')).toMatchObject({ ok: false }); const source = inventory.map((item) => ({ ...item })); const result = finalizeRaidSquadDraft(completeDraft(), source, 'raid-1', 'content'); expect(result.ok).toBe(true); if (!result.ok) return; source[0]!.tier = 'SSS'; source[0]!.definitionId = 'changed'; expect(result.snapshot.round1[0]).toEqual({ instanceId: 'goku-a', definitionId: 'goku', tier: 'C' }); expect(JSON.parse(JSON.stringify(result.snapshot))).toEqual(result.snapshot); expect(result.snapshot.round3.map((item) => item.instanceId)).toEqual(['goku-a', 'goku-b', 'naruto', 'luffy', 'eren', 'l']); });
+});

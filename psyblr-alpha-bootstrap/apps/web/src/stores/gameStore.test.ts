@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createStarterSummonInstances } from '@psyblr/game-content';
 import { createInitialCampPlacements } from './gameStore';
 import { useGameStore } from './gameStore';
-import type { MergeSummonsResult } from '@psyblr/contracts';
+import type { MergeSummonsResult, SummonInstance } from '@psyblr/contracts';
+import { createEmptyRaidSquadDraft } from '@psyblr/game-rules';
 
 describe('base initialization', () => {
   it('uses the same campaign instance ids on deterministic exposed row three', () => {
@@ -17,6 +18,18 @@ describe('base initialization', () => {
     const inventory = createStarterSummonInstances();
     const camp = createInitialCampPlacements(inventory, []);
     expect(new Set(camp.map((placement) => placement.summonInstanceId)).size).toBe(6);
+  });
+});
+
+describe('raid store', () => {
+  it('adds/removes per round, permits cross-round reuse, and locks only once', () => {
+    const inventory: SummonInstance[] = Array.from({ length: 6 }, (_, index) => ({ id: `unit-${index}`, definitionId: index < 2 ? 'goku' : 'naruto', tier: 'F' }));
+    useGameStore.setState({ inventory, tutorialStepId: null, raidDraft: createEmptyRaidSquadDraft(), raidSnapshot: null, raidError: null });
+    const store = useGameStore.getState(); expect(store.selectRaidSummon('round1', 'unit-0')).toBe(true); expect(store.selectRaidSummon('round2', 'unit-0')).toBe(true); expect(store.selectRaidSummon('round2', 'unit-0')).toBe(false); store.removeRaidSummon('round2', 0); expect(useGameStore.getState().raidDraft.round2[0]).toBeNull();
+    for (const id of ['unit-0', 'unit-1', 'unit-2']) useGameStore.getState().selectRaidSummon('round2', id);
+    for (const id of inventory) useGameStore.getState().selectRaidSummon('round3', id.id);
+    expect(useGameStore.getState().startRaid()).toBe(true); const snapshot = useGameStore.getState().raidSnapshot; expect(snapshot?.round3).toHaveLength(6); expect(useGameStore.getState().startRaid()).toBe(true); expect(useGameStore.getState().raidSnapshot).toBe(snapshot);
+    inventory[0]!.tier = 'SSS'; expect(snapshot?.round1[0]?.tier).toBe('F');
   });
 });
 

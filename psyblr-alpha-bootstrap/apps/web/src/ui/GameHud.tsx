@@ -68,16 +68,16 @@ export function GameHud() {
         <button type="button" className="auto-cast" data-enabled={autoCast} data-testid="battle-auto-cast" data-tutorial-target="autocast-toggle" disabled={!tutorialAllows('TOGGLE_AUTO_CAST') && !autoCast} onClick={() => setBattleAutoCast(!autoCast)}>AUTO {autoCast ? 'ON' : 'OFF'}</button>
       </div>}
       {scene === 'campaign' && (battlePhase === 'victory' || battlePhase === 'defeat' || battlePhase === 'draw') && <div className="battle-result" data-testid="battle-result">{battlePhase.toUpperCase()}{battlePhase !== 'victory' && <button type="button" onClick={retryTutorialBattle}>RETRY</button>}</div>}
-      {scene !== 'base' && battlePhase === 'setup' && <button
+      {scene === 'campaign' && battlePhase === 'setup' && <button
         type="button"
         className="primary-action"
         id="start-battle-button"
         data-tutorial-target="start-battle-button"
         data-testid="battle-start"
-        disabled={scene === 'campaign' && !teamReady}
-        title={scene === 'campaign' && !teamReady ? 'Deploy 6 Summons first' : undefined}
-        onClick={scene === 'campaign' ? () => startCampaignBattle() : undefined}
-      >{scene === 'campaign' ? 'START BATTLE' : 'SELECT TEAM'}</button>
+        disabled={!teamReady}
+        title={!teamReady ? 'Deploy 6 Summons first' : undefined}
+        onClick={() => startCampaignBattle()}
+      >START BATTLE</button>
       }
     </div>
   </section>;

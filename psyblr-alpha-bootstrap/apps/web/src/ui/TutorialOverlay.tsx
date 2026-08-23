@@ -35,7 +35,7 @@ export function TutorialOverlay() {
   const cardStyle = rect ? { left: Math.max(12, Math.min(window.innerWidth - 300, rect.left)), top: rect.top > 150 ? Math.max(12, rect.top - 130) : Math.min(window.innerHeight - 126, rect.bottom + 12) } : undefined;
   return <div className="tutorial-layer" aria-live="polite">
     {rect && <>{!allowsPlacement && <><div className="tutorial-blocker top" style={{ height: rect.top }} /><div className="tutorial-blocker bottom" style={{ top: rect.bottom }} /><div className="tutorial-blocker left" style={{ top: rect.top, height: rect.height, width: rect.left }} /><div className="tutorial-blocker right" style={{ top: rect.top, left: rect.right, height: rect.height }} /></>}<div className="tutorial-focus" style={{ left: rect.left - 4, top: rect.top - 4, width: rect.width + 8, height: rect.height + 8 }} /></>}
-    <section className="tutorial-card" style={cardStyle} data-testid="tutorial-coach">
+    <section className="tutorial-card" style={cardStyle} data-continuation={continuation} data-testid="tutorial-coach">
       <span>ONBOARDING</span><strong>{step.title}</strong>{step.body && <p>{step.body}</p>}
       {continuation && <button type="button" onClick={continueTutorial}>CONTINUE</button>}
     </section>

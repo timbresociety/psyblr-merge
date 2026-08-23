@@ -11,6 +11,9 @@ import { FormationSynergyPanel } from './ui/FormationSynergyPanel';
 import { initializeTutorialController } from './tutorial/controller';
 import { SpawnMachineOverlay } from './ui/SpawnMachineOverlay';
 import { TierProgressionPanel } from './ui/TierProgressionPanel';
+import { RaidSquadBuilder } from './ui/RaidSquadBuilder';
+import './raid.css';
+import './tutorial-interaction.css';
 
 export function App() {
   const toggleDebug = useGameStore((state) => state.toggleDebug);
@@ -37,6 +40,7 @@ export function App() {
     <SummonDetailsDrawer />
     <SpawnMachineOverlay />
     <TierProgressionPanel />
+    <RaidSquadBuilder />
     <DebugPanel />
     <TutorialOverlay />
     <OrientationGate />

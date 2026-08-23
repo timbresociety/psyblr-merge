@@ -26,6 +26,9 @@ import tutorialJson from '../tutorial.json';
 import baseLayoutJson from '../base-layout.json';
 import spawnMachineJson from '../spawn-machine.json';
 
+/** Increment only when static content contracts used by simulation change. */
+export const GAME_CONTENT_VERSION = 'alpha-content-v1';
+
 export const summonDefinitions = SummonDefinitionSchema.array().parse(summonsJson);
 export const originDefinitions = OriginDefinitionSchema.array().parse(originsJson);
 export const combatFunctionDefinitions = CombatFunctionDefinitionSchema.array().parse(combatFunctionsJson);

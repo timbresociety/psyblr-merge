@@ -10,7 +10,7 @@ let repository: TutorialProgressRepository = localTutorialProgress;
 let transitionTimer: number | null = null;
 function save() {
   const state = useGameStore.getState();
-  repository.save({ schemaVersion: 4, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, spawn: state.spawn, merge: state.merge, battle: getCampaignBattleCheckpoint() });
+  repository.save({ schemaVersion: 5, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, spawn: state.spawn, merge: state.merge, raidDraft: state.raidDraft, raidSnapshot: state.raidSnapshot, battle: getCampaignBattleCheckpoint() });
 }
 function currentState() { const state = useGameStore.getState(); return { currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext }; }
 function enterBase(replayReveal: boolean) {
@@ -39,7 +39,8 @@ function handle(event: TutorialEvent) {
 }
 export function dispatchTutorialEvent(event: TutorialEvent) { handle(event); }
 function restoreBaseForStep(stepId: string | null) {
-  if (!stepId?.startsWith('base_') && !stepId?.startsWith('spawn_') && !stepId?.startsWith('merge_')) return;
+  if (stepId === 'raid_open' || stepId === 'raid_complete') { const store = useGameStore.getState(); store.setSceneInternal('raid'); store.setCameraPreset('raid_overview', false); return; }
+  if (!stepId?.startsWith('base_') && !stepId?.startsWith('spawn_') && !stepId?.startsWith('merge_') && stepId !== 'raid_gate_open') return;
   enterBase(stepId === 'base_intro');
   if (stepId?.startsWith('spawn_')) { useGameStore.getState().setCameraPreset('spawn_focus', false); useGameStore.setState({ spawnOpen: true }); }
 }
@@ -48,7 +49,7 @@ export function initializeTutorialController(progress = localTutorialProgress) {
   active = true; repository = progress;
   const checkpoint = repository.load();
   if (checkpoint) {
-    useGameStore.getState().restoreSetup(checkpoint.inventory, checkpoint.placements, checkpoint.campPlacements, checkpoint.spawn, checkpoint.merge);
+    useGameStore.getState().restoreSetup(checkpoint.inventory, checkpoint.placements, checkpoint.campPlacements, checkpoint.spawn, checkpoint.merge, checkpoint.raidDraft, checkpoint.raidSnapshot);
     useGameStore.getState().setTutorial(checkpoint.currentStepId, checkpoint.completedStepIds, checkpoint.context);
     if (checkpoint.battle) restoreCampaignBattle(checkpoint.battle);
     restoreBaseForStep(checkpoint.currentStepId);

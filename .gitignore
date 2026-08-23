@@ -6,3 +6,8 @@ coverage/
 .DS_Store
 .vite/
 *.tsbuildinfo
+playwright-report/
+test-results/
+.env
+.env.local
+supabase/.temp/

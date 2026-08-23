@@ -99,6 +99,32 @@ export const CampPlacementSchema = z.object({
 });
 export type CampPlacement = z.infer<typeof CampPlacementSchema>;
 
+export const SpawnBlobTargetSchema = z.object({ id: z.string().min(1), enabled: z.boolean() });
+export const SpawnMachineDefinitionSchema = z.object({
+  dailyBallCap: z.number().int().positive(),
+  binProbabilities: z.array(z.number().positive()).length(6).refine((values) => values.reduce((sum, value) => sum + value, 0) === 100, 'Bin probabilities must total 100'),
+  blobTargets: z.array(SpawnBlobTargetSchema).refine((targets) => new Set(targets.map((target) => target.id)).size === targets.length, 'Blob ids must be unique'),
+  tutorial: z.object({
+    targetCampOccupancy: z.number().int().min(1).max(36),
+    guaranteeCopiesOfPrimary: z.number().int().positive(),
+  }).refine((tutorial) => tutorial.guaranteeCopiesOfPrimary <= tutorial.targetCampOccupancy - 6, 'Guaranteed copies must fit tutorial slots'),
+});
+export type SpawnMachineDefinition = z.infer<typeof SpawnMachineDefinitionSchema>;
+
+export const SpawnDailyPoolSlotSchema = z.object({ slotIndex: z.number().int().min(0).max(5), summonDefinitionId: z.string().min(1), probability: z.number().positive() });
+export type SpawnDailyPoolSlot = z.infer<typeof SpawnDailyPoolSlotSchema>;
+export const SpawnRuntimeSnapshotSchema = z.object({
+  balls: z.number().int().min(0), ballCapacity: z.number().int().positive(), dailyPool: z.array(SpawnDailyPoolSlotSchema).length(6),
+  blobProgress: z.record(z.string(), z.number().int().nonnegative()), tutorialDropIndex: z.number().int().nonnegative(), appliedActionIds: z.array(z.string().min(1)),
+});
+export type SpawnRuntimeSnapshot = z.infer<typeof SpawnRuntimeSnapshotSchema>;
+export const ReleaseBallRequestSchema = z.object({ clientActionId: z.string().min(1) });
+export type ReleaseBallRequest = z.infer<typeof ReleaseBallRequestSchema>;
+export const SpawnReplayDescriptorSchema = z.object({ replayId: z.string().min(1), rewardSlot: z.number().int().min(0).max(5), presentationSeed: z.string().min(1) });
+export type SpawnReplayDescriptor = z.infer<typeof SpawnReplayDescriptorSchema>;
+export const ReleaseBallResultSchema = z.object({ clientActionId: z.string().min(1), rewardSlot: z.number().int().min(0).max(5), createdSummon: SummonInstanceSchema, destination: CampPlacementSchema, ballsRemaining: z.number().int().nonnegative(), blobProgress: z.record(z.string(), z.number().int().nonnegative()), replay: SpawnReplayDescriptorSchema });
+export type ReleaseBallResult = z.infer<typeof ReleaseBallResultSchema>;
+
 export const BaseBuildingSocketSchema = z.object({
   id: z.string().min(1),
   kind: z.enum(['battle_camp', 'spawn_machine', 'raid_gate', 'future']),

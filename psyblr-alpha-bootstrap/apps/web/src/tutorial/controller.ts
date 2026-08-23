@@ -10,7 +10,7 @@ let repository: TutorialProgressRepository = localTutorialProgress;
 let transitionTimer: number | null = null;
 function save() {
   const state = useGameStore.getState();
-  repository.save({ schemaVersion: 2, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, battle: getCampaignBattleCheckpoint() });
+  repository.save({ schemaVersion: 3, tutorialVersion: 1, currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext, inventory: state.inventory, placements: state.placements, campPlacements: state.campPlacements, spawn: state.spawn, battle: getCampaignBattleCheckpoint() });
 }
 function currentState() { const state = useGameStore.getState(); return { currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext }; }
 function enterBase(replayReveal: boolean) {
@@ -30,21 +30,25 @@ function handle(event: TutorialEvent) {
   const next = applyTutorialEvent(before, event, tutorialDefinitions);
   if (next === before) { if (event.type === 'CAMP_SUMMON_MOVED') save(); return; }
   useGameStore.getState().setTutorial(next.currentStepId, next.completedStepIds, next.context);
+  if (next.currentStepId === 'spawn_open') useGameStore.getState().setCameraPreset('spawn_focus');
+  if (next.currentStepId === 'merge_first') { useGameStore.getState().closeSpawnMachine(); useGameStore.getState().setCameraPreset('base_overview'); }
   if (event.type === 'FIRST_SKILL_READY') pauseCampaignBattle();
   if (event.type === 'AUTO_CAST_ENABLED') resumeCampaignBattle();
   save();
   if (next.currentStepId === 'base_intro') scheduleBaseTransition();
 }
+export function dispatchTutorialEvent(event: TutorialEvent) { handle(event); }
 function restoreBaseForStep(stepId: string | null) {
-  if (!stepId?.startsWith('base_') && stepId !== 'spawn_open') return;
+  if (!stepId?.startsWith('base_') && !stepId?.startsWith('spawn_') && stepId !== 'merge_first') return;
   enterBase(stepId === 'base_intro');
+  if (stepId?.startsWith('spawn_')) { useGameStore.getState().setCameraPreset('spawn_focus', false); useGameStore.setState({ spawnOpen: true }); }
 }
 export function initializeTutorialController(progress = localTutorialProgress) {
   if (active || typeof window === 'undefined') return;
   active = true; repository = progress;
   const checkpoint = repository.load();
   if (checkpoint) {
-    useGameStore.getState().restoreSetup(checkpoint.inventory, checkpoint.placements, checkpoint.campPlacements);
+    useGameStore.getState().restoreSetup(checkpoint.inventory, checkpoint.placements, checkpoint.campPlacements, checkpoint.spawn);
     useGameStore.getState().setTutorial(checkpoint.currentStepId, checkpoint.completedStepIds, checkpoint.context);
     if (checkpoint.battle) restoreCampaignBattle(checkpoint.battle);
     restoreBaseForStep(checkpoint.currentStepId);

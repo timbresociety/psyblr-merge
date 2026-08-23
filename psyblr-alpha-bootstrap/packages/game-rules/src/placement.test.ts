@@ -18,6 +18,7 @@ import {
   isIlluminatiCell,
   isIlluminatiFull,
   moveCampSummon,
+  findFirstExposedCampCell,
 } from './index';
 
 const placement = (summonInstanceId: string, x: number, z: number): BattlefieldPlacement => ({
@@ -72,6 +73,11 @@ describe('battlefield placement rules', () => {
 
 const camp = (summonInstanceId: string, x: number, y: number): CampPlacement => ({ summonInstanceId, cell: { x, y } });
 describe('camp placement rules', () => {
+  it('finds exposed empty cells in row-major order and never enters Illuminati', () => {
+    expect(findFirstExposedCampCell([])).toEqual({ x: 0, y: 1 });
+    const fullExposed = Array.from({ length: 30 }, (_, index) => camp(`spawn:${index}`, index % 6, Math.floor(index / 6) + 1));
+    expect(findFirstExposedCampCell(fullExposed)).toBeNull();
+  });
   it('validates the 6 by 6 grid and protects only row zero', () => {
     expect(isCampCell({ x: 0, y: 0 })).toBe(true);
     expect(isCampCell({ x: 5, y: 5 })).toBe(true);

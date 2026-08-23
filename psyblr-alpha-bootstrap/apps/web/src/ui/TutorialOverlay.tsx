@@ -11,6 +11,7 @@ function findTarget(id: string | null, readyActorId: string | undefined): HTMLEl
 }
 export function TutorialOverlay() {
   const stepId = useGameStore((state) => state.tutorialStepId);
+  const cameraTransitioning = useGameStore((state) => state.cameraTransitioning);
   const context = useGameStore((state) => state.tutorialContext);
   const [rect, setRect] = useState<Rect | null>(null);
   const [worldRects, setWorldRects] = useState<Record<string, WorldTargetRect>>({});
@@ -29,7 +30,7 @@ export function TutorialOverlay() {
     return () => { window.removeEventListener('resize', update); observer?.disconnect(); mutation?.disconnect(); };
   }, [step?.highlightTarget, context.readySkillActorId, worldRects]);
   useEffect(() => { if (rect && step?.highlightTarget) document.querySelector<HTMLElement>(`[data-tutorial-target="${step.highlightTarget}"]`)?.focus?.(); }, [rect, step?.highlightTarget]);
-  if (!step || step.id === 'campaign_wait_skill' || step.id === 'campaign_complete' || step.id === 'base_intro') return null;
+  if (!step || cameraTransitioning || step.id === 'campaign_wait_skill' || step.id === 'campaign_complete' || step.id === 'base_intro') return null;
   const continuation = step.allowedActions.includes('TUTORIAL_CONTINUE');
   const cardStyle = rect ? { left: Math.max(12, Math.min(window.innerWidth - 300, rect.left)), top: rect.top > 150 ? Math.max(12, rect.top - 130) : Math.min(window.innerHeight - 126, rect.bottom + 12) } : undefined;
   return <div className="tutorial-layer" aria-live="polite">

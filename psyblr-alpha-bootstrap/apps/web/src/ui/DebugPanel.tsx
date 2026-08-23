@@ -7,8 +7,7 @@ export function DebugPanel() {
   const tutorialStepId = useGameStore((state) => state.tutorialStepId);
   const boardOccupancy = useGameStore((state) => state.boardOccupancy);
   const boardCapacity = useGameStore((state) => state.boardCapacity);
-  const balls = useGameStore((state) => state.balls);
-  const ballCapacity = useGameStore((state) => state.ballCapacity);
+  const spawn = useGameStore((state) => state.spawn);
   const simulationSeed = useGameStore((state) => state.simulationSeed);
   const performance = useGameStore((state) => state.performance);
   const battlePhase = useGameStore((state) => state.battlePhase);
@@ -51,7 +50,7 @@ export function DebugPanel() {
       <dt>camp select</dt><dd>{selectedCampSummonInstanceId ?? '—'}</dd>
       <dt>camp hover</dt><dd>{hoveredCampCell ? `${hoveredCampCell.x},${hoveredCampCell.y}` : '—'}</dd>
       <dt>camp list</dt><dd>{campPlacements.map((entry) => `${entry.summonInstanceId}@${entry.cell.x},${entry.cell.y}`).join(' ') || '—'}</dd>
-      <dt>balls</dt><dd>{balls} / {ballCapacity}</dd>
+      <dt>balls</dt><dd>{spawn.balls} / {spawn.ballCapacity}</dd>
       <dt>seed</dt><dd>{simulationSeed}</dd>
       <dt>battle</dt><dd>{battlePhase} @ {battleTick}</dd>
       <dt>events</dt><dd>{battleEvents.length}</dd>

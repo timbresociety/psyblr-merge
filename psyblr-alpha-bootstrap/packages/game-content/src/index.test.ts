@@ -5,6 +5,7 @@ import {
   getSkillDefinition,
   creepDefinitions,
   summonDefinitions,
+  spawnMachineDefinition,
 } from './index';
 
 describe('starter content references', () => {
@@ -22,5 +23,13 @@ describe('starter content references', () => {
 
   it('contains the three creep archetypes used by the six-unit campaign formation', () => {
     expect(creepDefinitions.map((entry) => entry.id)).toEqual(['creep_brute', 'creep_scout', 'creep_shooter']);
+  });
+});
+
+describe('spawn machine content', () => {
+  it('has the locked six-bin tutorial configuration', () => {
+    expect(spawnMachineDefinition.binProbabilities).toEqual([30, 15, 5, 5, 15, 30]);
+    expect(spawnMachineDefinition.binProbabilities.reduce((total, value) => total + value, 0)).toBe(100);
+    expect(spawnMachineDefinition.blobTargets.map((target) => target.enabled)).toEqual([false, false]);
   });
 });

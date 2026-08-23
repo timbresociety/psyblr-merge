@@ -94,6 +94,17 @@ test('Base touch fallback selects a summon then a protected cell', async ({ page
   await expect(page.getByTestId('base-hud')).toContainText('ILLUMINATI 2 / 6');
 });
 
+test('Spawn machine opens from the projected world object and releases an authoritative tutorial ball', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop-chromium', 'Desktop projected world target coverage');
+  const ids = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']; const inventory = ids.map((definitionId) => ({ id: `starter:${definitionId}:001`, definitionId, tier: 'F' }));
+  const checkpoint = { schemaVersion: 2, tutorialVersion: 1, currentStepId: 'spawn_open', completedStepIds: ['campaign_complete', 'base_intro', 'base_camp_explain', 'base_illuminati_explain', 'base_move_illuminati'], context: { firstSummonInstanceId: 'starter:goku:001' }, inventory, placements: [], campPlacements: inventory.map((instance, x) => ({ summonInstanceId: instance.id, cell: { x, y: 0 } })), battle: null };
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), checkpoint); await page.goto('/');
+  const target = await page.evaluate(() => new Promise<{ left: number; top: number; width: number; height: number }>((resolve) => { window.addEventListener('psyblr:world-target-rects', (event) => resolve((event as CustomEvent<Record<string, { left: number; top: number; width: number; height: number }>>).detail['spawn-machine']!), { once: true }); window.dispatchEvent(new Event('resize')); }));
+  await page.mouse.click(target.left + target.width / 2, target.top + target.height / 2);
+  await expect(page.getByTestId('spawn-overlay')).toBeVisible(); await expect(page.getByTestId('spawn-slot-0')).toContainText('Goku'); await expect(page.getByTestId('spawn-slot-5')).toContainText('Lelouch');
+  await page.getByTestId('drop-ball').click(); await expect(page.getByTestId('base-hud')).toContainText('BATTLE CAMP 7 / 36'); await expect(page.getByTestId('tutorial-coach')).toContainText('Keep them coming');
+});
+
 test('mobile landscape keeps the first inspection flow usable', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage');
   await fresh(page); await page.getByRole('button', { name: 'SUMMONS', exact: true }).click(); await select(page, 'goku');

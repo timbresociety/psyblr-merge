@@ -39,6 +39,10 @@ export function moveCampSummon(summonInstanceId: string, cell: { x: number; y: n
 export function countCampOccupancy(placements: readonly CampPlacement[]): number { return placements.length; }
 export function countIlluminatiOccupancy(placements: readonly CampPlacement[]): number { return placements.filter((placement) => isIlluminatiCell(placement.cell)).length; }
 export function isIlluminatiFull(placements: readonly CampPlacement[]): boolean { return countIlluminatiOccupancy(placements) === ILLUMINATI_CAPACITY; }
+export function findFirstExposedCampCell(placements: readonly CampPlacement[]): CampCell | null {
+  for (let y = 1; y < CAMP_SIZE; y += 1) for (let x = 0; x < CAMP_SIZE; x += 1) if (!isCampCellOccupied({ x, y }, placements)) return { x, y };
+  return null;
+}
 
 export function canMerge(a: {definitionId:string;tier:Tier}, b: {definitionId:string;tier:Tier}): boolean {
   return a.definitionId === b.definitionId && a.tier === b.tier && nextTier(a.tier) !== null;

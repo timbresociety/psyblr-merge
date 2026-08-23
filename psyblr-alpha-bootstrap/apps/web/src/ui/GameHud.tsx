@@ -6,8 +6,7 @@ import { retryTutorialBattle } from '../tutorial/controller';
 export function GameHud() {
   const scene = useGameStore((state) => state.scene);
   const setScene = useGameStore((state) => state.setScene);
-  const balls = useGameStore((state) => state.balls);
-  const ballCapacity = useGameStore((state) => state.ballCapacity);
+  const spawn = useGameStore((state) => state.spawn);
   const placements = useGameStore((state) => state.placements);
   const battlePhase = useGameStore((state) => state.battlePhase);
   const battleSnapshot = useGameStore((state) => state.battleSnapshot);
@@ -29,7 +28,7 @@ export function GameHud() {
     <div className="hud-top">
       <div className="brand">PSYBLR <span>ALPHA</span></div>
       <div className="scene-pill">{scene.toUpperCase()}</div>
-      <div className="resource-pill">● {balls} / {ballCapacity}</div>
+      <div className="resource-pill">● {spawn.balls} / {spawn.ballCapacity}</div>
     </div>
     <nav className="nav-dock" aria-label="World navigation">
       <button onClick={() => setScene('campaign')} data-active={scene === 'campaign'}>Campaign</button>

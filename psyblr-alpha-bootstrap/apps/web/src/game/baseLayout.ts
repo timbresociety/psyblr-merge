@@ -23,6 +23,13 @@ export function worldToCampCell(point: BaseWorldPoint): CampCell | null {
   return isCampCell({ x, y }) ? { x, y } : null;
 }
 
+export function worldToBuildingSocket(point: BaseWorldPoint, kind: 'spawn_machine' | 'raid_gate'): string | null {
+  const socket = BASE_LAYOUT.buildingSockets.find((entry) => entry.kind === kind);
+  if (!socket) return null;
+  const [x, , z] = socket.position; const [width, depth] = socket.footprint;
+  return Math.abs(point.x - x) <= width / 2 && Math.abs(point.z - z) <= depth / 2 ? socket.id : null;
+}
+
 export const BASE_WORLD_TARGETS = {
   'camp-grid': { min: campCellToWorld({ x: 0, y: 0 }), max: campCellToWorld({ x: 5, y: 5 }), padding: 0.65 },
   'illuminati-row': { min: campCellToWorld({ x: 0, y: 0 }), max: campCellToWorld({ x: 5, y: 0 }), padding: 0.65 },

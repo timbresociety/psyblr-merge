@@ -9,6 +9,7 @@ import { useGameStore } from './stores/gameStore';
 import { TutorialOverlay } from './ui/TutorialOverlay';
 import { FormationSynergyPanel } from './ui/FormationSynergyPanel';
 import { initializeTutorialController } from './tutorial/controller';
+import { SpawnMachineOverlay } from './ui/SpawnMachineOverlay';
 
 export function App() {
   const toggleDebug = useGameStore((state) => state.toggleDebug);
@@ -33,6 +34,7 @@ export function App() {
     <FormationSynergyPanel />
     <SummonTray />
     <SummonDetailsDrawer />
+    <SpawnMachineOverlay />
     <DebugPanel />
     <TutorialOverlay />
     <OrientationGate />

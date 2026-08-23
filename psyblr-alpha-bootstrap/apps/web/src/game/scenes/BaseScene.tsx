@@ -8,6 +8,7 @@ import { BASE_LAYOUT, campCellToWorld } from '../baseLayout';
 import { SummonWorldEntity } from '../entities/SummonWorldEntity';
 import { Ground } from '../GameCanvas';
 import { useGameStore } from '../../stores/gameStore';
+import { SpawnMachineWorld } from '../entities/SpawnMachineWorld';
 
 function CampCellEntity({ cell, material, protectedMaterial, candidate, valid }: { cell: CampCell; material: StandardMaterial; protectedMaterial: StandardMaterial; candidate: boolean; valid: boolean }) {
   const [x, , z] = campCellToWorld(cell); const illuminated = isIlluminatiCell(cell);
@@ -33,8 +34,7 @@ export function BaseScene() {
     {Array.from({ length: 36 }, (_, index) => { const cell = { x: index % 6, y: Math.floor(index / 6) }; const valid = Boolean(selectedPlacement && mode !== 'idle' && canPlaceCampSummon(selectedPlacement.summonInstanceId, cell, campPlacements) && isIlluminatiCell(cell) && !isIlluminatiCell(selectedPlacement.cell)); const candidate = hovered?.x === cell.x && hovered.y === cell.y; return <CampCellEntity key={`${cell.x}-${cell.y}`} cell={cell} material={ordinary} protectedMaterial={protectedMaterial} valid={valid} candidate={candidate} />; })}
     {campPlacements.map((placement) => { const instance = inventory.find((entry) => entry.id === placement.summonInstanceId); if (!instance) return null; const [x, y, z] = campCellToWorld(placement.cell); return <SummonWorldEntity key={instance.id} instance={instance} position={[x, y + .17, z]} selected={instance.id === selectedId} protected={isIlluminatiCell(placement.cell)} />; })}
     {BASE_LAYOUT.buildingSockets.filter((socket) => socket.kind === 'future').map((socket) => <Entity key={socket.id} name={socket.id} position={socket.position} scale={[socket.footprint[0], .08, socket.footprint[1]]}><Render type="cylinder" material={future} /></Entity>)}
-    <Entity name="spawn-machine" position={[6.4, 1.25, 0]} rotation={[0, -18, 0]} scale={[1.65, 2.5, 1.4]}><Render type="box" material={building} /></Entity>
-    <Entity name="spawn-machine-cap" position={[6.4, 2.65, 0]} scale={[.95, .34, .95]}><Render type="sphere" material={protectedMaterial} /></Entity>
+    <SpawnMachineWorld />
     <Entity name="raid-gate" position={[-6.4, 1.65, 0]} rotation={[0, 18, 0]} scale={[1.5, 3.25, .55]}><Render type="box" material={gate} /></Entity>
     <Entity name="raid-gate-core" position={[-6.4, 1.65, -.33]} scale={[.68, 1.7, .08]}><Render type="box" material={protectedMaterial} /></Entity>
   </Entity>;

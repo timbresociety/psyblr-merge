@@ -1,18 +1,21 @@
-import type { BattlefieldPlacement, CampPlacement, SummonInstance } from '@psyblr/contracts';
+import type { BattlefieldPlacement, CampPlacement, SpawnRuntimeSnapshot, SummonInstance } from '@psyblr/contracts';
+import { createTutorialSpawnRuntime } from '../spawn/gateway';
 import type { TutorialContext } from '@psyblr/tutorial-core';
 import type { CampaignBattleCheckpoint } from '../game/battleSession';
 
-export type TutorialCheckpoint = { schemaVersion: 2; tutorialVersion: 1; currentStepId: string | null; completedStepIds: string[]; context: TutorialContext; inventory: SummonInstance[]; placements: BattlefieldPlacement[]; campPlacements: CampPlacement[]; battle: CampaignBattleCheckpoint | null };
+export type TutorialCheckpoint = { schemaVersion: 3; tutorialVersion: 1; currentStepId: string | null; completedStepIds: string[]; context: TutorialContext; inventory: SummonInstance[]; placements: BattlefieldPlacement[]; campPlacements: CampPlacement[]; spawn: SpawnRuntimeSnapshot; battle: CampaignBattleCheckpoint | null };
 type TutorialCheckpointV1 = Omit<TutorialCheckpoint, 'schemaVersion' | 'campPlacements'> & { schemaVersion: 1 };
+type TutorialCheckpointV2 = Omit<TutorialCheckpoint, 'schemaVersion' | 'spawn'> & { schemaVersion: 2 };
 export interface TutorialProgressRepository { load(): TutorialCheckpoint | null; save(checkpoint: TutorialCheckpoint): void; clear(): void; }
 const KEY = 'psyblr:tutorial:v1';
 
 export function migrateTutorialCheckpoint(value: unknown): TutorialCheckpoint | null {
   if (!value || typeof value !== 'object') return null;
-  const checkpoint = value as Partial<TutorialCheckpoint> & Partial<TutorialCheckpointV1>;
+  const checkpoint = value as Partial<TutorialCheckpoint> & Partial<TutorialCheckpointV1> & Partial<TutorialCheckpointV2>;
   if (checkpoint.tutorialVersion !== 1 || !Array.isArray(checkpoint.completedStepIds) || !Array.isArray(checkpoint.inventory) || !Array.isArray(checkpoint.placements) || !('battle' in checkpoint)) return null;
-  if (checkpoint.schemaVersion === 2 && Array.isArray(checkpoint.campPlacements)) return checkpoint as TutorialCheckpoint;
-  if (checkpoint.schemaVersion === 1) return { ...(checkpoint as TutorialCheckpointV1), schemaVersion: 2, campPlacements: [] };
+  if (checkpoint.schemaVersion === 3 && Array.isArray(checkpoint.campPlacements) && checkpoint.spawn) return checkpoint as TutorialCheckpoint;
+  if (checkpoint.schemaVersion === 2 && Array.isArray(checkpoint.campPlacements)) return { ...(checkpoint as TutorialCheckpointV2), schemaVersion: 3, spawn: createTutorialSpawnRuntime() };
+  if (checkpoint.schemaVersion === 1) return { ...(checkpoint as TutorialCheckpointV1), schemaVersion: 3, campPlacements: [], spawn: createTutorialSpawnRuntime() };
   return null;
 }
 
@@ -21,7 +24,7 @@ export const localTutorialProgress: TutorialProgressRepository = {
     try {
       const raw = window.localStorage.getItem(KEY); if (!raw) return null;
       const migrated = migrateTutorialCheckpoint(JSON.parse(raw));
-      if (migrated?.schemaVersion === 2) window.localStorage.setItem(KEY, JSON.stringify(migrated));
+      if (migrated?.schemaVersion === 3) window.localStorage.setItem(KEY, JSON.stringify(migrated));
       return migrated;
     } catch { return null; }
   },

@@ -50,12 +50,30 @@ function DeployedSummon({ instance, cell, selected }: { instance: SummonInstance
   </Entity>;
 }
 
+function Combatant({ id, definitionId, side, x, z, hp, maxHp, dead, shield }: { id: string; definitionId: string; side: 'player' | 'enemy'; x: number; z: number; hp: number; maxHp: number; dead: boolean; shield: number }) {
+  const presentation = side === 'player' ? getSummonPresentation(definitionId) : { accent: definitionId === 'creep_shooter' ? '#a855f7' : definitionId === 'creep_scout' ? '#f59e0b' : '#ef4444' };
+  const material = useMaterial({ diffuse: dead ? '#293241' : presentation.accent, emissive: presentation.accent, emissiveIntensity: dead ? 0 : 0.18, gloss: 0.65 });
+  const healthMaterial = useMaterial({ diffuse: hp / maxHp > .5 ? '#22c55e' : '#ef4444', emissive: '#22c55e', emissiveIntensity: 0.3 });
+  const shieldMaterial = useMaterial({ diffuse: '#93c5fd', emissive: '#60a5fa', emissiveIntensity: 0.7 });
+  const [worldX, , worldZ] = battleCellToWorld({ x: x / 1000, z: z / 1000 });
+  const healthWidth = Math.max(0.03, hp / maxHp) * 0.85;
+  return <Entity name={`combatant-${id}`} position={[worldX, 0.08, worldZ]} rotation={[0, side === 'enemy' ? 180 : 0, 0]}>
+    <Entity scale={[0.45, 0.14, 0.45]}><Render type="cylinder" material={material} /></Entity>
+    <Entity position={[0, 0.55, 0]} scale={[0.45, 0.98, 0.45]}><Render type="capsule" material={material} /></Entity>
+    <Entity position={[(healthWidth - .85) / 2, 1.2, 0]} scale={[healthWidth, .04, .08]}><Render type="box" material={healthMaterial} /></Entity>
+    {shield > 0 && <Entity position={[0, 0.02, 0]} scale={[.62, .025, .62]}><Render type="cylinder" material={shieldMaterial} /></Entity>}
+  </Entity>;
+}
+
 export function CampaignScene() {
   const placements = useGameStore((state) => state.placements);
   const inventory = useGameStore((state) => state.inventory);
   const selectedSummonInstanceId = useGameStore((state) => state.selectedSummonInstanceId);
   const placementMode = useGameStore((state) => state.placementMode);
   const hoveredBattleCell = useGameStore((state) => state.hoveredBattleCell);
+  const battlePhase = useGameStore((state) => state.battlePhase);
+  const battleSnapshot = useGameStore((state) => state.battleSnapshot);
+  const battleUnits = useGameStore((state) => state.battleUnits);
   const enemyMaterial = useMaterial({ diffuse: '#16233c', gloss: 0.2 });
   const playerMaterial = useMaterial({ diffuse: '#244b7c', gloss: 0.28 });
   const validMaterial = useMaterial({ diffuse: '#2563eb', emissive: '#2563eb', emissiveIntensity: 0.2, gloss: 0.35 });
@@ -69,12 +87,12 @@ export function CampaignScene() {
     {Array.from({ length: 64 }, (_, index) => {
       const cell = { x: index % 8, z: Math.floor(index / 8) };
       const occupied = isBattleCellOccupied(cell, placements);
-      const valid = placementActive && selectedInstance && canDeploySummon(selectedInstance.id, cell, placements);
+      const valid = battlePhase === 'setup' && placementActive && selectedInstance && canDeploySummon(selectedInstance.id, cell, placements);
       const candidate = hoveredBattleCell?.x === cell.x && hoveredBattleCell.z === cell.z && valid;
       const material = candidate ? candidateMaterial : valid ? validMaterial : occupied ? occupiedMaterial : isPlayerDeploymentCell(cell) ? playerMaterial : enemyMaterial;
       return <TacticalCell key={`${cell.x}-${cell.z}`} cell={cell} material={material} />;
     })}
-    {placements.map((placement) => {
+    {battlePhase === 'setup' && placements.map((placement) => {
       const instance = inventory.find((entry) => entry.id === placement.summonInstanceId);
       if (!instance) return null;
       return <DeployedSummon
@@ -83,6 +101,11 @@ export function CampaignScene() {
         cell={placement.cell}
         selected={selectedSummonInstanceId === instance.id}
       />;
+    })}
+    {battlePhase !== 'setup' && battleSnapshot?.units.map((unit) => {
+      const view = battleUnits[unit.id];
+      if (!view) return null;
+      return <Combatant key={unit.id} definitionId={unit.definitionId} side={unit.side} {...view} />;
     })}
   </Entity>;
 }

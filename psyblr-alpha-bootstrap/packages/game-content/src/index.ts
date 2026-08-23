@@ -1,9 +1,11 @@
 import {
   CombatFunctionDefinitionSchema,
+  CreepDefinitionSchema,
   OriginDefinitionSchema,
   SkillDefinitionSchema,
   SummonDefinitionSchema,
   type CombatFunctionDefinition,
+  type CreepDefinition,
   type OriginDefinition,
   type SkillDefinition,
   type SummonDefinition,
@@ -13,11 +15,13 @@ import combatFunctionsJson from '../combat-functions.json';
 import originsJson from '../origins.json';
 import skillsJson from '../skills.json';
 import summonsJson from '../summons.json';
+import creepsJson from '../creeps.json';
 
 export const summonDefinitions = SummonDefinitionSchema.array().parse(summonsJson);
 export const originDefinitions = OriginDefinitionSchema.array().parse(originsJson);
 export const combatFunctionDefinitions = CombatFunctionDefinitionSchema.array().parse(combatFunctionsJson);
 export const skillDefinitions = SkillDefinitionSchema.array().parse(skillsJson);
+export const creepDefinitions = CreepDefinitionSchema.array().parse(creepsJson);
 
 function getById<T extends { id: string }>(collection: readonly T[], id: string, label: string): T {
   const definition = collection.find((entry) => entry.id === id);
@@ -39,6 +43,10 @@ export function getCombatFunctionDefinition(id: string): CombatFunctionDefinitio
 
 export function getSkillDefinition(id: string): SkillDefinition {
   return getById(skillDefinitions, id, 'skill definition');
+}
+
+export function getCreepDefinition(id: string): CreepDefinition {
+  return getById(creepDefinitions, id, 'creep definition');
 }
 
 export function createStarterSummonInstances(): SummonInstance[] {

@@ -66,6 +66,29 @@ test('desktop player can drag a starter card to the battlefield', async ({ page 
   await expect(card).toContainText('DEPLOYED');
 });
 
+test('campaign combat supports manual Skill 1 and Auto Cast through VICTORY', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop-chromium', 'Desktop canvas deployment coordinates');
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'SUMMONS', exact: true }).click();
+  const cards = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch'];
+  const cells = [{ x: 325, y: 375 }, { x: 400, y: 375 }, { x: 475, y: 375 }, { x: 550, y: 375 }, { x: 625, y: 375 }, { x: 700, y: 375 }];
+  for (const [index, id] of cards.entries()) {
+    await page.getByTestId(`summon-card-starter:${id}:001`).click();
+    await page.locator('canvas').click({ position: cells[index]! });
+  }
+  await expect(page.getByTestId('battle-start')).toBeEnabled();
+  await page.getByTestId('battle-start').click();
+  await expect(page.getByTestId('battle-skill-starter:goku:001')).toBeVisible();
+  const readySkill = page.locator('[data-testid^="battle-skill-"][data-ready="true"]').first();
+  await expect(readySkill).toBeEnabled({ timeout: 8_000 });
+  await readySkill.click();
+  await page.getByTestId('battle-auto-cast').click();
+  await expect(page.getByTestId('battle-result')).toHaveText('VICTORY', { timeout: 35_000 });
+  expect(errors).toEqual([]);
+});
+
 test('mobile landscape tray and select placement stay usable', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage');
 

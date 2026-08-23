@@ -3,6 +3,7 @@ import {
   getCombatFunctionDefinition,
   getOriginDefinition,
   getSkillDefinition,
+  creepDefinitions,
   summonDefinitions,
 } from './index';
 
@@ -12,7 +13,14 @@ describe('starter content references', () => {
       expect(getOriginDefinition(summon.originId).name).toBeTruthy();
       expect(getCombatFunctionDefinition(summon.combatFunctionId).name).toBeTruthy();
       expect(getSkillDefinition(summon.skills.basic).type).toBe('basic');
-      expect(getSkillDefinition(summon.skills.skill1).type).toBe('active');
+      const skill = getSkillDefinition(summon.skills.skill1);
+      expect(skill.type).toBe('active');
+      expect(skill.mechanics?.cooldownMs).toBeGreaterThan(0);
+      expect(skill.mechanics?.initialDelayMs).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it('contains the three creep archetypes used by the six-unit campaign formation', () => {
+    expect(creepDefinitions.map((entry) => entry.id)).toEqual(['creep_brute', 'creep_scout', 'creep_shooter']);
   });
 });

@@ -1,0 +1,5 @@
+[
+  {"id":"creep_brute","displayName":"Creep Brute","stats":{"hp":620,"atk":48,"def":45,"attacksPerSecond":0.75,"range":1.1,"moveSpeed":3.0}},
+  {"id":"creep_scout","displayName":"Creep Scout","stats":{"hp":420,"atk":36,"def":24,"attacksPerSecond":1.1,"range":1.0,"moveSpeed":4.8}},
+  {"id":"creep_shooter","displayName":"Creep Shooter","stats":{"hp":380,"atk":42,"def":20,"attacksPerSecond":0.85,"range":3.5,"moveSpeed":3.2}}
+]

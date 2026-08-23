@@ -1,4 +1,6 @@
 import { useGameStore } from '../stores/gameStore';
+import { getSkillDefinition, getSummonDefinition } from '@psyblr/game-content';
+import { requestManualSkillCast, setBattleAutoCast, startCampaignBattle } from '../game/battleSession';
 
 export function GameHud() {
   const scene = useGameStore((state) => state.scene);
@@ -6,6 +8,11 @@ export function GameHud() {
   const balls = useGameStore((state) => state.balls);
   const ballCapacity = useGameStore((state) => state.ballCapacity);
   const placements = useGameStore((state) => state.placements);
+  const battlePhase = useGameStore((state) => state.battlePhase);
+  const battleSnapshot = useGameStore((state) => state.battleSnapshot);
+  const readySkillActorIds = useGameStore((state) => state.readySkillActorIds);
+  const deadUnitIds = useGameStore((state) => state.deadUnitIds);
+  const autoCast = useGameStore((state) => state.autoCast);
   const openSummonTray = useGameStore((state) => state.openSummonTray);
   const teamReady = placements.length === 6;
 
@@ -21,21 +28,39 @@ export function GameHud() {
       <button onClick={() => setScene('raid')} data-active={scene === 'raid'}>Raid</button>
     </nav>
     <div className="action-stack">
-      {scene === 'campaign' && <button
+      {scene === 'campaign' && battlePhase === 'setup' && <button
         type="button"
         className="summons-action"
         id="summon-inventory-button"
         data-tutorial-target="summon-inventory-button"
         onClick={openSummonTray}
       >SUMMONS</button>}
-      <button
+      {scene === 'campaign' && battlePhase === 'running' && <div className="battle-hud" aria-label="Battle controls">
+        <div className="skill-bar">
+          {battleSnapshot?.units.filter((unit) => unit.side === 'player').map((unit) => {
+            const definition = getSummonDefinition(unit.definitionId);
+            const skill = getSkillDefinition(unit.skill1Id ?? '');
+            const ready = readySkillActorIds.includes(unit.id);
+            const dead = deadUnitIds.includes(unit.id);
+            return <button key={unit.id} type="button" className="battle-skill" data-ready={ready} disabled={!ready || dead} data-testid={`battle-skill-${unit.id}`} onClick={() => requestManualSkillCast(unit.id)}>
+              <span>{definition.displayName}</span><small>{skill.name}</small><em>{dead ? 'DOWN' : ready ? 'READY' : 'CHARGING'}</em>
+            </button>;
+          })}
+        </div>
+        <button type="button" className="auto-cast" data-enabled={autoCast} data-testid="battle-auto-cast" onClick={() => setBattleAutoCast(!autoCast)}>AUTO {autoCast ? 'ON' : 'OFF'}</button>
+      </div>}
+      {scene === 'campaign' && (battlePhase === 'victory' || battlePhase === 'defeat' || battlePhase === 'draw') && <div className="battle-result" data-testid="battle-result">{battlePhase.toUpperCase()}</div>}
+      {battlePhase === 'setup' && <button
         type="button"
         className="primary-action"
         id="start-battle-button"
         data-tutorial-target="start-battle-button"
+        data-testid="battle-start"
         disabled={scene === 'campaign' && !teamReady}
         title={scene === 'campaign' && !teamReady ? 'Deploy 6 Summons first' : undefined}
+        onClick={scene === 'campaign' ? () => startCampaignBattle() : undefined}
       >{scene === 'campaign' ? 'START BATTLE' : scene === 'base' ? 'SUMMONS' : 'SELECT TEAM'}</button>
+      }
     </div>
   </section>;
 }

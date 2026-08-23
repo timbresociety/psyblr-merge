@@ -1,14 +1,14 @@
 [
   {"id":"goku_basic","name":"Ki Strike","type":"basic","summary":"Fires a focused ranged ki attack at the current target."},
-  {"id":"goku_skill_1","name":"Ki Burst","type":"active","summary":"Blasts a line of enemies with a concentrated surge of ki."},
+  {"id":"goku_skill_1","name":"Ki Burst","type":"active","summary":"Blasts a line of enemies with a concentrated surge of ki.","mechanics":{"kind":"line_damage","cooldownMs":8000,"initialDelayMs":3000,"damageMultiplier":1.8,"lineWidth":0.7,"presentationKey":"ki_burst"}},
   {"id":"naruto_basic","name":"Kunai Volley","type":"basic","summary":"Throws a fast ranged volley at the current target."},
-  {"id":"naruto_skill_1","name":"Clone Snare","type":"active","summary":"Shadow clones overwhelm an area, damaging and slowing enemies caught inside."},
+  {"id":"naruto_skill_1","name":"Clone Snare","type":"active","summary":"Shadow clones overwhelm an area, damaging and slowing enemies caught inside.","mechanics":{"kind":"aoe_slow","cooldownMs":9000,"initialDelayMs":3600,"damageMultiplier":1.1,"radius":1.7,"durationMs":2500,"slowPercent":45,"presentationKey":"clone_snare"}},
   {"id":"luffy_basic","name":"Gum-Gum Pistol","type":"basic","summary":"Extends a heavy melee strike toward the current target."},
-  {"id":"luffy_skill_1","name":"Elastic Rush","type":"active","summary":"Launches forward through enemies and hits everything in his path."},
+  {"id":"luffy_skill_1","name":"Elastic Rush","type":"active","summary":"Launches forward through enemies and hits everything in his path.","mechanics":{"kind":"dash_aoe","cooldownMs":8500,"initialDelayMs":4200,"damageMultiplier":1.55,"radius":1.35,"dashDistance":2.2,"presentationKey":"elastic_rush"}},
   {"id":"eren_basic","name":"Heavy Strike","type":"basic","summary":"Delivers a slow, powerful close-range attack."},
-  {"id":"eren_skill_1","name":"Rage Roar","type":"active","summary":"Challenges nearby enemies and braces himself against incoming damage."},
+  {"id":"eren_skill_1","name":"Rage Roar","type":"active","summary":"Challenges nearby enemies and braces himself against incoming damage.","mechanics":{"kind":"taunt_shield","cooldownMs":10000,"initialDelayMs":4600,"radius":2.4,"durationMs":2600,"shieldMultiplier":1.0,"presentationKey":"rage_roar"}},
   {"id":"l_basic","name":"Calculated Strike","type":"basic","summary":"Exploits an opening with a precise attack."},
-  {"id":"l_skill_1","name":"Prediction","type":"active","summary":"Marks a priority enemy after anticipating their next move, leaving them more vulnerable."},
+  {"id":"l_skill_1","name":"Prediction","type":"active","summary":"Marks a priority enemy after anticipating their next move, leaving them more vulnerable.","mechanics":{"kind":"mark_vulnerability","cooldownMs":9000,"initialDelayMs":3400,"durationMs":3500,"vulnerabilityPercent":45,"presentationKey":"prediction"}},
   {"id":"lelouch_basic","name":"Command Shot","type":"basic","summary":"Makes a measured ranged attack against the current target."},
-  {"id":"lelouch_skill_1","name":"Command","type":"active","summary":"Forces a priority target to stop acting for a short time."}
+  {"id":"lelouch_skill_1","name":"Command","type":"active","summary":"Forces a priority target to stop acting for a short time.","mechanics":{"kind":"stun","cooldownMs":9500,"initialDelayMs":4000,"durationMs":2200,"presentationKey":"command"}}
 ]

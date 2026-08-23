@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createStarterSummonInstances } from '@psyblr/game-content';
 import { canDeploySummon, recallBattlefieldPlacement } from '@psyblr/game-rules';
-import type { BattleCell, BattlefieldPlacement, SummonInstance } from '@psyblr/contracts';
+import type { BattleCell, BattlefieldPlacement, CombatEvent, CombatSnapshot, SummonInstance } from '@psyblr/contracts';
 import { sameBattleCell } from '../game/battlefield';
 import { emitCampaignInteraction } from '../game/interactionEvents';
 
@@ -13,11 +13,20 @@ export type PerformanceSnapshot = {
 };
 
 export type PlacementMode = 'idle' | 'selected' | 'dragging';
+export type BattlePhase = 'setup' | 'running' | 'victory' | 'defeat' | 'draw';
+export type BattleUnitView = { id: string; hp: number; maxHp: number; x: number; z: number; dead: boolean; shield: number };
 
 type GameState = {
   scene: SceneId;
   debugOpen: boolean;
   autoCast: boolean;
+  battlePhase: BattlePhase;
+  battleSnapshot: CombatSnapshot | null;
+  battleEvents: CombatEvent[];
+  battleTick: number;
+  readySkillActorIds: string[];
+  deadUnitIds: string[];
+  battleUnits: Record<string, BattleUnitView>;
   inventory: SummonInstance[];
   placements: BattlefieldPlacement[];
   selectedSummonInstanceId: string | null;
@@ -35,6 +44,9 @@ type GameState = {
   setScene: (scene: SceneId) => void;
   toggleDebug: () => void;
   setAutoCast: (autoCast: boolean) => void;
+  beginBattle: (snapshot: CombatSnapshot, events: CombatEvent[], units: Record<string, BattleUnitView>) => void;
+  updateBattle: (tick: number, events: CombatEvent[], units: Record<string, BattleUnitView>, readySkillActorIds: string[], deadUnitIds: string[]) => void;
+  finishBattle: (phase: Exclude<BattlePhase, 'setup' | 'running'>, events: CombatEvent[]) => void;
   openSummonTray: () => void;
   closeSummonTray: () => void;
   closeSummonDetails: () => void;
@@ -52,6 +64,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   scene: 'campaign',
   debugOpen: false,
   autoCast: false,
+  battlePhase: 'setup',
+  battleSnapshot: null,
+  battleEvents: [],
+  battleTick: 0,
+  readySkillActorIds: [],
+  deadUnitIds: [],
+  battleUnits: {},
   inventory: createStarterSummonInstances(),
   placements: [],
   selectedSummonInstanceId: null,
@@ -69,7 +88,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   setScene: (scene) => set({ scene }),
   toggleDebug: () => set((state) => ({ debugOpen: !state.debugOpen })),
   setAutoCast: (autoCast) => set({ autoCast }),
+  beginBattle: (battleSnapshot, battleEvents, battleUnits) => set({
+    battlePhase: 'running', battleSnapshot, battleEvents, battleUnits, battleTick: 0,
+    readySkillActorIds: [], deadUnitIds: [], autoCast: false, summonTrayOpen: false, summonDetailsOpen: false,
+    placementMode: 'idle', hoveredBattleCell: null, selectedSummonInstanceId: null,
+  }),
+  updateBattle: (battleTick, events, battleUnits, readySkillActorIds, deadUnitIds) => set((state) => ({
+    battleTick, battleEvents: [...state.battleEvents, ...events], battleUnits, readySkillActorIds, deadUnitIds,
+  })),
+  finishBattle: (battlePhase, events) => set((state) => ({
+    battlePhase, battleEvents: [...state.battleEvents, ...events], readySkillActorIds: [],
+  })),
   openSummonTray: () => {
+    if (get().battlePhase !== 'setup') return;
     set({ summonTrayOpen: true });
     emitCampaignInteraction('INVENTORY_OPENED');
   },
@@ -85,6 +116,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     hoveredBattleCell: null,
   }),
   selectSummon: (selectedSummonInstanceId) => {
+    if (get().battlePhase !== 'setup') return;
     set({
       selectedSummonInstanceId,
       summonDetailsOpen: selectedSummonInstanceId !== null,
@@ -93,13 +125,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
     if (selectedSummonInstanceId) emitCampaignInteraction('SUMMON_SELECTED', selectedSummonInstanceId);
   },
-  beginPlacement: (selectedSummonInstanceId) => set({
-    selectedSummonInstanceId,
-    summonDetailsOpen: true,
-    placementMode: 'selected',
-    hoveredBattleCell: null,
-  }),
+  beginPlacement: (selectedSummonInstanceId) => {
+    if (get().battlePhase !== 'setup') return;
+    set({ selectedSummonInstanceId, summonDetailsOpen: true, placementMode: 'selected', hoveredBattleCell: null });
+  },
   beginSummonDrag: (selectedSummonInstanceId) => {
+    if (get().battlePhase !== 'setup') return;
     set({
       selectedSummonInstanceId,
       summonTrayOpen: true,
@@ -110,10 +141,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     emitCampaignInteraction('SUMMON_DRAG_STARTED', selectedSummonInstanceId);
   },
   setHoveredBattleCell: (hoveredBattleCell) => set((state) => (
-    sameBattleCell(state.hoveredBattleCell, hoveredBattleCell) ? state : { hoveredBattleCell }
+    state.battlePhase !== 'setup' || sameBattleCell(state.hoveredBattleCell, hoveredBattleCell) ? state : { hoveredBattleCell }
   )),
   requestPlacement: (cell) => {
     const state = get();
+    if (state.battlePhase !== 'setup') return;
     const instanceId = state.selectedSummonInstanceId;
     if (!instanceId || !canDeploySummon(instanceId, cell, state.placements)) return;
     const withoutCurrent = state.placements.filter((placement) => placement.summonInstanceId !== instanceId);
@@ -128,6 +160,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (placements.length === 6) emitCampaignInteraction('TEAM_SIZE_6');
   },
   recallSummon: (id) => set((state) => {
+    if (state.battlePhase !== 'setup') return state;
     const placements = recallBattlefieldPlacement(id, state.placements);
     return {
       placements,
@@ -136,6 +169,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       hoveredBattleCell: null,
     };
   }),
-  cancelPlacement: () => set({ placementMode: 'idle', hoveredBattleCell: null }),
+  cancelPlacement: () => { if (get().battlePhase === 'setup') set({ placementMode: 'idle', hoveredBattleCell: null }); },
   reportPerformance: (performance) => set({ performance }),
 }));

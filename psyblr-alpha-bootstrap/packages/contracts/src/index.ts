@@ -58,11 +58,28 @@ export const CombatFunctionDefinitionSchema = z.object({
 });
 export type CombatFunctionDefinition = z.infer<typeof CombatFunctionDefinitionSchema>;
 
+export const SkillMechanicsSchema = z.object({
+  kind: z.enum(['line_damage', 'aoe_slow', 'dash_aoe', 'taunt_shield', 'mark_vulnerability', 'stun']),
+  cooldownMs: z.number().positive(),
+  initialDelayMs: z.number().nonnegative(),
+  damageMultiplier: z.number().nonnegative().optional(),
+  radius: z.number().positive().optional(),
+  durationMs: z.number().positive().optional(),
+  slowPercent: z.number().min(0).max(100).optional(),
+  shieldMultiplier: z.number().nonnegative().optional(),
+  vulnerabilityPercent: z.number().min(0).optional(),
+  dashDistance: z.number().positive().optional(),
+  lineWidth: z.number().positive().optional(),
+  presentationKey: z.string().min(1),
+});
+export type SkillMechanics = z.infer<typeof SkillMechanicsSchema>;
+
 export const SkillDefinitionSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   type: z.enum(['basic', 'active', 'ultimate']),
   summary: z.string().min(1),
+  mechanics: SkillMechanicsSchema.optional(),
 });
 export type SkillDefinition = z.infer<typeof SkillDefinitionSchema>;
 
@@ -81,9 +98,52 @@ export const TutorialStepSchema = z.object({
   highlightTarget: z.string().nullable(), allowedActions: z.array(z.string()), completionEvent: z.string(), nextStep: z.string().nullable()
 });
 
+export const CombatSideSchema = z.enum(['player', 'enemy']);
+export type CombatSide = z.infer<typeof CombatSideSchema>;
+
+export const CombatUnitSnapshotSchema = z.object({
+  id: z.string().min(1),
+  definitionId: z.string().min(1),
+  side: CombatSideSchema,
+  spawnCell: BattleCellSchema,
+  hp: z.number().positive(),
+  atk: z.number().positive(),
+  def: z.number().nonnegative(),
+  attacksPerSecond: z.number().positive(),
+  range: z.number().positive(),
+  moveSpeed: z.number().positive(),
+  skill1Id: z.string().min(1).nullable(),
+  skill1: SkillMechanicsSchema.nullable(),
+});
+export type CombatUnitSnapshot = z.infer<typeof CombatUnitSnapshotSchema>;
+
+export const CombatSnapshotSchema = z.object({
+  battleId: z.string().min(1),
+  mode: z.literal('campaign'),
+  units: z.array(CombatUnitSnapshotSchema).min(1),
+});
+export type CombatSnapshot = z.infer<typeof CombatSnapshotSchema>;
+
+export const CombatCommandSchema = z.object({
+  type: z.literal('cast_skill_1'),
+  actorId: z.string().min(1),
+  issuedAtTick: z.number().int().nonnegative(),
+});
+export type CombatCommand = z.infer<typeof CombatCommandSchema>;
+
 export const CombatEventSchema = z.object({
   tick: z.number().int().nonnegative(),
-  type: z.enum(['spawn','move','basic_attack','skill_cast','damage','status','death','round_end']),
+  type: z.enum(['spawn', 'move', 'target_changed', 'basic_attack', 'skill_ready', 'skill_cast', 'damage', 'status_applied', 'status_removed', 'shield_changed', 'death', 'battle_end']),
   actorId: z.string().nullable(), targetId: z.string().nullable(), payload: z.record(z.string(), z.unknown()).default({})
 });
 export type CombatEvent = z.infer<typeof CombatEventSchema>;
+
+export const CreepDefinitionSchema = z.object({
+  id: z.string().min(1),
+  displayName: z.string().min(1),
+  stats: z.object({
+    hp: z.number().positive(), atk: z.number().positive(), def: z.number().nonnegative(),
+    attacksPerSecond: z.number().positive(), range: z.number().positive(), moveSpeed: z.number().positive(),
+  }),
+});
+export type CreepDefinition = z.infer<typeof CreepDefinitionSchema>;

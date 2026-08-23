@@ -9,6 +9,12 @@ export function DebugPanel() {
   const ballCapacity = useGameStore((state) => state.ballCapacity);
   const simulationSeed = useGameStore((state) => state.simulationSeed);
   const performance = useGameStore((state) => state.performance);
+  const battlePhase = useGameStore((state) => state.battlePhase);
+  const battleTick = useGameStore((state) => state.battleTick);
+  const battleEvents = useGameStore((state) => state.battleEvents);
+  const readySkillActorIds = useGameStore((state) => state.readySkillActorIds);
+  const autoCast = useGameStore((state) => state.autoCast);
+  const battleSnapshot = useGameStore((state) => state.battleSnapshot);
 
   if (!debugOpen) return null;
 
@@ -20,6 +26,12 @@ export function DebugPanel() {
       <dt>board</dt><dd>{boardOccupancy} / {boardCapacity}</dd>
       <dt>balls</dt><dd>{balls} / {ballCapacity}</dd>
       <dt>seed</dt><dd>{simulationSeed}</dd>
+      <dt>battle</dt><dd>{battlePhase} @ {battleTick}</dd>
+      <dt>events</dt><dd>{battleEvents.length}</dd>
+      <dt>living</dt><dd>{battleSnapshot ? `${battleSnapshot.units.filter((unit) => unit.side === 'player').length - useGameStore.getState().deadUnitIds.filter((id) => id.startsWith('starter:')).length} / ${battleSnapshot.units.filter((unit) => unit.side === 'enemy').length - useGameStore.getState().deadUnitIds.filter((id) => id.startsWith('creep:')).length}` : '—'}</dd>
+      <dt>auto</dt><dd>{autoCast ? 'on' : 'off'}</dd>
+      <dt>ready</dt><dd>{readySkillActorIds.join(', ') || '—'}</dd>
+      <dt>latest</dt><dd>{battleEvents.at(-1)?.type ?? '—'}</dd>
       <dt>fps</dt><dd data-testid="debug-fps">{performance.fps || 'sampling…'}</dd>
       <dt>frame</dt><dd>{performance.frameTimeMs ? `${performance.frameTimeMs} ms` : 'sampling…'}</dd>
     </dl>

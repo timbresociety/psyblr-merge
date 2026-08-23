@@ -5,6 +5,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { SummonPortrait } from './SummonPortrait';
 import { emitGameInteraction } from '../../game/interactionEvents';
 import { tutorialAllows } from '../../stores/gameStore';
+import { resolveTierStats } from '@psyblr/game-rules';
 
 type DetailTab = 'overview' | 'stats' | 'skills';
 
@@ -38,11 +39,12 @@ export function SummonDetailsDrawer() {
     const basic = getSkillDefinition(definition.skills.basic);
     const skill1 = getSkillDefinition(definition.skills.skill1);
     const placement = placements.find((entry) => entry.summonInstanceId === instance.id);
+    const stats = resolveTierStats(definition.stats, instance.tier);
 
     return <aside className="summon-details" id="summon-detail-panel" data-tutorial-target="summon-detail-panel" aria-label={`${definition.displayName} details`} data-testid="summon-detail-panel">
       <header className="summon-detail-header" data-tutorial-target="summon-identity-header">
         <SummonPortrait definition={definition} size="drawer" />
-        <div><span className="tier-badge">F TIER</span><h2>{definition.displayName}</h2><p>{origin.name} · {combatFunction.name}</p></div>
+        <div><span className="tier-badge">{instance.tier} TIER</span><h2>{definition.displayName}</h2><p>{origin.name} · {combatFunction.name}</p></div>
         <button type="button" className="icon-button" onClick={close} aria-label="Close summon details">×</button>
       </header>
       <div className="detail-chips"><span>{origin.name}</span><span>{combatFunction.name}</span></div>
@@ -63,13 +65,13 @@ export function SummonDetailsDrawer() {
         >{item.toUpperCase()}</button>)}
       </div>
       <div className="detail-body">
-        {tab === 'overview' && <div className="detail-overview"><p><strong>{origin.name}</strong> origin · <strong>{combatFunction.name}</strong> combat function</p><p>HP {definition.stats.hp.toLocaleString()} · ATK {definition.stats.atk} · {definition.stats.range} tile range</p></div>}
-        {tab === 'stats' && <dl className="stat-list">{STAT_ROWS.map(({ label, value, format }) => <div key={label}><dt>{label}</dt><dd>{format(value(definition.stats))}</dd></div>)}</dl>}
+        {tab === 'overview' && <div className="detail-overview"><p><strong>{origin.name}</strong> origin · <strong>{combatFunction.name}</strong> combat function</p><p>HP {stats.hp.toLocaleString()} · ATK {stats.atk} · {stats.range} tile range</p></div>}
+        {tab === 'stats' && <dl className="stat-list">{STAT_ROWS.map(({ label, value, format }) => <div key={label}><dt>{label}</dt><dd>{format(value(stats))}</dd></div>)}</dl>}
         {tab === 'skills' && <div className="skill-list">
           <article><span>BASIC ATTACK</span><strong>{basic.name}</strong><p>{basic.summary}</p></article>
           <article><span>SKILL 1</span><strong>{skill1.name}</strong><p>{skill1.summary}</p></article>
-          <article className="skill-locked"><span>SKILL 2</span><strong>LOCKED</strong><p>Unlocks with a future tier upgrade.</p></article>
-          <article className="skill-locked"><span>ULTIMATE</span><strong>LOCKED</strong><p>Unlocks with a future tier upgrade.</p></article>
+          <article className="skill-locked"><span>SKILL 2 · D TIER</span><strong>LOCKED</strong><p>Skill mechanics arrive in a later combat slice.</p></article>
+          <article className="skill-locked"><span>ULTIMATE · A TIER</span><strong>LOCKED</strong><p>Skill mechanics arrive in a later combat slice.</p></article>
         </div>}
       </div>
       <footer className="summon-detail-actions">

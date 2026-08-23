@@ -77,7 +77,7 @@ export function SummonCard({
     <SummonPortrait definition={definition} />
     <span className="summon-card-copy">
       <strong>{definition.displayName}</strong>
-      <span className="summon-card-tags"><b>F</b>{origin.name} · {combatFunction.name}</span>
+      <span className="summon-card-tags"><b>{instance.tier}</b>{origin.name} · {combatFunction.name}</span>
       {deployed && <em>DEPLOYED</em>}
     </span>
   </button>;

@@ -19,6 +19,12 @@ import {
   isIlluminatiFull,
   moveCampSummon,
   findFirstExposedCampCell,
+  canMerge,
+  isMaxTier,
+  nextTier,
+  nextTierStatDelta,
+  resolveTierStats,
+  tierFormBand,
 } from './index';
 
 const placement = (summonInstanceId: string, x: number, z: number): BattlefieldPlacement => ({
@@ -113,5 +119,22 @@ describe('camp placement rules', () => {
     expect(countIlluminatiOccupancy(protectedPlacements)).toBe(6);
     expect(isIlluminatiFull(protectedPlacements)).toBe(true);
     expect(isIlluminatiFull(protectedPlacements.slice(0, 5))).toBe(false);
+  });
+});
+
+describe('merge and tier progression rules', () => {
+  it('only permits same-definition, same-tier summons below SSS', () => {
+    expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'goku', tier: 'F' })).toBe(true);
+    expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'naruto', tier: 'F' })).toBe(false);
+    expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'goku', tier: 'E' })).toBe(false);
+    expect(canMerge({ definitionId: 'goku', tier: 'SSS' }, { definitionId: 'goku', tier: 'SSS' })).toBe(false);
+    expect(nextTier('F')).toBe('E'); expect(nextTier('SSS')).toBeNull(); expect(isMaxTier('SSS')).toBe(true);
+  });
+  it('rounds primary stat scaling deterministically and leaves utility stats alone', () => {
+    const base = summonDefinitions.find((definition) => definition.id === 'goku')!.stats;
+    expect(resolveTierStats(base, 'E')).toMatchObject({ hp: 1150, atk: 138, def: 81, attacksPerSecond: base.attacksPerSecond, range: base.range, moveSpeed: base.moveSpeed });
+    expect(resolveTierStats({ ...base, hp: 101, atk: 101, def: 101 }, 'E')).toMatchObject({ hp: 116, atk: 116, def: 116 });
+    expect(nextTierStatDelta(base, 'F')).toEqual({ hp: 150, atk: 18, def: 11 });
+    expect(tierFormBand('F')).toBe('base'); expect(tierFormBand('D')).toBe('major_1'); expect(tierFormBand('A')).toBe('major_2'); expect(tierFormBand('SSS')).toBe('final');
   });
 });

@@ -5,11 +5,15 @@ import { createTutorialSpawnRuntime } from '../spawn/gateway';
 const v1 = { schemaVersion: 1, tutorialVersion: 1, currentStepId: 'base_intro', completedStepIds: ['campaign_complete'], context: { firstSummonInstanceId: 'starter:goku:001' }, inventory: [], placements: [], battle: null };
 describe('tutorial checkpoint migration', () => {
   it('migrates valid PR04 checkpoints without discarding campaign state', () => {
-    expect(migrateTutorialCheckpoint(v1)).toEqual({ ...v1, schemaVersion: 3, campPlacements: [], spawn: createTutorialSpawnRuntime() });
+    expect(migrateTutorialCheckpoint(v1)).toEqual({ ...v1, schemaVersion: 4, campPlacements: [], spawn: createTutorialSpawnRuntime(), merge: { appliedActionIds: [] } });
   });
   it('round trips a v2 base checkpoint and rejects corrupt state', () => {
     const v2 = { ...v1, schemaVersion: 2 as const, campPlacements: [{ summonInstanceId: 'starter:goku:001', cell: { x: 0, y: 0 } }] };
-    expect(migrateTutorialCheckpoint(v2)).toEqual({ ...v2, schemaVersion: 3, spawn: createTutorialSpawnRuntime() });
+    expect(migrateTutorialCheckpoint(v2)).toEqual({ ...v2, schemaVersion: 4, spawn: createTutorialSpawnRuntime(), merge: { appliedActionIds: [] } });
     expect(migrateTutorialCheckpoint({ schemaVersion: 2 })).toBeNull();
+  });
+  it('migrates PR06 checkpoints while preserving the complete Spawn runtime', () => {
+    const v3 = { ...v1, schemaVersion: 3 as const, campPlacements: [], spawn: createTutorialSpawnRuntime() };
+    expect(migrateTutorialCheckpoint(v3)).toEqual({ ...v3, schemaVersion: 4, merge: { appliedActionIds: [] } });
   });
 });

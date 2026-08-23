@@ -10,6 +10,7 @@ import { TutorialOverlay } from './ui/TutorialOverlay';
 import { FormationSynergyPanel } from './ui/FormationSynergyPanel';
 import { initializeTutorialController } from './tutorial/controller';
 import { SpawnMachineOverlay } from './ui/SpawnMachineOverlay';
+import { TierProgressionPanel } from './ui/TierProgressionPanel';
 
 export function App() {
   const toggleDebug = useGameStore((state) => state.toggleDebug);
@@ -35,6 +36,7 @@ export function App() {
     <SummonTray />
     <SummonDetailsDrawer />
     <SpawnMachineOverlay />
+    <TierProgressionPanel />
     <DebugPanel />
     <TutorialOverlay />
     <OrientationGate />

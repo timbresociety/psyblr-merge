@@ -105,6 +105,40 @@ test('Spawn machine opens from the projected world object and releases an author
   await page.getByTestId('drop-ball').click(); await expect(page.getByTestId('base-hud')).toContainText('BATTLE CAMP 7 / 36'); await expect(page.getByTestId('tutorial-coach')).toContainText('Keep them coming');
 });
 
+function mergeCheckpoint(step: 'merge_first' | 'merge_to_c' = 'merge_first') {
+  const starters = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch'].map((definitionId) => ({ id: `starter:${definitionId}:001`, definitionId, tier: 'F' }));
+  const gokuCopies = Array.from({ length: 7 }, (_, index) => ({ id: `spawn:goku:${index}`, definitionId: 'goku', tier: 'F' }));
+  const fillers = Array.from({ length: 23 }, (_, index) => ({ id: `spawn:filler:${index}`, definitionId: index % 2 ? 'naruto' : 'luffy', tier: 'F' }));
+  const inventory = [...starters, ...gokuCopies, ...fillers];
+  const campPlacements = inventory.map((instance, index) => ({ summonInstanceId: instance.id, cell: index < 6 ? { x: index, y: 0 } : { x: (index - 6) % 6, y: Math.floor((index - 6) / 6) + 1 } }));
+  return { schemaVersion: 4, tutorialVersion: 1, currentStepId: step, completedStepIds: ['campaign_complete', 'base_intro', 'base_camp_explain', 'base_illuminati_explain', 'base_move_illuminati', 'spawn_open', 'spawn_drop_one', 'spawn_long_press'], context: { firstSummonInstanceId: 'starter:goku:001' }, inventory, placements: [], campPlacements, spawn: { balls: 70, ballCapacity: 100, dailyPool: [], blobProgress: {}, tutorialDropIndex: 30, appliedActionIds: [] }, merge: { appliedActionIds: [] }, battle: null };
+}
+
+test('desktop camp merge chain reaches C with the protected target surviving', async ({ page }) => {
+  test.skip(test.info().project.name !== 'desktop-chromium', 'Desktop canvas drag coverage');
+  const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), mergeCheckpoint()); await page.goto('/');
+  const cells = await page.evaluate(() => new Promise<Array<{ x: number; y: number; clientX: number; clientY: number }>>((resolve) => { window.addEventListener('psyblr:camp-cell-screen-centers', (event) => resolve((event as CustomEvent<Array<{ x: number; y: number; clientX: number; clientY: number }>>).detail), { once: true }); window.dispatchEvent(new Event('resize')); }));
+  const cell = (x: number, y: number) => cells.find((entry) => entry.x === x && entry.y === y)!;
+  const merge = async (source: [number, number], target: [number, number]) => { const from = cell(...source); const to = cell(...target); await page.mouse.move(from.clientX, from.clientY); await page.mouse.down(); await page.mouse.move(to.clientX, to.clientY); await page.mouse.up(); await page.waitForTimeout(25); };
+  await merge([1, 1], [0, 0]);
+  await expect(page.getByTestId('base-hud')).toContainText('BATTLE CAMP 35 / 36'); await expect(page.getByTestId('tier-progress')).toContainText('Goku · E');
+  await merge([0, 1], [2, 1]); await merge([3, 1], [4, 1]); await merge([5, 1], [0, 2]);
+  await merge([2, 1], [0, 0]); await merge([4, 1], [0, 2]); await merge([0, 2], [0, 0]);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').currentStepId)).toBe('raid_open');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').inventory.find((entry: { id: string }) => entry.id === 'starter:goku:001')?.tier)).toBe('C');
+  expect(errors).toEqual([]);
+});
+
+test('mobile landscape merges selected source into a compatible target', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile-landscape', 'Touch selection coverage');
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), mergeCheckpoint()); await page.goto('/');
+  const cells = await page.evaluate(() => new Promise<Array<{ x: number; y: number; clientX: number; clientY: number }>>((resolve) => { window.addEventListener('psyblr:camp-cell-screen-centers', (event) => resolve((event as CustomEvent<Array<{ x: number; y: number; clientX: number; clientY: number }>>).detail), { once: true }); window.dispatchEvent(new Event('resize')); }));
+  const source = cells.find((cell) => cell.x === 1 && cell.y === 1)!; const target = cells.find((cell) => cell.x === 0 && cell.y === 0)!; const canvas = page.locator('canvas');
+  await canvas.tap({ position: { x: source.clientX, y: source.clientY } }); await canvas.tap({ position: { x: target.clientX, y: target.clientY } });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}').inventory.find((entry: { id: string }) => entry.id === 'starter:goku:001')?.tier)).toBe('E');
+});
+
 test('mobile landscape keeps the first inspection flow usable', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage');
   await fresh(page); await page.getByRole('button', { name: 'SUMMONS', exact: true }).click(); await select(page, 'goku');

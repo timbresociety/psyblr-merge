@@ -99,6 +99,22 @@ export const CampPlacementSchema = z.object({
 });
 export type CampPlacement = z.infer<typeof CampPlacementSchema>;
 
+export const MergeSummonsRequestSchema = z.object({
+  clientActionId: z.string().min(1),
+  sourceSummonInstanceId: z.string().min(1),
+  targetSummonInstanceId: z.string().min(1),
+});
+export type MergeSummonsRequest = z.infer<typeof MergeSummonsRequestSchema>;
+export const MergeReplayDescriptorSchema = z.object({ replayId: z.string().min(1), presentationSeed: z.string().min(1), effect: z.literal('merge_pulse') });
+export type MergeReplayDescriptor = z.infer<typeof MergeReplayDescriptorSchema>;
+export const MergeSummonsResultSchema = z.object({
+  clientActionId: z.string().min(1), consumedSourceInstanceId: z.string().min(1), upgradedTarget: SummonInstanceSchema,
+  previousTier: TierSchema, nextTier: TierSchema, targetPlacement: CampPlacementSchema, replay: MergeReplayDescriptorSchema,
+});
+export type MergeSummonsResult = z.infer<typeof MergeSummonsResultSchema>;
+export const MergeRuntimeSnapshotSchema = z.object({ appliedActionIds: z.array(z.string().min(1)) });
+export type MergeRuntimeSnapshot = z.infer<typeof MergeRuntimeSnapshotSchema>;
+
 export const SpawnBlobTargetSchema = z.object({ id: z.string().min(1), enabled: z.boolean() });
 export const SpawnMachineDefinitionSchema = z.object({
   dailyBallCap: z.number().int().positive(),

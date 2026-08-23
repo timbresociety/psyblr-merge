@@ -7,6 +7,26 @@ export function nextTier(tier: Tier): Tier | null {
   const i = TIERS.indexOf(tier);
   return i >= 0 && i < TIERS.length - 1 ? TIERS[i + 1]! : null;
 }
+export type TierStats = Pick<SummonDefinition['stats'], 'hp' | 'atk' | 'def' | 'attacksPerSecond' | 'range' | 'moveSpeed'>;
+export type TierStatDelta = Pick<TierStats, 'hp' | 'atk' | 'def'>;
+export type TierFormBand = 'base' | 'major_1' | 'major_2' | 'final';
+
+/** Tier affects only primary power stats in the alpha. Rounding is stable for authoritative replay. */
+export function resolveTierStats(stats: SummonDefinition['stats'], tier: Tier): TierStats {
+  const multiplier = TIER_MULTIPLIER[tier];
+  return { ...stats, hp: Math.round(stats.hp * multiplier), atk: Math.round(stats.atk * multiplier), def: Math.round(stats.def * multiplier) };
+}
+export function resolveNextTierStats(stats: SummonDefinition['stats'], tier: Tier): TierStats | null {
+  const next = nextTier(tier); return next ? resolveTierStats(stats, next) : null;
+}
+export function nextTierStatDelta(stats: SummonDefinition['stats'], tier: Tier): TierStatDelta | null {
+  const current = resolveTierStats(stats, tier); const next = resolveNextTierStats(stats, tier);
+  return next ? { hp: next.hp - current.hp, atk: next.atk - current.atk, def: next.def - current.def } : null;
+}
+export function tierFormBand(tier: Tier): TierFormBand {
+  if (tier === 'SSS') return 'final'; if (tier === 'A' || tier === 'S' || tier === 'SS') return 'major_2'; if (tier === 'D' || tier === 'C' || tier === 'B') return 'major_1'; return 'base';
+}
+export function isMaxTier(tier: Tier): boolean { return nextTier(tier) === null; }
 
 export const CAMP_SIZE = 6;
 export const CAMP_CAPACITY = CAMP_SIZE * CAMP_SIZE;

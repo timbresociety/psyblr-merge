@@ -21,6 +21,8 @@ export function GameHud() {
   const cancelCampInteraction = useGameStore((state) => state.cancelCampInteraction);
   const inventory = useGameStore((state) => state.inventory);
   const tutorialStepId = useGameStore((state) => state.tutorialStepId);
+  const mergeError = useGameStore((state) => state.mergeError);
+  const mergePendingIds = useGameStore((state) => state.mergePendingIds);
   const camp = getCampCounters(campPlacements);
   const selectedCampSummon = inventory.find((entry) => entry.id === selectedCampSummonInstanceId);
 
@@ -40,6 +42,8 @@ export function GameHud() {
       <strong>ILLUMINATI <span>{camp.illuminatiOccupancy} / {camp.illuminatiCapacity}</span></strong>
       {(tutorialStepId === 'base_illuminati_explain' || tutorialStepId === 'base_move_illuminati' || camp.illuminatiOccupancy > 0) && <small>◈ Shield = protected from raid steals</small>}
       {selectedCampSummon && <div>{getSummonDefinition(selectedCampSummon.definitionId).displayName} · {selectedCampSummon.tier}<button type="button" onClick={cancelCampInteraction}>CANCEL</button></div>}
+      {mergePendingIds.length > 0 && <small aria-live="polite">MERGING…</small>}
+      {mergeError && <small className="merge-feedback" role="status">{mergeError}</small>}
     </aside>}
     <div className="action-stack">
       {scene === 'campaign' && battlePhase === 'setup' && <button

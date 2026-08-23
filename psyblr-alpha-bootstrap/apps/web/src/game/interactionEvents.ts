@@ -9,6 +9,7 @@ export type GameInteraction =
   | { type: 'CAMERA_ARRIVED'; cameraPreset: string }
   | { type: 'CAMP_SUMMON_SELECTED'; summonInstanceId: string }
   | { type: 'CAMP_SUMMON_MOVED'; summonInstanceId: string; from: CampCell; to: CampCell }
+  | { type: 'MERGE_COMPLETED'; definitionId: string; sourceId: string; targetId: string; fromTier: string; toTier: string }
   | { type: 'ILLUMINATI_FULL' } | { type: 'SPAWN_UI_OPENED' } | { type: 'BALL_DROPPED' } | { type: 'CAMP_FULL' };
 
 export const GAME_INTERACTION_EVENT = 'psyblr:game-interaction';

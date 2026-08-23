@@ -1,6 +1,6 @@
 import { createCombatState, stepCombat, type CombatState } from '@psyblr/combat-core';
 import { combatFunctionDefinitions, getCreepDefinition, getSkillDefinition, getSummonDefinition, originDefinitions } from '@psyblr/game-content';
-import { resolveFormationSynergies } from '@psyblr/game-rules';
+import { resolveFormationSynergies, resolveTierStats } from '@psyblr/game-rules';
 import type { CombatCommand, CombatSnapshot, CombatUnitSnapshot } from '@psyblr/contracts';
 import { emitGameInteraction } from './interactionEvents';
 import { tutorialAllows, useGameStore, type BattleUnitView } from '../stores/gameStore';
@@ -26,11 +26,13 @@ function viewUnits(state: CombatState): Record<string, BattleUnitView> {
     id: unit.id, hp: unit.hp, maxHp: unit.maxHp, x: unit.x, z: unit.z, dead: unit.dead, shield: unit.shield,
   }]));
 }
-function buildPlayerUnit(instanceId: string, definitionId: string, spawnCell: { x: number; z: number }, modifiers: ReturnType<typeof resolveFormationSynergies>['byDefinitionId'][string]): CombatUnitSnapshot {
+function buildPlayerUnit(instance: { id: string; definitionId: string; tier: import('@psyblr/contracts').Tier }, spawnCell: { x: number; z: number }, modifiers: ReturnType<typeof resolveFormationSynergies>['byDefinitionId'][string]): CombatUnitSnapshot {
+  const { id: instanceId, definitionId } = instance;
   const definition = getSummonDefinition(definitionId);
   const skill = getSkillDefinition(definition.skills.skill1);
   const hpPct = modifiers.maxHpPct + modifiers.durabilityPct;
-  return { id: instanceId, definitionId, side: 'player', spawnCell, ...definition.stats, hp: Math.round(definition.stats.hp * (1 + hpPct)), attacksPerSecond: definition.stats.attacksPerSecond * (1 + modifiers.attackSpeedPct), skill1Id: skill.id, skill1: skill.mechanics ?? null, basicAttackDamagePct: modifiers.basicAttackDamagePct, skillPowerPct: modifiers.skillPowerPct, statusDurationPct: modifiers.statusDurationPct };
+  const stats = resolveTierStats(definition.stats, instance.tier);
+  return { id: instanceId, definitionId, side: 'player', spawnCell, ...stats, hp: Math.round(stats.hp * (1 + hpPct)), attacksPerSecond: stats.attacksPerSecond * (1 + modifiers.attackSpeedPct), skill1Id: skill.id, skill1: skill.mechanics ?? null, basicAttackDamagePct: modifiers.basicAttackDamagePct, skillPowerPct: modifiers.skillPowerPct, statusDurationPct: modifiers.statusDurationPct };
 }
 export function buildCampaignCombatSnapshot(): CombatSnapshot | null {
   const store = useGameStore.getState();
@@ -39,7 +41,7 @@ export function buildCampaignCombatSnapshot(): CombatSnapshot | null {
   const synergies = resolveFormationSynergies(deployedDefinitions, originDefinitions, combatFunctionDefinitions);
   const players = store.placements.map((placement) => {
     const instance = store.inventory.find((entry) => entry.id === placement.summonInstanceId);
-    return instance ? buildPlayerUnit(instance.id, instance.definitionId, placement.cell, synergies.byDefinitionId[instance.definitionId]!) : null;
+    return instance ? buildPlayerUnit(instance, placement.cell, synergies.byDefinitionId[instance.definitionId]!) : null;
   }).filter((entry): entry is CombatUnitSnapshot => entry !== null);
   if (players.length !== 6) return null;
   const enemies: CombatUnitSnapshot[] = CREEP_FORMATION.map(([id, definitionId, x, z]) => {

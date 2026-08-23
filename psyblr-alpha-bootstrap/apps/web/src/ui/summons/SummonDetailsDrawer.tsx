@@ -4,7 +4,6 @@ import type { SummonDefinition } from '@psyblr/contracts';
 import { useGameStore } from '../../stores/gameStore';
 import { SummonPortrait } from './SummonPortrait';
 import { emitGameInteraction } from '../../game/interactionEvents';
-import { tutorialAllows } from '../../stores/gameStore';
 import { resolveTierStats } from '@psyblr/game-rules';
 
 type DetailTab = 'overview' | 'stats' | 'skills';
@@ -24,10 +23,16 @@ export function SummonDetailsDrawer() {
   const inventory = useGameStore((state) => state.inventory);
   const placements = useGameStore((state) => state.placements);
   const open = useGameStore((state) => state.summonDetailsOpen);
+  const tutorialStepId = useGameStore((state) => state.tutorialStepId);
   const close = useGameStore((state) => state.closeSummonDetails);
   const beginPlacement = useGameStore((state) => state.beginPlacement);
   const recallSummon = useGameStore((state) => state.recallSummon);
   useEffect(() => { setTab('overview'); }, [selectedSummonInstanceId]);
+  useEffect(() => {
+    if (tutorialStepId === 'campaign_identity') setTab('overview');
+    if (tutorialStepId === 'campaign_stats') setTab('stats');
+    if (tutorialStepId === 'campaign_skills') setTab('skills');
+  }, [tutorialStepId]);
 
   const instance = inventory.find((entry) => entry.id === selectedSummonInstanceId);
   if (!open || !instance) return null;
@@ -56,8 +61,6 @@ export function SummonDetailsDrawer() {
           aria-selected={tab === item}
           data-tutorial-target={item === 'stats' ? 'summon-stats-tab' : item === 'skills' ? 'summon-skills-tab' : 'summon-overview-tab'}
           onClick={() => {
-            if (item === 'stats' && !tutorialAllows('VIEW_STATS')) return;
-            if (item === 'skills' && !tutorialAllows('VIEW_SKILLS')) return;
             setTab(item);
             if (item === 'stats') emitGameInteraction({ type: 'STATS_VIEWED', summonInstanceId: instance.id });
             if (item === 'skills') emitGameInteraction({ type: 'SKILLS_VIEWED', summonInstanceId: instance.id });
@@ -65,7 +68,7 @@ export function SummonDetailsDrawer() {
         >{item.toUpperCase()}</button>)}
       </div>
       <div className="detail-body">
-        {tab === 'overview' && <div className="detail-overview"><p><strong>{origin.name}</strong> origin · <strong>{combatFunction.name}</strong> combat function</p><p>HP {stats.hp.toLocaleString()} · ATK {stats.atk} · {stats.range} tile range</p></div>}
+        {tab === 'overview' && <div className="detail-overview"><p>{definition.summary}</p><p><strong>{origin.name}</strong> origin · <strong>{combatFunction.name}</strong> combat function</p><p>HP {stats.hp.toLocaleString()} · ATK {stats.atk} · {stats.range} tile range</p></div>}
         {tab === 'stats' && <dl className="stat-list">{STAT_ROWS.map(({ label, value, format }) => <div key={label}><dt>{label}</dt><dd>{format(value(stats))}</dd></div>)}</dl>}
         {tab === 'skills' && <div className="skill-list">
           <article><span>BASIC ATTACK</span><strong>{basic.name}</strong><p>{basic.summary}</p></article>
@@ -79,7 +82,7 @@ export function SummonDetailsDrawer() {
           <span>DEPLOYED · X {placement.cell.x + 1}, Z {placement.cell.z + 1}</span>
           <button type="button" onClick={() => beginPlacement(instance.id)}>REPOSITION</button>
           <button type="button" className="secondary-button" onClick={() => recallSummon(instance.id)}>RECALL</button>
-        </> : <button type="button" data-tutorial-target="place-summon-button" onClick={() => beginPlacement(instance.id)}>PLACE SUMMON</button>}
+        </> : <span>DRAG A CARD ONTO THE BATTLEFIELD</span>}
       </footer>
     </aside>;
   } catch {

@@ -2,6 +2,7 @@
   {
     "id": "goku",
     "displayName": "Goku",
+    "summary": "A fast Ascendant striker who closes distance and pressures the frontline.",
     "originId": "ascendant",
     "combatFunctionId": "striker",
     "stats": {
@@ -23,6 +24,7 @@
   {
     "id": "naruto",
     "displayName": "Naruto",
+    "summary": "An agile Ascendant controller who disrupts targets from a safe range.",
     "originId": "ascendant",
     "combatFunctionId": "controller",
     "stats": {
@@ -44,6 +46,7 @@
   {
     "id": "luffy",
     "displayName": "Luffy",
+    "summary": "A resilient Rebel striker built to brawl at close range.",
     "originId": "rebel",
     "combatFunctionId": "striker",
     "stats": {
@@ -65,6 +68,7 @@
   {
     "id": "eren",
     "displayName": "Eren",
+    "summary": "A durable Rebel disruptor who holds the frontline and breaks enemy focus.",
     "originId": "rebel",
     "combatFunctionId": "disruptor",
     "stats": {
@@ -86,6 +90,7 @@
   {
     "id": "l",
     "displayName": "L",
+    "summary": "A long-range Mastermind controller who sets up precise battlefield control.",
     "originId": "mastermind",
     "combatFunctionId": "controller",
     "stats": {
@@ -107,6 +112,7 @@
   {
     "id": "lelouch",
     "displayName": "Lelouch",
+    "summary": "A ranged Mastermind disruptor who weakens priority targets from afar.",
     "originId": "mastermind",
     "combatFunctionId": "disruptor",
     "stats": {

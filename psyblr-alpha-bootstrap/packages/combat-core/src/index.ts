@@ -103,3 +103,16 @@ export function stepCombat(state:CombatState,commands:readonly CombatCommand[]=[
   finish(state,events); if (!state.ended && state.tick+1>=MAX_COMBAT_TICKS) finish(state,events,true); state.events.push(...events); state.tick++; return {state,events,acceptedCommands:accepted};
 }
 export function runCombat(snapshot:CombatSnapshot,seed:number,commandScript:readonly CombatCommand[]=[]):CombatState { const state=createCombatState(snapshot,seed); while(!state.ended) stepCombat(state,commandScript); return state; }
+
+/** Stable Auto Cast command generation shared by asynchronous simulations. */
+export function readySkillCommands(state: CombatState, sides: readonly CombatSide[] = ['player', 'enemy']): CombatCommand[] {
+  const enabled = new Set(sides);
+  return state.units.filter((unit) => enabled.has(unit.side) && !unit.dead && unit.skill1 && unit.nextSkillReadyTick <= state.tick)
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((unit) => ({ type: 'cast_skill_1' as const, actorId: unit.id, issuedAtTick: state.tick }));
+}
+export function runCombatAutoCast(snapshot: CombatSnapshot, seed: number, sides: readonly CombatSide[] = ['player', 'enemy']): CombatState {
+  const state = createCombatState(snapshot, seed);
+  while (!state.ended) stepCombat(state, readySkillCommands(state, sides));
+  return state;
+}

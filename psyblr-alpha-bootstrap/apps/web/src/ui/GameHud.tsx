@@ -42,6 +42,7 @@ export function GameHud() {
       <strong>ILLUMINATI <span>{camp.illuminatiOccupancy} / {camp.illuminatiCapacity}</span></strong>
       {(tutorialStepId === 'base_illuminati_explain' || tutorialStepId === 'base_move_illuminati' || camp.illuminatiOccupancy > 0) && <small>◈ Shield = protected from raid steals</small>}
       {selectedCampSummon && <div>{getSummonDefinition(selectedCampSummon.definitionId).displayName} · {selectedCampSummon.tier}<button type="button" onClick={cancelCampInteraction}>CANCEL</button></div>}
+      {tutorialStepId?.startsWith('merge_') && selectedCampSummon && <div className="camp-key" aria-label="Camp color key"><span data-tone="protected">Teal · protected</span><span data-tone="move">Blue · move</span><span data-tone="merge">Violet · merge match</span></div>}
       {mergePendingIds.length > 0 && <small aria-live="polite">MERGING…</small>}
       {mergeError && <small className="merge-feedback" role="status">{mergeError}</small>}
     </aside>}

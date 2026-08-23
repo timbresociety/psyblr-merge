@@ -1,4 +1,4 @@
-import { RaidSquadDraftSchema, RaidSquadSnapshotSchema, type BattleCell, type BattlefieldPlacement, type CampCell, type CampPlacement, type CombatFunctionDefinition, type OriginDefinition, type RaidRoundDefinition, type RaidRoundId, type RaidSquadDraft, type RaidSquadSnapshot, type SummonDefinition, type SummonInstance, type SynergyEffect, type Tier } from '@psyblr/contracts';
+import { RaidSquadDraftSchema, RaidSquadSnapshotSchema, type BattleCell, type BattlefieldPlacement, type CampCell, type CampPlacement, type CombatFunctionDefinition, type OriginDefinition, type RaidRoundDefinition, type RaidRoundId, type RaidSquadDraft, type RaidSquadSnapshot, type RaidSummonSnapshot, type SummonDefinition, type SummonInstance, type SynergyEffect, type Tier } from '@psyblr/contracts';
 
 export const TIERS: readonly Tier[] = ['F','E','D','C','B','A','S','SS','SSS'];
 export const TIER_MULTIPLIER: Record<Tier, number> = {F:1,E:1.15,D:1.35,C:1.6,B:1.9,A:2.25,S:2.65,SS:3.1,SSS:3.65};
@@ -115,12 +115,12 @@ export function recallBattlefieldPlacement(
 }
 
 export const RAID_ROUND_DEFINITIONS: readonly RaidRoundDefinition[] = [
-  { id: 'round1', number: 1, slotCount: 1 },
-  { id: 'round2', number: 2, slotCount: 3 },
+  { id: 'round1', number: 1, slotCount: 2 },
+  { id: 'round2', number: 2, slotCount: 4 },
   { id: 'round3', number: 3, slotCount: 6 },
 ] as const;
 export function getRaidRoundDefinition(id: RaidRoundId): RaidRoundDefinition { return RAID_ROUND_DEFINITIONS.find((round) => round.id === id)!; }
-export function createEmptyRaidSquadDraft(): RaidSquadDraft { return { round1: [null], round2: [null, null, null], round3: [null, null, null, null, null, null] }; }
+export function createEmptyRaidSquadDraft(): RaidSquadDraft { return { round1: [null, null], round2: [null, null, null, null], round3: [null, null, null, null, null, null] }; }
 function cloneRaidDraft(draft: RaidSquadDraft): RaidSquadDraft { return { round1: [...draft.round1], round2: [...draft.round2], round3: [...draft.round3] }; }
 export function isRaidRoundComplete(draft: RaidSquadDraft, roundId: RaidRoundId): boolean { return draft[roundId].every((id): id is string => id !== null) && new Set(draft[roundId]).size === draft[roundId].length; }
 export function isRaidDraftComplete(draft: RaidSquadDraft): boolean { return RAID_ROUND_DEFINITIONS.every((round) => isRaidRoundComplete(draft, round.id)); }
@@ -140,6 +140,13 @@ export function selectRaidSummon(draft: RaidSquadDraft, roundId: RaidRoundId, in
 export function removeRaidSummon(draft: RaidSquadDraft, roundId: RaidRoundId, slotIndex: number): RaidDraftMutation {
   if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= draft[roundId].length) return { draft, error: 'That raid slot is unavailable.' };
   const next = cloneRaidDraft(draft); next[roundId][slotIndex] = null; return { draft: next, error: null };
+}
+/** Locks only the currently deployed field; later rounds remain editable until reached. */
+export function finalizeRaidRoundDraft(draftValue: unknown, inventory: readonly SummonInstance[], roundId: RaidRoundId): { ok: true; squad: RaidSummonSnapshot[] } | { ok: false; error: string } {
+  const parsed = RaidSquadDraftSchema.safeParse(draftValue); if (!parsed.success) return { ok: false, error: 'Raid formation is malformed.' };
+  const slots = parsed.data[roundId]; if (!slots.every((id): id is string => id !== null) || new Set(slots).size !== slots.length) return { ok: false, error: `Deploy ${getRaidRoundDefinition(roundId).slotCount} unique Summons for this round.` };
+  const byId = new Map(inventory.map((instance) => [instance.id, instance])); const squad = slots.map((id) => { const instance = byId.get(id!); return instance ? { instanceId: instance.id, definitionId: instance.definitionId, tier: instance.tier } : null; });
+  return squad.some((item) => item === null) ? { ok: false, error: 'A selected Summon is no longer owned.' } : { ok: true, squad: squad as RaidSummonSnapshot[] };
 }
 export function finalizeRaidSquadDraft(draftValue: unknown, inventory: readonly SummonInstance[], clientActionId: string, contentVersion: string): { ok: true; snapshot: RaidSquadSnapshot } | { ok: false; error: string } {
   const parsed = RaidSquadDraftSchema.safeParse(draftValue); if (!parsed.success) return { ok: false, error: 'Raid squad draft is malformed.' };

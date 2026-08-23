@@ -83,8 +83,8 @@ Tests:
 ## PR 08 — Raid squad builder
 Deliver:
 - shared SummonPicker modes,
-- 1/3/6 round squad selection,
-- repetition across rounds,
+- sequential 2/4/6 field deployment and resolution,
+- repetition across resolved rounds,
 - per-round uniqueness,
 - immutable raid snapshot.
 
@@ -104,7 +104,7 @@ Deliver:
 
 ## PR 11 — Defense setup
 Deliver:
-- 1/3/6 defense formations,
+- 2/4/6 defense formations,
 - reuse squad picker,
 - persist and validate defense.
 

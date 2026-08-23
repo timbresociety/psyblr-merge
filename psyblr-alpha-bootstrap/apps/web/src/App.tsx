@@ -13,6 +13,8 @@ import { SpawnMachineOverlay } from './ui/SpawnMachineOverlay';
 import { TierProgressionPanel } from './ui/TierProgressionPanel';
 import { RaidSquadBuilder } from './ui/RaidSquadBuilder';
 import './raid.css';
+import './raid-replay.css';
+import './raid-field.css';
 import './tutorial-interaction.css';
 
 export function App() {

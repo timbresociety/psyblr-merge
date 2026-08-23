@@ -1,0 +1,1 @@
+{"name":"@psyblr/raid-core","version":"0.1.0","private":true,"type":"module","main":"src/index.ts","scripts":{"test":"vitest run"},"dependencies":{"@psyblr/contracts":"0.1.0","@psyblr/combat-core":"0.1.0","@psyblr/game-content":"0.1.0","@psyblr/game-rules":"0.1.0"},"devDependencies":{"vitest":"4.1.10"}}

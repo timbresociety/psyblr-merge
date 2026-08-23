@@ -1,10 +1,12 @@
 import type { CameraComponent } from 'playcanvas';
 import { Vec3 } from 'playcanvas';
 import { BASE_WORLD_TARGETS, campCellToWorld } from './baseLayout';
+import { battleCellToWorld } from './battlefield';
 
 export type WorldTargetRect = { left: number; top: number; right: number; bottom: number; width: number; height: number };
 export const WORLD_TARGETS_EVENT = 'psyblr:world-target-rects';
 export const CAMP_CELL_CENTERS_EVENT = 'psyblr:camp-cell-screen-centers';
+export const RAID_CELL_CENTERS_EVENT = 'psyblr:raid-cell-screen-centers';
 
 export function projectBaseWorldTargets(camera: CameraComponent, canvas: HTMLCanvasElement): Record<string, WorldTargetRect> {
   const bounds = canvas.getBoundingClientRect();
@@ -28,4 +30,10 @@ export function publishBaseWorldTargets(camera: CameraComponent, canvas: HTMLCan
   const bounds = canvas.getBoundingClientRect(); const scaleX = bounds.width / canvas.width; const scaleY = bounds.height / canvas.height;
   const centers = Array.from({ length: 36 }, (_, index) => { const x = index % 6; const y = Math.floor(index / 6); const [worldX, worldY, worldZ] = campCellToWorld({ x, y }); const point = camera.worldToScreen(new Vec3(worldX, worldY + .18, worldZ)); return { x, y, clientX: bounds.left + point.x * scaleX, clientY: bounds.top + point.y * scaleY }; });
   window.dispatchEvent(new CustomEvent(CAMP_CELL_CENTERS_EVENT, { detail: centers }));
+}
+
+export function publishRaidCellCenters(camera: CameraComponent, canvas: HTMLCanvasElement) {
+  const bounds = canvas.getBoundingClientRect(); const scaleX = bounds.width / canvas.width; const scaleY = bounds.height / canvas.height;
+  const centers = Array.from({ length: 64 }, (_, index) => { const x = index % 8; const z = Math.floor(index / 8); const [worldX, worldY, worldZ] = battleCellToWorld({ x, z }); const point = camera.worldToScreen(new Vec3(worldX, worldY + .18, worldZ)); return { x, z, clientX: bounds.left + point.x * scaleX, clientY: bounds.top + point.y * scaleY }; });
+  window.dispatchEvent(new CustomEvent(RAID_CELL_CENTERS_EVENT, { detail: centers }));
 }

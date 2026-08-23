@@ -6,6 +6,7 @@ export type Tier = z.infer<typeof TierSchema>;
 export const SummonDefinitionSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),
+  summary: z.string().min(1),
   originId: z.string().min(1),
   combatFunctionId: z.string().min(1),
   stats: z.object({
@@ -162,21 +163,21 @@ export type BaseLayoutDefinition = z.infer<typeof BaseLayoutDefinitionSchema>;
 
 export const RaidRoundIdSchema = z.enum(['round1', 'round2', 'round3']);
 export type RaidRoundId = z.infer<typeof RaidRoundIdSchema>;
-export const RaidRoundDefinitionSchema = z.object({ id: RaidRoundIdSchema, number: z.number().int().min(1).max(3), slotCount: z.union([z.literal(1), z.literal(3), z.literal(6)]) });
+export const RaidRoundDefinitionSchema = z.object({ id: RaidRoundIdSchema, number: z.number().int().min(1).max(3), slotCount: z.union([z.literal(2), z.literal(4), z.literal(6)]) });
 export type RaidRoundDefinition = z.infer<typeof RaidRoundDefinitionSchema>;
 
 /** Editable selection state intentionally permits empty slots. Slot arrays are always ordered. */
 export const RaidSquadDraftSchema = z.object({
-  round1: z.array(z.string().min(1).nullable()).length(1),
-  round2: z.array(z.string().min(1).nullable()).length(3),
+  round1: z.array(z.string().min(1).nullable()).length(2),
+  round2: z.array(z.string().min(1).nullable()).length(4),
   round3: z.array(z.string().min(1).nullable()).length(6),
 });
 export type RaidSquadDraft = z.infer<typeof RaidSquadDraftSchema>;
 
 /** Complete ID-only squad shape retained for callers that only need the selection. */
 export const RaidSquadSchema = z.object({
-  round1: z.array(z.string().min(1)).length(1).refine(v => new Set(v).size === 1, 'Round 1 summons must be unique'),
-  round2: z.array(z.string().min(1)).length(3).refine(v => new Set(v).size === 3, 'Round 2 summons must be unique'),
+  round1: z.array(z.string().min(1)).length(2).refine(v => new Set(v).size === 2, 'Round 1 summons must be unique'),
+  round2: z.array(z.string().min(1)).length(4).refine(v => new Set(v).size === 4, 'Round 2 summons must be unique'),
   round3: z.array(z.string().min(1)).length(6).refine(v => new Set(v).size === 6, 'Round 3 summons must be unique'),
 });
 export type RaidSquad = z.infer<typeof RaidSquadSchema>;
@@ -184,8 +185,8 @@ export const RaidSummonSnapshotSchema = z.object({ instanceId: z.string().min(1)
 export type RaidSummonSnapshot = z.infer<typeof RaidSummonSnapshotSchema>;
 export const RaidSquadSnapshotSchema = z.object({
   clientActionId: z.string().min(1), contentVersion: z.string().min(1),
-  round1: z.array(RaidSummonSnapshotSchema).length(1).refine(v => new Set(v.map(s => s.instanceId)).size === 1, 'Round 1 summons must be unique'),
-  round2: z.array(RaidSummonSnapshotSchema).length(3).refine(v => new Set(v.map(s => s.instanceId)).size === 3, 'Round 2 summons must be unique'),
+  round1: z.array(RaidSummonSnapshotSchema).length(2).refine(v => new Set(v.map(s => s.instanceId)).size === 2, 'Round 1 summons must be unique'),
+  round2: z.array(RaidSummonSnapshotSchema).length(4).refine(v => new Set(v.map(s => s.instanceId)).size === 4, 'Round 2 summons must be unique'),
   round3: z.array(RaidSummonSnapshotSchema).length(6).refine(v => new Set(v.map(s => s.instanceId)).size === 6, 'Round 3 summons must be unique'),
 });
 export type RaidSquadSnapshot = z.infer<typeof RaidSquadSnapshotSchema>;
@@ -230,7 +231,7 @@ export type CombatUnitSnapshot = z.infer<typeof CombatUnitSnapshotSchema>;
 
 export const CombatSnapshotSchema = z.object({
   battleId: z.string().min(1),
-  mode: z.literal('campaign'),
+  mode: z.enum(['campaign', 'raid']),
   units: z.array(CombatUnitSnapshotSchema).min(1),
 });
 export type CombatSnapshot = z.infer<typeof CombatSnapshotSchema>;
@@ -248,6 +249,63 @@ export const CombatEventSchema = z.object({
   actorId: z.string().nullable(), targetId: z.string().nullable(), payload: z.record(z.string(), z.unknown()).default({})
 });
 export type CombatEvent = z.infer<typeof CombatEventSchema>;
+
+/** Server-owned Raid data is JSON safe so it can travel through Edge Functions and local persistence. */
+export const RaidOutcomeSchema = z.enum(['win', 'draw', 'loss']);
+export type RaidOutcome = z.infer<typeof RaidOutcomeSchema>;
+export const RaidSeedSchema = z.string().min(1).max(128);
+export type RaidSeed = z.infer<typeof RaidSeedSchema>;
+export const RaidOpponentSchema = z.object({ id: z.string().min(1), displayName: z.string().min(1), kind: z.enum(['tutorial', 'player']) });
+export type RaidOpponent = z.infer<typeof RaidOpponentSchema>;
+export const RaidCanonicalSquadSchema = z.object({
+  contentVersion: z.string().min(1),
+  round1: z.array(RaidSummonSnapshotSchema).length(2),
+  round2: z.array(RaidSummonSnapshotSchema).length(4),
+  round3: z.array(RaidSummonSnapshotSchema).length(6),
+});
+export type RaidCanonicalSquad = z.infer<typeof RaidCanonicalSquadSchema>;
+export const StartRaidRequestSchema = z.object({
+  clientActionId: z.string().min(1),
+  attacker: RaidSquadSnapshotSchema,
+});
+export type StartRaidRequest = z.infer<typeof StartRaidRequestSchema>;
+export const StartRaidRoundRequestSchema = z.discriminatedUnion('roundId', [
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round1'), attacker: z.array(RaidSummonSnapshotSchema).length(2) }),
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round2'), attacker: z.array(RaidSummonSnapshotSchema).length(4) }),
+  z.object({ clientActionId: z.string().min(1), raidId: z.string().min(1), rootSeed: RaidSeedSchema, contentVersion: z.string().min(1), roundId: z.literal('round3'), attacker: z.array(RaidSummonSnapshotSchema).length(6) }),
+]);
+export type StartRaidRoundRequest = z.infer<typeof StartRaidRoundRequestSchema>;
+export const RaidRoundResultSchema = z.object({
+  roundId: RaidRoundIdSchema,
+  roundSize: z.union([z.literal(2), z.literal(4), z.literal(6)]),
+  seed: RaidSeedSchema,
+  outcome: RaidOutcomeSchema,
+  combatSnapshot: CombatSnapshotSchema,
+  events: z.array(CombatEventSchema),
+});
+export type RaidRoundResult = z.infer<typeof RaidRoundResultSchema>;
+export const RaidRoundResolutionSchema = z.object({
+  raidId: z.string().min(1), clientActionId: z.string().min(1), contentVersion: z.string().min(1), rootSeed: RaidSeedSchema,
+  opponent: RaidOpponentSchema, attacker: z.array(RaidSummonSnapshotSchema).min(1), defender: z.array(RaidSummonSnapshotSchema).min(1), round: RaidRoundResultSchema,
+});
+export type RaidRoundResolution = z.infer<typeof RaidRoundResolutionSchema>;
+export const RaidResultSchema = z.object({
+  raidId: z.string().min(1),
+  clientActionId: z.string().min(1),
+  contentVersion: z.string().min(1),
+  rootSeed: RaidSeedSchema,
+  opponent: RaidOpponentSchema,
+  attacker: RaidCanonicalSquadSchema,
+  defender: RaidCanonicalSquadSchema,
+  rounds: z.array(RaidRoundResultSchema).length(3),
+  outcome: RaidOutcomeSchema,
+}).superRefine((value, context) => {
+  const expected: RaidRoundId[] = ['round1', 'round2', 'round3'];
+  value.rounds.forEach((round, index) => {
+    if (round.roundId !== expected[index]) context.addIssue({ code: 'custom', path: ['rounds', index, 'roundId'], message: 'Raid rounds must be ordered.' });
+  });
+});
+export type RaidResult = z.infer<typeof RaidResultSchema>;
 
 export const CreepDefinitionSchema = z.object({
   id: z.string().min(1),

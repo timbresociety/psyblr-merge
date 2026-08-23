@@ -12,10 +12,10 @@ A world-first, asynchronous summon battler where players build a protected core 
 6. Teach vulnerability and move the six starters into Illuminati.
 7. Fly to Spawn Machine. Drop balls until camp reaches 36/36.
 8. Return to camp, merge identical summons F→E→D→C; explain immediate upgrade and future silhouettes.
-9. Enter Raid Gate. Configure 1v1, 3v3 and 6v6 attack squads. Repetition across rounds is allowed.
-10. Tutorial raid resolves W/D/W. Visit defender camp and steal one eligible exposed summon.
-11. Configure 1/3/6 defensive squads.
-12. Tutorial ends and navigation unlocks.
+9. Enter Raid Gate. Deploy and resolve a 2v2 field, then a 4v4 field, then a 6v6 field. Repetition across rounds is allowed, but a Summon cannot occupy two slots in the same field.
+10. Each field computes Origin and Combat Function synergies from the deployed Summons only. Resolve the best-of-three raid after the final field.
+11. A raid victory creates an opponent-camp handoff with one potential exposed-Summon claim. The opponent-camp visit, claim selection, and transfer are explicitly deferred to the next PR.
+12. Tutorial ends and navigation unlocks after the raid resolution.
 
 ## Core spatial model
 ### Campaign Arena
@@ -31,7 +31,9 @@ A world-first, asynchronous summon battler where players build a protected core 
 
 ### Raid Arena
 - Reuse combat scene and renderer.
-- Round sizes: 1, 3, 6.
+- Sequential field sizes: 2, 4, 6.
+- Resolve one field before opening the next; there is no pre-draft of future fields.
+- Origin and Combat Function synergies resolve independently from each round's field composition, so their effect naturally scales at the 2, 4, and 6 thresholds.
 - Best-of-three based on round W/D/L outcomes.
 
 ### Opponent Camp
@@ -113,13 +115,16 @@ Visual forms are shared across tier bands: F/E, D/C/B, A/S/SS, SSS.
 - In production flow the server decides the reward before the ball animation. Pachinko physics is presentation, not economy authority.
 
 ## Raid rules
-- Three rounds: 1v1, 3v3, 6v6.
+- Three sequential rounds: 2v2, 4v4, 6v6.
+- Only the active field can be assembled. Players choose a Summon and place it directly on an open player-side raid cell; there are no abstract field-slot controls. It locks when started; the opponent placement, immutable snapshots, and event log are then created by the authority. The next field opens only after that round replay completes.
 - A summon may be used in multiple rounds, but may not occupy multiple slots in the same round.
-- Server simulates from immutable squad snapshots + content version + RNG seed.
-- Client replays returned combat events.
-- Raid victory unlocks one steal.
+- Origin and Combat Function synergies are evaluated from the current field and apply only to that round's combat snapshot. Content thresholds provide stronger implications as matching field members rise from 2 to 4 to 6.
+- Server simulates each locked field from immutable snapshots + content version + a raid-session RNG seed; the final result is the deterministic best-of-three resolution.
+- Client shows each resolved field as a semi-automatic authoritative combat replay and keeps the active Origin/Combat Function synergy panel visible during the fight.
+- A raid victory records a pending opponent-camp handoff for one steal; the post-raid camp UI and claim transaction are next-PR work.
 
-## Steal rules
+## Steal rules (next PR)
+The claim flow is deliberately not exposed in this PR. These rules remain the contract for the following opponent-camp implementation.
 Eligible if the target summon:
 - is owned by defender,
 - is placed in defender camp,

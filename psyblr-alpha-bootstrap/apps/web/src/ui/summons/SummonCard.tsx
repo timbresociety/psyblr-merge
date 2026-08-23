@@ -42,7 +42,10 @@ export function SummonCard({
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     const current = gesture.current;
     if (deployed || !onDragStart || current.pointerId !== event.pointerId || current.dragging) return;
-    if (Math.hypot(event.clientX - current.startX, event.clientY - current.startY) < DRAG_THRESHOLD_PX) return;
+    const dx = event.clientX - current.startX; const dy = event.clientY - current.startY;
+    // The tray still scrolls horizontally. A deliberate upward gesture lifts the card
+    // toward the board rather than accidentally treating a sideways swipe as placement.
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX || Math.abs(dy) <= Math.abs(dx) || dy >= 0) return;
     gesture.current = { ...current, dragging: true };
     onDragStart(instance.id);
   };
@@ -62,6 +65,7 @@ export function SummonCard({
     data-selected={selected}
     data-deployed={deployed}
     data-testid={`summon-card-${instance.id}`}
+    title={`Drag ${definition.displayName} onto the battlefield`}
     onPointerDown={onPointerDown}
     onPointerMove={onPointerMove}
     onPointerUp={onPointerUp}

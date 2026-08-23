@@ -21,12 +21,14 @@ test('Campaign onboarding is data driven from any starter through victory', asyn
   await expect(page.getByTestId('tutorial-coach')).toContainText('Choose your first Summon');
   await page.getByRole('button', { name: 'SUMMONS', exact: true }).click();
   await select(page, 'naruto');
-  await expect(page.getByTestId('tutorial-coach')).toContainText('Summon identity');
+  await expect(page.getByTestId('tutorial-coach')).toContainText('Summon overview');
   await page.getByRole('button', { name: 'CONTINUE' }).click();
   await page.getByRole('tab', { name: 'STATS' }).click();
   await expect(page.getByTestId('tutorial-coach')).toContainText('Learn their skills');
   await page.getByRole('tab', { name: 'SKILLS' }).click();
   await expect(page.getByText('Clone Snare', { exact: true })).toBeVisible();
+  const [coachBox, trayBox] = await Promise.all([page.getByTestId('tutorial-coach').evaluate((element) => element.getBoundingClientRect().toJSON()), page.locator('#summon-tray').evaluate((element) => element.getBoundingClientRect().toJSON())]);
+  expect(coachBox.bottom).toBeLessThanOrEqual(trayBox.top);
   await page.locator('canvas').click({ position: { x: 325, y: 375 } });
   await expect(page.getByTestId('tutorial-coach')).toContainText('Formation synergies');
   await page.getByRole('button', { name: 'CONTINUE' }).click();
@@ -148,23 +150,33 @@ test('mobile landscape keeps the first inspection flow usable', async ({ page })
 
 function raidCheckpoint(step: 'raid_gate_open' | 'raid_open' = 'raid_gate_open') {
   const ids = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']; const inventory = ids.map((definitionId) => ({ id: `starter:${definitionId}:001`, definitionId, tier: definitionId === 'goku' ? 'C' : 'F' }));
-  return { schemaVersion: 5, tutorialVersion: 1, currentStepId: step, completedStepIds: ['campaign_complete', 'base_intro', 'base_camp_explain', 'base_illuminati_explain', 'base_move_illuminati', 'spawn_open', 'spawn_drop_one', 'spawn_long_press', 'merge_first', 'merge_to_c'], context: {}, inventory, placements: [], campPlacements: [], spawn: { balls: 70, ballCapacity: 100, dailyPool: [], blobProgress: {}, tutorialDropIndex: 30, appliedActionIds: [] }, merge: { appliedActionIds: [] }, raidDraft: { round1: [null], round2: [null, null, null], round3: [null, null, null, null, null, null] }, raidSnapshot: null, battle: null };
+  return { schemaVersion: 7, tutorialVersion: 1, currentStepId: step, completedStepIds: ['campaign_complete', 'base_intro', 'base_camp_explain', 'base_illuminati_explain', 'base_move_illuminati', 'spawn_open', 'spawn_drop_one', 'spawn_long_press', 'merge_first', 'merge_to_c'], context: {}, inventory, placements: [], campPlacements: [], spawn: { balls: 70, ballCapacity: 100, dailyPool: [], blobProgress: {}, tutorialDropIndex: 30, appliedActionIds: [] }, merge: { appliedActionIds: [] }, raidDraft: { round1: [null, null], round2: [null, null, null, null], round3: [null, null, null, null, null, null] }, raidSnapshot: null, raidResult: null, battle: null };
 }
 async function enterRaidFromGate(page: Page) {
   const target = await page.evaluate(() => new Promise<{ left: number; top: number; width: number; height: number }>((resolve) => { window.addEventListener('psyblr:world-target-rects', (event) => resolve((event as CustomEvent<Record<string, { left: number; top: number; width: number; height: number }>>).detail['raid-gate']!), { once: true }); window.dispatchEvent(new Event('resize')); }));
   await page.mouse.click(target.left + target.width / 2, target.top + target.height / 2); await expect(page.getByText('RAID', { exact: true })).toBeVisible(); await expect(page.getByTestId('raid-squad-builder')).toBeVisible({ timeout: 4_000 });
 }
-test('Raid Gate opens a 1/3/6 builder that locks an immutable squad', async ({ page }) => {
+async function placeRaidSummon(page: Page, id: string, cell: { x: number; z: number }) {
+  await page.getByTestId(`summon-card-starter:${id}:001`).click(); await expect(page.getByTestId('raid-squad-builder')).toBeHidden();
+  const centers = await page.evaluate(() => new Promise<Array<{ x: number; z: number; clientX: number; clientY: number }>>((resolve) => { window.addEventListener('psyblr:raid-cell-screen-centers', (event) => resolve((event as CustomEvent<Array<{ x: number; z: number; clientX: number; clientY: number }>>).detail), { once: true }); window.dispatchEvent(new Event('resize')); }));
+  const point = centers.find((entry) => entry.x === cell.x && entry.z === cell.z)!;
+  await page.locator('canvas').click({ position: { x: point.clientX, y: point.clientY } }); await expect(page.getByTestId('raid-squad-builder')).toBeVisible();
+}
+test('Raid Gate resolves sequential 2/4/6 fields and locks an immutable raid snapshot', async ({ page }) => {
   test.skip(test.info().project.name !== 'desktop-chromium', 'Desktop projected world target coverage'); const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), raidCheckpoint()); await page.goto('/'); await enterRaidFromGate(page);
-  const builder = page.getByTestId('raid-squad-builder'); const start = page.getByTestId('raid-start'); await expect(start).toBeDisabled();
-  await page.getByTestId('summon-card-starter:goku:001').click(); await builder.getByRole('tab').nth(1).click(); for (const id of ['goku', 'naruto', 'luffy']) await page.getByTestId(`summon-card-starter:${id}:001`).click(); await builder.getByRole('tab').nth(2).click(); for (const id of ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']) await page.getByTestId(`summon-card-starter:${id}:001`).click();
-  await expect(start).toBeEnabled(); await start.click(); await expect(page.getByTestId('tutorial-coach')).toContainText('Take the win');
-  const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}')); expect(checkpoint.currentStepId).toBe('raid_complete'); expect(checkpoint.raidSnapshot.round1).toHaveLength(1); expect(checkpoint.raidSnapshot.round2).toHaveLength(3); expect(checkpoint.raidSnapshot.round3).toHaveLength(6); expect(checkpoint.raidSnapshot.round1[0].instanceId).toBe(checkpoint.raidSnapshot.round2[0].instanceId); expect(new Set(checkpoint.raidSnapshot.round3.map((entry: { instanceId: string }) => entry.instanceId)).size).toBe(6); expect(errors).toEqual([]);
+  const builder = page.getByTestId('raid-squad-builder'); await expect(page.getByTestId('raid-start')).toBeDisabled();
+  for (const [index, id] of ['goku', 'naruto'].entries()) await placeRaidSummon(page, id, { x: index, z: 4 }); await page.getByTestId('raid-start').click();
+  await expect(builder).toContainText('ROUND 2 · 4v4', { timeout: 12_000 });
+  for (const [index, id] of ['goku', 'naruto', 'luffy', 'eren'].entries()) await placeRaidSummon(page, id, { x: index, z: 4 }); await page.getByTestId('raid-start').click();
+  await expect(builder).toContainText('ROUND 3 · 6v6', { timeout: 12_000 });
+  for (const [index, id] of ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch'].entries()) await placeRaidSummon(page, id, { x: index, z: 4 }); await page.getByTestId('raid-start').click();
+  await expect(page.getByTestId('tutorial-coach')).toContainText('You’re ready', { timeout: 12_000 });
+  const checkpoint = await page.evaluate(() => JSON.parse(localStorage.getItem('psyblr:tutorial:v1') ?? '{}')); expect(checkpoint.raidSnapshot.round1).toHaveLength(2); expect(checkpoint.raidSnapshot.round2).toHaveLength(4); expect(checkpoint.raidSnapshot.round3).toHaveLength(6); expect(checkpoint.raidSnapshot.round1[0].instanceId).toBe(checkpoint.raidSnapshot.round2[0].instanceId); expect(new Set(checkpoint.raidSnapshot.round3.map((entry: { instanceId: string }) => entry.instanceId)).size).toBe(6); expect(errors).toEqual([]);
 });
-test('mobile landscape raid builder restores partial selection without horizontal page overflow', async ({ page }) => {
-  test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage'); const checkpoint = raidCheckpoint('raid_open'); checkpoint.raidDraft.round1[0] = 'starter:goku:001';
-  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), checkpoint); await page.goto('/'); const builder = page.getByTestId('raid-squad-builder'); await expect(builder).toBeVisible(); await builder.getByRole('tab').nth(2).click(); for (const id of ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch']) await page.getByTestId(`summon-card-starter:${id}:001`).tap(); await expect(builder).toContainText('6 / 6'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+test('mobile landscape raid builder selects a field placement without horizontal page overflow', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile-landscape', 'Mobile landscape coverage'); const checkpoint = raidCheckpoint('raid_open');
+  await page.addInitScript((value) => localStorage.setItem('psyblr:tutorial:v1', JSON.stringify(value)), checkpoint); await page.goto('/'); const builder = page.getByTestId('raid-squad-builder'); await expect(builder).toBeVisible(); await expect(builder).toContainText('0 / 2'); await page.getByTestId('summon-card-starter:naruto:001').tap(); await expect(builder).toBeHidden(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test.describe('portrait orientation gate', () => {

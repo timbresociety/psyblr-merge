@@ -1,16 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import type { BattlefieldPlacement } from '@psyblr/contracts';
+import { combatFunctionDefinitions, originDefinitions, summonDefinitions } from '@psyblr/game-content';
 import {
   canDeploySummon,
   isBattleCellOccupied,
   isPlayerDeploymentCell,
   MAX_PLAYER_DEPLOYED_SUMMONS,
   recallBattlefieldPlacement,
+  resolveFormationSynergies,
 } from './index';
 
 const placement = (summonInstanceId: string, x: number, z: number): BattlefieldPlacement => ({
   summonInstanceId,
   cell: { x, z },
+});
+
+describe('formation synergies', () => {
+  it('activates each starter pair only for its members', () => {
+    const one = resolveFormationSynergies([summonDefinitions[0]!], originDefinitions, combatFunctionDefinitions);
+    expect(one.entries.find((entry) => entry.id === 'ascendant')?.activeThreshold).toBeNull();
+    const all = resolveFormationSynergies(summonDefinitions, originDefinitions, combatFunctionDefinitions);
+    expect(all.entries.filter((entry) => entry.activeThreshold?.count === 2)).toHaveLength(6);
+    expect(all.byDefinitionId.goku?.attackSpeedPct).toBe(.08);
+    expect(all.byDefinitionId.goku?.basicAttackDamagePct).toBe(.1);
+    expect(all.byDefinitionId.naruto?.statusDurationPct).toBe(.1);
+    expect(all.byDefinitionId.eren?.maxHpPct).toBe(.08);
+    expect(all.byDefinitionId.eren?.durabilityPct).toBe(.1);
+  });
 });
 
 describe('battlefield placement rules', () => {

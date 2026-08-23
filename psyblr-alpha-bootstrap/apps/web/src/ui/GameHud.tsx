@@ -1,6 +1,7 @@
-import { useGameStore } from '../stores/gameStore';
+import { tutorialAllows, useGameStore } from '../stores/gameStore';
 import { getSkillDefinition, getSummonDefinition } from '@psyblr/game-content';
 import { requestManualSkillCast, setBattleAutoCast, startCampaignBattle } from '../game/battleSession';
+import { retryTutorialBattle } from '../tutorial/controller';
 
 export function GameHud() {
   const scene = useGameStore((state) => state.scene);
@@ -15,6 +16,7 @@ export function GameHud() {
   const autoCast = useGameStore((state) => state.autoCast);
   const openSummonTray = useGameStore((state) => state.openSummonTray);
   const teamReady = placements.length === 6;
+  const tutorialActive = useGameStore((state) => state.tutorialStepId !== null);
 
   return <section className="hud" aria-label="Game controls">
     <div className="hud-top">
@@ -24,8 +26,8 @@ export function GameHud() {
     </div>
     <nav className="nav-dock" aria-label="World navigation">
       <button onClick={() => setScene('campaign')} data-active={scene === 'campaign'}>Campaign</button>
-      <button onClick={() => setScene('base')} data-active={scene === 'base'}>Camp</button>
-      <button onClick={() => setScene('raid')} data-active={scene === 'raid'}>Raid</button>
+      <button onClick={() => setScene('base')} data-active={scene === 'base'} disabled={tutorialActive} title={tutorialActive ? 'Complete Campaign onboarding first' : undefined}>Camp</button>
+      <button onClick={() => setScene('raid')} data-active={scene === 'raid'} disabled={tutorialActive} title={tutorialActive ? 'Complete Campaign onboarding first' : undefined}>Raid</button>
     </nav>
     <div className="action-stack">
       {scene === 'campaign' && battlePhase === 'setup' && <button
@@ -42,14 +44,14 @@ export function GameHud() {
             const skill = getSkillDefinition(unit.skill1Id ?? '');
             const ready = readySkillActorIds.includes(unit.id);
             const dead = deadUnitIds.includes(unit.id);
-            return <button key={unit.id} type="button" className="battle-skill" data-ready={ready} disabled={!ready || dead} data-testid={`battle-skill-${unit.id}`} onClick={() => requestManualSkillCast(unit.id)}>
+            return <button key={unit.id} type="button" className="battle-skill" data-ready={ready} disabled={!ready || dead || !tutorialAllows('CAST_SKILL_1')} data-testid={`battle-skill-${unit.id}`} data-tutorial-target={`battle-skill-${unit.id}`} onClick={() => requestManualSkillCast(unit.id)}>
               <span>{definition.displayName}</span><small>{skill.name}</small><em>{dead ? 'DOWN' : ready ? 'READY' : 'CHARGING'}</em>
             </button>;
           })}
         </div>
-        <button type="button" className="auto-cast" data-enabled={autoCast} data-testid="battle-auto-cast" onClick={() => setBattleAutoCast(!autoCast)}>AUTO {autoCast ? 'ON' : 'OFF'}</button>
+        <button type="button" className="auto-cast" data-enabled={autoCast} data-testid="battle-auto-cast" data-tutorial-target="autocast-toggle" disabled={!tutorialAllows('TOGGLE_AUTO_CAST') && !autoCast} onClick={() => setBattleAutoCast(!autoCast)}>AUTO {autoCast ? 'ON' : 'OFF'}</button>
       </div>}
-      {scene === 'campaign' && (battlePhase === 'victory' || battlePhase === 'defeat' || battlePhase === 'draw') && <div className="battle-result" data-testid="battle-result">{battlePhase.toUpperCase()}</div>}
+      {scene === 'campaign' && (battlePhase === 'victory' || battlePhase === 'defeat' || battlePhase === 'draw') && <div className="battle-result" data-testid="battle-result">{battlePhase.toUpperCase()}{battlePhase !== 'victory' && <button type="button" onClick={retryTutorialBattle}>RETRY</button>}</div>}
       {battlePhase === 'setup' && <button
         type="button"
         className="primary-action"

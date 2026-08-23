@@ -1,4 +1,5 @@
 import { useGameStore } from '../stores/gameStore';
+import { resetTutorial, tutorialControllerDebug } from '../tutorial/controller';
 export function DebugPanel() {
   const debugOpen = useGameStore((state) => state.debugOpen);
   const scene = useGameStore((state) => state.scene);
@@ -15,6 +16,7 @@ export function DebugPanel() {
   const readySkillActorIds = useGameStore((state) => state.readySkillActorIds);
   const autoCast = useGameStore((state) => state.autoCast);
   const battleSnapshot = useGameStore((state) => state.battleSnapshot);
+  const tutorialContext = useGameStore((state) => state.tutorialContext);
 
   if (!debugOpen) return null;
 
@@ -23,6 +25,9 @@ export function DebugPanel() {
     <dl>
       <dt>scene</dt><dd>{scene}</dd>
       <dt>tutorial</dt><dd>{tutorialStepId}</dd>
+      <dt>first summon</dt><dd>{tutorialContext.firstSummonInstanceId ?? '—'}</dd>
+      <dt>tutorial pause</dt><dd>{tutorialControllerDebug().paused ? 'yes' : 'no'}</dd>
+      <dt>tutorial store</dt><dd>localStorage</dd>
       <dt>board</dt><dd>{boardOccupancy} / {boardCapacity}</dd>
       <dt>balls</dt><dd>{balls} / {ballCapacity}</dd>
       <dt>seed</dt><dd>{simulationSeed}</dd>
@@ -35,5 +40,6 @@ export function DebugPanel() {
       <dt>fps</dt><dd data-testid="debug-fps">{performance.fps || 'sampling…'}</dd>
       <dt>frame</dt><dd>{performance.frameTimeMs ? `${performance.frameTimeMs} ms` : 'sampling…'}</dd>
     </dl>
+    <button type="button" onClick={resetTutorial}>RESET TUTORIAL</button>
   </aside>;
 }

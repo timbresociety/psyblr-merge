@@ -1,4 +1,4 @@
-import type { BattleCell, BattlefieldPlacement, CampCell, Tier } from '@psyblr/contracts';
+import type { BattleCell, BattlefieldPlacement, CampCell, CombatFunctionDefinition, OriginDefinition, SummonDefinition, SynergyEffect, Tier } from '@psyblr/contracts';
 
 export const TIERS: readonly Tier[] = ['F','E','D','C','B','A','S','SS','SSS'];
 export const TIER_MULTIPLIER: Record<Tier, number> = {F:1,E:1.15,D:1.35,C:1.6,B:1.9,A:2.25,S:2.65,SS:3.1,SSS:3.65};
@@ -59,4 +59,38 @@ export function recallBattlefieldPlacement(
   placements: readonly BattlefieldPlacement[],
 ): BattlefieldPlacement[] {
   return placements.filter((placement) => placement.summonInstanceId !== summonInstanceId);
+}
+
+export type ResolvedSynergy = {
+  kind: 'origin' | 'combatFunction'; id: string; name: string; count: number;
+  activeThreshold: { count: number; effect: string; mechanics: SynergyEffect[] } | null;
+  nextThreshold: { count: number; effect: string } | null;
+};
+export type SummonSynergyModifiers = { maxHpPct: number; attackSpeedPct: number; skillPowerPct: number; basicAttackDamagePct: number; statusDurationPct: number; durabilityPct: number };
+export type FormationSynergy = { entries: ResolvedSynergy[]; byDefinitionId: Record<string, SummonSynergyModifiers> };
+const emptyModifiers = (): SummonSynergyModifiers => ({ maxHpPct: 0, attackSpeedPct: 0, skillPowerPct: 0, basicAttackDamagePct: 0, statusDurationPct: 0, durabilityPct: 0 });
+const modifierKey: Record<SynergyEffect['stat'], keyof SummonSynergyModifiers> = { max_hp_pct: 'maxHpPct', attack_speed_pct: 'attackSpeedPct', skill_power_pct: 'skillPowerPct', basic_attack_damage_pct: 'basicAttackDamagePct', status_duration_pct: 'statusDurationPct', durability_pct: 'durabilityPct' };
+
+export function resolveFormationSynergies(
+  summons: readonly SummonDefinition[], origins: readonly OriginDefinition[], combatFunctions: readonly CombatFunctionDefinition[],
+): FormationSynergy {
+  const resolve = (kind: ResolvedSynergy['kind'], definitions: readonly (OriginDefinition | CombatFunctionDefinition)[], key: 'originId' | 'combatFunctionId'): ResolvedSynergy[] => definitions.map((definition) => {
+    const count = summons.filter((summon) => summon[key] === definition.id).length;
+    const thresholds = [...definition.thresholds].sort((a, b) => a.count - b.count);
+    const activeThreshold = thresholds.filter((threshold) => threshold.count <= count).at(-1) ?? null;
+    const nextThreshold = thresholds.find((threshold) => threshold.count > count) ?? null;
+    return { kind, id: definition.id, name: definition.name, count, activeThreshold, nextThreshold };
+  });
+  const entries = [...resolve('origin', origins, 'originId'), ...resolve('combatFunction', combatFunctions, 'combatFunctionId')];
+  const byDefinitionId: Record<string, SummonSynergyModifiers> = {};
+  for (const summon of summons) {
+    const modifiers = emptyModifiers();
+    for (const entry of entries) {
+      const belongs = entry.kind === 'origin' ? summon.originId === entry.id : summon.combatFunctionId === entry.id;
+      if (!belongs || !entry.activeThreshold) continue;
+      for (const effect of entry.activeThreshold.mechanics) modifiers[modifierKey[effect.stat]] += effect.value;
+    }
+    byDefinitionId[summon.id] = modifiers;
+  }
+  return { entries, byDefinitionId };
 }

@@ -6,11 +6,15 @@ import { OrientationGate } from './ui/OrientationGate';
 import { SummonDetailsDrawer } from './ui/summons/SummonDetailsDrawer';
 import { SummonTray } from './ui/summons/SummonTray';
 import { useGameStore } from './stores/gameStore';
+import { TutorialOverlay } from './ui/TutorialOverlay';
+import { FormationSynergyPanel } from './ui/FormationSynergyPanel';
+import { initializeTutorialController } from './tutorial/controller';
 
 export function App() {
   const toggleDebug = useGameStore((state) => state.toggleDebug);
 
   useEffect(() => {
+    initializeTutorialController();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === '`') toggleDebug();
       if (event.key === 'Escape') {
@@ -26,9 +30,11 @@ export function App() {
   return <main className="app-shell">
     <GameCanvas />
     <GameHud />
+    <FormationSynergyPanel />
     <SummonTray />
     <SummonDetailsDrawer />
     <DebugPanel />
+    <TutorialOverlay />
     <OrientationGate />
   </main>;
 }

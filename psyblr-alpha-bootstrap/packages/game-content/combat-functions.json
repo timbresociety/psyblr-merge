@@ -5,11 +5,11 @@
     "thresholds": [
       {
         "count": 2,
-        "effect": "+10% basic attack damage"
+        "effect": "+10% basic attack damage", "mechanics": [{"stat":"basic_attack_damage_pct","value":0.10}]
       },
       {
         "count": 4,
-        "effect": "+20%"
+        "effect": "+20% basic attack damage", "mechanics": [{"stat":"basic_attack_damage_pct","value":0.20}]
       }
     ]
   },
@@ -19,11 +19,11 @@
     "thresholds": [
       {
         "count": 2,
-        "effect": "+10% status duration"
+        "effect": "+10% status duration", "mechanics": [{"stat":"status_duration_pct","value":0.10}]
       },
       {
         "count": 4,
-        "effect": "+20%"
+        "effect": "+20% status duration", "mechanics": [{"stat":"status_duration_pct","value":0.20}]
       }
     ]
   },
@@ -33,11 +33,11 @@
     "thresholds": [
       {
         "count": 2,
-        "effect": "+10% durability"
+        "effect": "+10% durability", "mechanics": [{"stat":"durability_pct","value":0.10}]
       },
       {
         "count": 4,
-        "effect": "+20%"
+        "effect": "+20% durability", "mechanics": [{"stat":"durability_pct","value":0.20}]
       }
     ]
   }

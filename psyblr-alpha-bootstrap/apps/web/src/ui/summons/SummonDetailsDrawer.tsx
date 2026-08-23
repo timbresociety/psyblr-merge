@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getCombatFunctionDefinition, getOriginDefinition, getSkillDefinition, getSummonDefinition } from '@psyblr/game-content';
 import type { SummonDefinition } from '@psyblr/contracts';
 import { useGameStore } from '../../stores/gameStore';
 import { SummonPortrait } from './SummonPortrait';
+import { emitCampaignInteraction } from '../../game/interactionEvents';
+import { tutorialAllows } from '../../stores/gameStore';
 
 type DetailTab = 'overview' | 'stats' | 'skills';
 
@@ -24,6 +26,7 @@ export function SummonDetailsDrawer() {
   const close = useGameStore((state) => state.closeSummonDetails);
   const beginPlacement = useGameStore((state) => state.beginPlacement);
   const recallSummon = useGameStore((state) => state.recallSummon);
+  useEffect(() => { setTab('overview'); }, [selectedSummonInstanceId]);
 
   const instance = inventory.find((entry) => entry.id === selectedSummonInstanceId);
   if (!open || !instance) return null;
@@ -37,7 +40,7 @@ export function SummonDetailsDrawer() {
     const placement = placements.find((entry) => entry.summonInstanceId === instance.id);
 
     return <aside className="summon-details" id="summon-detail-panel" data-tutorial-target="summon-detail-panel" aria-label={`${definition.displayName} details`} data-testid="summon-detail-panel">
-      <header className="summon-detail-header">
+      <header className="summon-detail-header" data-tutorial-target="summon-identity-header">
         <SummonPortrait definition={definition} size="drawer" />
         <div><span className="tier-badge">F TIER</span><h2>{definition.displayName}</h2><p>{origin.name} · {combatFunction.name}</p></div>
         <button type="button" className="icon-button" onClick={close} aria-label="Close summon details">×</button>
@@ -49,7 +52,14 @@ export function SummonDetailsDrawer() {
           type="button"
           role="tab"
           aria-selected={tab === item}
-          onClick={() => setTab(item)}
+          data-tutorial-target={item === 'stats' ? 'summon-stats-tab' : item === 'skills' ? 'summon-skills-tab' : 'summon-overview-tab'}
+          onClick={() => {
+            if (item === 'stats' && !tutorialAllows('VIEW_STATS')) return;
+            if (item === 'skills' && !tutorialAllows('VIEW_SKILLS')) return;
+            setTab(item);
+            if (item === 'stats') emitCampaignInteraction({ type: 'STATS_VIEWED', summonInstanceId: instance.id });
+            if (item === 'skills') emitCampaignInteraction({ type: 'SKILLS_VIEWED', summonInstanceId: instance.id });
+          }}
         >{item.toUpperCase()}</button>)}
       </div>
       <div className="detail-body">
@@ -67,7 +77,7 @@ export function SummonDetailsDrawer() {
           <span>DEPLOYED · X {placement.cell.x + 1}, Z {placement.cell.z + 1}</span>
           <button type="button" onClick={() => beginPlacement(instance.id)}>REPOSITION</button>
           <button type="button" className="secondary-button" onClick={() => recallSummon(instance.id)}>RECALL</button>
-        </> : <button type="button" onClick={() => beginPlacement(instance.id)}>PLACE SUMMON</button>}
+        </> : <button type="button" data-tutorial-target="place-summon-button" onClick={() => beginPlacement(instance.id)}>PLACE SUMMON</button>}
       </footer>
     </aside>;
   } catch {

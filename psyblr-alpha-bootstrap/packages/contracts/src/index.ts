@@ -39,9 +39,16 @@ export const BattlefieldPlacementSchema = z.object({
 });
 export type BattlefieldPlacement = z.infer<typeof BattlefieldPlacementSchema>;
 
+export const SynergyEffectSchema = z.object({
+  stat: z.enum(['attack_speed_pct', 'max_hp_pct', 'skill_power_pct', 'basic_attack_damage_pct', 'status_duration_pct', 'durability_pct']),
+  value: z.number().nonnegative(),
+});
+export type SynergyEffect = z.infer<typeof SynergyEffectSchema>;
+
 const SynergyThresholdSchema = z.object({
   count: z.number().int().positive(),
   effect: z.string().min(1),
+  mechanics: z.array(SynergyEffectSchema).default([]),
 });
 
 export const OriginDefinitionSchema = z.object({
@@ -92,11 +99,21 @@ export const RaidSquadSchema = z.object({
   round3: z.array(z.string()).length(6).refine(v => new Set(v).size === 6, 'Round 3 summons must be unique')
 });
 
+export const TutorialActionSchema = z.enum([
+  'OPEN_INVENTORY', 'SELECT_SUMMON', 'VIEW_STATS', 'VIEW_SKILLS', 'PLACE_SUMMON', 'REPOSITION_SUMMON',
+  'RECALL_SUMMON', 'INSPECT_SUMMON', 'VIEW_SYNERGIES', 'START_BATTLE', 'CAST_SKILL_1', 'TOGGLE_AUTO_CAST',
+  'TUTORIAL_CONTINUE', 'MOVE_CAMP_SUMMON', 'OPEN_SPAWN_MACHINE', 'DROP_BALL', 'LONG_PRESS_DROP', 'MERGE_SUMMONS',
+  'VIEW_PROGRESS', 'SELECT_RAID_SUMMON', 'START_RAID', 'SELECT_STEAL', 'CONFIRM_STEAL', 'SELECT_DEFENSE_SUMMON', 'SAVE_DEFENSE',
+]);
+export type TutorialAction = z.infer<typeof TutorialActionSchema>;
+
 export const TutorialStepSchema = z.object({
   id: z.string(), phase: z.string(), scene: z.enum(['campaign','base','raid','opponentCamp']),
   cameraPreset: z.string().nullable(), title: z.string(), body: z.string(),
-  highlightTarget: z.string().nullable(), allowedActions: z.array(z.string()), completionEvent: z.string(), nextStep: z.string().nullable()
+  highlightTarget: z.string().nullable(), allowedActions: z.array(TutorialActionSchema), completionEvent: z.string(),
+  completionMatch: z.record(z.string(), z.string().or(z.number()).or(z.boolean()).or(z.null())).optional(), nextStep: z.string().nullable()
 });
+export type TutorialStep = z.infer<typeof TutorialStepSchema>;
 
 export const CombatSideSchema = z.enum(['player', 'enemy']);
 export type CombatSide = z.infer<typeof CombatSideSchema>;
@@ -114,6 +131,9 @@ export const CombatUnitSnapshotSchema = z.object({
   moveSpeed: z.number().positive(),
   skill1Id: z.string().min(1).nullable(),
   skill1: SkillMechanicsSchema.nullable(),
+  basicAttackDamagePct: z.number().nonnegative().default(0),
+  skillPowerPct: z.number().nonnegative().default(0),
+  statusDurationPct: z.number().nonnegative().default(0),
 });
 export type CombatUnitSnapshot = z.infer<typeof CombatUnitSnapshotSchema>;
 

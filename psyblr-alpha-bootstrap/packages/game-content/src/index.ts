@@ -10,18 +10,22 @@ import {
   type SkillDefinition,
   type SummonDefinition,
   type SummonInstance,
+  TutorialStepSchema,
+  type TutorialStep,
 } from '@psyblr/contracts';
 import combatFunctionsJson from '../combat-functions.json';
 import originsJson from '../origins.json';
 import skillsJson from '../skills.json';
 import summonsJson from '../summons.json';
 import creepsJson from '../creeps.json';
+import tutorialJson from '../tutorial.json';
 
 export const summonDefinitions = SummonDefinitionSchema.array().parse(summonsJson);
 export const originDefinitions = OriginDefinitionSchema.array().parse(originsJson);
 export const combatFunctionDefinitions = CombatFunctionDefinitionSchema.array().parse(combatFunctionsJson);
 export const skillDefinitions = SkillDefinitionSchema.array().parse(skillsJson);
 export const creepDefinitions = CreepDefinitionSchema.array().parse(creepsJson);
+export const tutorialDefinitions: TutorialStep[] = TutorialStepSchema.array().parse(tutorialJson);
 
 function getById<T extends { id: string }>(collection: readonly T[], id: string, label: string): T {
   const definition = collection.find((entry) => entry.id === id);

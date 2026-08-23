@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { createStarterSummonInstances } from '@psyblr/game-content';
 import { canDeploySummon, recallBattlefieldPlacement } from '@psyblr/game-rules';
-import type { BattleCell, BattlefieldPlacement, CombatEvent, CombatSnapshot, SummonInstance } from '@psyblr/contracts';
+import type { BattleCell, BattlefieldPlacement, CombatEvent, CombatSnapshot, SummonInstance, TutorialAction } from '@psyblr/contracts';
+import { tutorialDefinitions } from '@psyblr/game-content';
+import { isTutorialActionAllowed, type TutorialContext } from '@psyblr/tutorial-core';
 import { sameBattleCell } from '../game/battlefield';
 import { emitCampaignInteraction } from '../game/interactionEvents';
 
@@ -34,7 +36,9 @@ type GameState = {
   summonDetailsOpen: boolean;
   placementMode: PlacementMode;
   hoveredBattleCell: BattleCell | null;
-  tutorialStepId: string;
+  tutorialStepId: string | null;
+  tutorialCompletedStepIds: string[];
+  tutorialContext: TutorialContext;
   boardOccupancy: number;
   boardCapacity: number;
   balls: number;
@@ -58,7 +62,14 @@ type GameState = {
   recallSummon: (id: string) => void;
   cancelPlacement: () => void;
   reportPerformance: (performance: PerformanceSnapshot) => void;
+  setTutorial: (stepId: string | null, completedStepIds: string[], context: TutorialContext) => void;
+  restoreSetup: (inventory: SummonInstance[], placements: BattlefieldPlacement[]) => void;
 };
+
+export function tutorialAllows(action: TutorialAction): boolean {
+  const state = useGameStore.getState();
+  return isTutorialActionAllowed({ currentStepId: state.tutorialStepId, completedStepIds: state.tutorialCompletedStepIds, context: state.tutorialContext }, action, tutorialDefinitions);
+}
 
 export const useGameStore = create<GameState>((set, get) => ({
   scene: 'campaign',
@@ -79,13 +90,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   placementMode: 'idle',
   hoveredBattleCell: null,
   tutorialStepId: 'campaign_open_inventory',
+  tutorialCompletedStepIds: [],
+  tutorialContext: {},
   boardOccupancy: 0,
   boardCapacity: 64,
   balls: 100,
   ballCapacity: 100,
   simulationSeed: 'tutorial-001',
   performance: { fps: 0, frameTimeMs: 0 },
-  setScene: (scene) => set({ scene }),
+  setScene: (scene) => { if (scene === 'campaign' || useGameStore.getState().tutorialStepId === null) set({ scene }); },
   toggleDebug: () => set((state) => ({ debugOpen: !state.debugOpen })),
   setAutoCast: (autoCast) => set({ autoCast }),
   beginBattle: (battleSnapshot, battleEvents, battleUnits) => set({
@@ -100,9 +113,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     battlePhase, battleEvents: [...state.battleEvents, ...events], readySkillActorIds: [],
   })),
   openSummonTray: () => {
-    if (get().battlePhase !== 'setup') return;
+    if (get().battlePhase !== 'setup' || !tutorialAllows('OPEN_INVENTORY')) return;
     set({ summonTrayOpen: true });
-    emitCampaignInteraction('INVENTORY_OPENED');
+    emitCampaignInteraction({ type: 'INVENTORY_OPENED' });
   },
   closeSummonTray: () => set({
     summonTrayOpen: false,
@@ -116,21 +129,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     hoveredBattleCell: null,
   }),
   selectSummon: (selectedSummonInstanceId) => {
-    if (get().battlePhase !== 'setup') return;
+    if (get().battlePhase !== 'setup' || !tutorialAllows('SELECT_SUMMON')) return;
     set({
       selectedSummonInstanceId,
       summonDetailsOpen: selectedSummonInstanceId !== null,
       placementMode: selectedSummonInstanceId === null ? 'idle' : 'selected',
       hoveredBattleCell: null,
     });
-    if (selectedSummonInstanceId) emitCampaignInteraction('SUMMON_SELECTED', selectedSummonInstanceId);
+    if (selectedSummonInstanceId) emitCampaignInteraction({ type: 'SUMMON_SELECTED', summonInstanceId: selectedSummonInstanceId });
   },
   beginPlacement: (selectedSummonInstanceId) => {
-    if (get().battlePhase !== 'setup') return;
+    if (get().battlePhase !== 'setup' || !(tutorialAllows('PLACE_SUMMON') || tutorialAllows('REPOSITION_SUMMON'))) return;
     set({ selectedSummonInstanceId, summonDetailsOpen: true, placementMode: 'selected', hoveredBattleCell: null });
   },
   beginSummonDrag: (selectedSummonInstanceId) => {
-    if (get().battlePhase !== 'setup') return;
+    if (get().battlePhase !== 'setup' || !tutorialAllows('PLACE_SUMMON')) return;
     set({
       selectedSummonInstanceId,
       summonTrayOpen: true,
@@ -138,14 +151,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       placementMode: 'dragging',
       hoveredBattleCell: null,
     });
-    emitCampaignInteraction('SUMMON_DRAG_STARTED', selectedSummonInstanceId);
+    emitCampaignInteraction({ type: 'SUMMON_DRAG_STARTED', summonInstanceId: selectedSummonInstanceId });
   },
   setHoveredBattleCell: (hoveredBattleCell) => set((state) => (
     state.battlePhase !== 'setup' || sameBattleCell(state.hoveredBattleCell, hoveredBattleCell) ? state : { hoveredBattleCell }
   )),
   requestPlacement: (cell) => {
     const state = get();
-    if (state.battlePhase !== 'setup') return;
+    if (state.battlePhase !== 'setup' || !(tutorialAllows('PLACE_SUMMON') || tutorialAllows('REPOSITION_SUMMON'))) return;
     const instanceId = state.selectedSummonInstanceId;
     if (!instanceId || !canDeploySummon(instanceId, cell, state.placements)) return;
     const withoutCurrent = state.placements.filter((placement) => placement.summonInstanceId !== instanceId);
@@ -154,13 +167,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       placements,
       boardOccupancy: placements.length,
       placementMode: 'idle',
+      summonDetailsOpen: false,
+      summonTrayOpen: placements.length === 6 ? false : state.summonTrayOpen,
       hoveredBattleCell: null,
     });
-    emitCampaignInteraction('SUMMON_PLACED', instanceId);
-    if (placements.length === 6) emitCampaignInteraction('TEAM_SIZE_6');
+    emitCampaignInteraction({ type: 'SUMMON_PLACED', summonInstanceId: instanceId });
+    if (placements.length === 6) emitCampaignInteraction({ type: 'TEAM_SIZE_6' });
   },
   recallSummon: (id) => set((state) => {
-    if (state.battlePhase !== 'setup') return state;
+    if (state.battlePhase !== 'setup' || !tutorialAllows('RECALL_SUMMON')) return state;
     const placements = recallBattlefieldPlacement(id, state.placements);
     return {
       placements,
@@ -171,4 +186,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   cancelPlacement: () => { if (get().battlePhase === 'setup') set({ placementMode: 'idle', hoveredBattleCell: null }); },
   reportPerformance: (performance) => set({ performance }),
+  setTutorial: (tutorialStepId, tutorialCompletedStepIds, tutorialContext) => set({ tutorialStepId, tutorialCompletedStepIds, tutorialContext }),
+  restoreSetup: (inventory, placements) => set({ inventory, placements, boardOccupancy: placements.length }),
 }));

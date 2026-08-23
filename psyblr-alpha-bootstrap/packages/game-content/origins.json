@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ascendant",
+    "name": "Ascendant",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% attack speed"
+      },
+      {
+        "count": 4,
+        "effect": "+16% attack speed"
+      },
+      {
+        "count": 6,
+        "effect": "+25% attack speed"
+      }
+    ]
+  },
+  {
+    "id": "rebel",
+    "name": "Rebel",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% max HP"
+      },
+      {
+        "count": 4,
+        "effect": "+16% max HP"
+      },
+      {
+        "count": 6,
+        "effect": "+25% max HP"
+      }
+    ]
+  },
+  {
+    "id": "mastermind",
+    "name": "Mastermind",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% skill power"
+      },
+      {
+        "count": 4,
+        "effect": "+16% skill power"
+      },
+      {
+        "count": 6,
+        "effect": "+25% skill power"
+      }
+    ]
+  }
+]

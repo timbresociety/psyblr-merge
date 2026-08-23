@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "summonId": "eren",
+  "displayName": "Eren",
+  "fallbackColor": "#6B7280",
+  "forms": {
+    "0": "models/form_0.glb",
+    "1": "models/form_1.glb",
+    "2": "models/form_2.glb",
+    "3": "models/form_3.glb"
+  },
+  "portraits": {
+    "0": "portraits/form_0.webp",
+    "1": "portraits/form_1.webp",
+    "2": "portraits/form_2.webp",
+    "3": "portraits/form_3.webp"
+  },
+  "animations": [
+    "idle",
+    "walk",
+    "run",
+    "basic_attack",
+    "skill_1",
+    "skill_2",
+    "ultimate",
+    "hit",
+    "death",
+    "victory"
+  ],
+  "requiredSockets": [
+    "SummonRoot",
+    "Head",
+    "Chest",
+    "Hand_L",
+    "Hand_R",
+    "ProjectileOrigin",
+    "VFX_Center",
+    "VFX_Ground",
+    "HealthBarAnchor"
+  ]
+}

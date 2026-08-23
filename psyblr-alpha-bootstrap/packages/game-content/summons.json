@@ -1,0 +1,128 @@
+[
+  {
+    "id": "goku",
+    "displayName": "Goku",
+    "originId": "ascendant",
+    "combatFunctionId": "striker",
+    "stats": {
+      "hp": 1000,
+      "atk": 120,
+      "def": 70,
+      "attacksPerSecond": 1.1,
+      "range": 2.5,
+      "moveSpeed": 4.6
+    },
+    "skills": {
+      "basic": "goku_basic",
+      "skill1": "goku_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/goku/manifest.json"
+  },
+  {
+    "id": "naruto",
+    "displayName": "Naruto",
+    "originId": "ascendant",
+    "combatFunctionId": "controller",
+    "stats": {
+      "hp": 950,
+      "atk": 100,
+      "def": 65,
+      "attacksPerSecond": 1.15,
+      "range": 3.0,
+      "moveSpeed": 4.8
+    },
+    "skills": {
+      "basic": "naruto_basic",
+      "skill1": "naruto_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/naruto/manifest.json"
+  },
+  {
+    "id": "luffy",
+    "displayName": "Luffy",
+    "originId": "rebel",
+    "combatFunctionId": "striker",
+    "stats": {
+      "hp": 1150,
+      "atk": 110,
+      "def": 80,
+      "attacksPerSecond": 1.05,
+      "range": 1.5,
+      "moveSpeed": 5.0
+    },
+    "skills": {
+      "basic": "luffy_basic",
+      "skill1": "luffy_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/luffy/manifest.json"
+  },
+  {
+    "id": "eren",
+    "displayName": "Eren",
+    "originId": "rebel",
+    "combatFunctionId": "disruptor",
+    "stats": {
+      "hp": 1400,
+      "atk": 105,
+      "def": 100,
+      "attacksPerSecond": 0.85,
+      "range": 1.25,
+      "moveSpeed": 4.0
+    },
+    "skills": {
+      "basic": "eren_basic",
+      "skill1": "eren_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/eren/manifest.json"
+  },
+  {
+    "id": "l",
+    "displayName": "L",
+    "originId": "mastermind",
+    "combatFunctionId": "controller",
+    "stats": {
+      "hp": 800,
+      "atk": 80,
+      "def": 55,
+      "attacksPerSecond": 1.0,
+      "range": 4.5,
+      "moveSpeed": 4.2
+    },
+    "skills": {
+      "basic": "l_basic",
+      "skill1": "l_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/l/manifest.json"
+  },
+  {
+    "id": "lelouch",
+    "displayName": "Lelouch",
+    "originId": "mastermind",
+    "combatFunctionId": "disruptor",
+    "stats": {
+      "hp": 820,
+      "atk": 85,
+      "def": 60,
+      "attacksPerSecond": 0.95,
+      "range": 4.0,
+      "moveSpeed": 4.2
+    },
+    "skills": {
+      "basic": "lelouch_basic",
+      "skill1": "lelouch_skill_1",
+      "skill2": null,
+      "ultimate": null
+    },
+    "assetManifest": "/assets/summons/lelouch/manifest.json"
+  }
+]

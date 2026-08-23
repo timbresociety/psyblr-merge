@@ -1,0 +1,50 @@
+import {
+  CombatFunctionDefinitionSchema,
+  OriginDefinitionSchema,
+  SkillDefinitionSchema,
+  SummonDefinitionSchema,
+  type CombatFunctionDefinition,
+  type OriginDefinition,
+  type SkillDefinition,
+  type SummonDefinition,
+  type SummonInstance,
+} from '@psyblr/contracts';
+import combatFunctionsJson from '../combat-functions.json';
+import originsJson from '../origins.json';
+import skillsJson from '../skills.json';
+import summonsJson from '../summons.json';
+
+export const summonDefinitions = SummonDefinitionSchema.array().parse(summonsJson);
+export const originDefinitions = OriginDefinitionSchema.array().parse(originsJson);
+export const combatFunctionDefinitions = CombatFunctionDefinitionSchema.array().parse(combatFunctionsJson);
+export const skillDefinitions = SkillDefinitionSchema.array().parse(skillsJson);
+
+function getById<T extends { id: string }>(collection: readonly T[], id: string, label: string): T {
+  const definition = collection.find((entry) => entry.id === id);
+  if (!definition) throw new Error(`Unknown ${label} id: ${id}`);
+  return definition;
+}
+
+export function getSummonDefinition(id: string): SummonDefinition {
+  return getById(summonDefinitions, id, 'summon definition');
+}
+
+export function getOriginDefinition(id: string): OriginDefinition {
+  return getById(originDefinitions, id, 'origin definition');
+}
+
+export function getCombatFunctionDefinition(id: string): CombatFunctionDefinition {
+  return getById(combatFunctionDefinitions, id, 'combat function definition');
+}
+
+export function getSkillDefinition(id: string): SkillDefinition {
+  return getById(skillDefinitions, id, 'skill definition');
+}
+
+export function createStarterSummonInstances(): SummonInstance[] {
+  return summonDefinitions.map((definition) => ({
+    id: `starter:${definition.id}:001`,
+    definitionId: definition.id,
+    tier: 'F',
+  }));
+}

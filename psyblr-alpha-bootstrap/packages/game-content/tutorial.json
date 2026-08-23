@@ -1,0 +1,282 @@
+[
+  {
+    "id": "campaign_open_inventory",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": "campaign_overview",
+    "title": "Choose your first Summon",
+    "body": "Open your Summons and pick anyone you want to inspect.",
+    "highlightTarget": "summon-inventory-button",
+    "allowedActions": [
+      "OPEN_INVENTORY"
+    ],
+    "completionEvent": "INVENTORY_OPENED",
+    "nextStep": "campaign_inspect"
+  },
+  {
+    "id": "campaign_inspect",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Every Summon has an identity",
+    "body": "Check their stats and Skill 1, then choose who enters first.",
+    "highlightTarget": "summon-detail-panel",
+    "allowedActions": [
+      "SELECT_SUMMON",
+      "VIEW_TAB",
+      "BEGIN_DRAG"
+    ],
+    "completionEvent": "SUMMON_DRAG_STARTED",
+    "nextStep": "campaign_place_first"
+  },
+  {
+    "id": "campaign_place_first",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Deploy your first Summon",
+    "body": "Place them on a highlighted deployment cell.",
+    "highlightTarget": "battle-grid-valid-cells",
+    "allowedActions": [
+      "PLACE_SUMMON"
+    ],
+    "completionEvent": "SUMMON_PLACED",
+    "nextStep": "campaign_synergies"
+  },
+  {
+    "id": "campaign_synergies",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Origins + Combat Functions",
+    "body": "Matching Summons unlock team bonuses. Add your remaining five.",
+    "highlightTarget": "summon-tray",
+    "allowedActions": [
+      "SELECT_SUMMON",
+      "PLACE_SUMMON"
+    ],
+    "completionEvent": "TEAM_SIZE_6",
+    "nextStep": "campaign_start"
+  },
+  {
+    "id": "campaign_start",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Start the fight",
+    "body": "Your formation is ready.",
+    "highlightTarget": "start-battle-button",
+    "allowedActions": [
+      "START_BATTLE"
+    ],
+    "completionEvent": "BATTLE_STARTED",
+    "nextStep": "campaign_manual_skill"
+  },
+  {
+    "id": "campaign_manual_skill",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Skill ready",
+    "body": "Cast the first ready Skill manually.",
+    "highlightTarget": "skill-1-button",
+    "allowedActions": [
+      "CAST_SKILL"
+    ],
+    "completionEvent": "FIRST_SKILL_CAST",
+    "nextStep": "campaign_autocast"
+  },
+  {
+    "id": "campaign_autocast",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Auto Cast",
+    "body": "Turn on Auto to let ready skills fire automatically.",
+    "highlightTarget": "autocast-toggle",
+    "allowedActions": [
+      "TOGGLE_AUTO"
+    ],
+    "completionEvent": "AUTO_ENABLED",
+    "nextStep": "campaign_complete"
+  },
+  {
+    "id": "campaign_complete",
+    "phase": "campaign",
+    "scene": "campaign",
+    "cameraPreset": null,
+    "title": "Campaign cleared",
+    "body": "Finish the creeps.",
+    "highlightTarget": "battlefield",
+    "allowedActions": [],
+    "completionEvent": "BATTLE_WON",
+    "nextStep": "base_intro"
+  },
+  {
+    "id": "base_intro",
+    "phase": "base",
+    "scene": "base",
+    "cameraPreset": "base_overview",
+    "title": "Your Battle Camp",
+    "body": "These 36 cells hold your active collection.",
+    "highlightTarget": "camp-grid",
+    "allowedActions": [],
+    "completionEvent": "CAMERA_ARRIVED",
+    "nextStep": "base_illuminati"
+  },
+  {
+    "id": "base_illuminati",
+    "phase": "base",
+    "scene": "base",
+    "cameraPreset": null,
+    "title": "The Illuminati",
+    "body": "These six protected cells cannot be stolen from in raids. Move your six starters here.",
+    "highlightTarget": "illuminati-row",
+    "allowedActions": [
+      "MOVE_CAMP_SUMMON"
+    ],
+    "completionEvent": "ILLUMINATI_FULL",
+    "nextStep": "spawn_open"
+  },
+  {
+    "id": "spawn_open",
+    "phase": "spawn",
+    "scene": "base",
+    "cameraPreset": "spawn_focus",
+    "title": "Spawn Machine",
+    "body": "Tap the machine to see today\u2019s six Summons.",
+    "highlightTarget": "spawn-machine",
+    "allowedActions": [
+      "OPEN_SPAWN_MACHINE"
+    ],
+    "completionEvent": "SPAWN_UI_OPENED",
+    "nextStep": "spawn_drop_one"
+  },
+  {
+    "id": "spawn_drop_one",
+    "phase": "spawn",
+    "scene": "base",
+    "cameraPreset": "spawn_focus",
+    "title": "Drop a ball",
+    "body": "Tap once to release one ball.",
+    "highlightTarget": "drop-button",
+    "allowedActions": [
+      "DROP_BALL"
+    ],
+    "completionEvent": "BALL_DROPPED",
+    "nextStep": "spawn_long_press"
+  },
+  {
+    "id": "spawn_long_press",
+    "phase": "spawn",
+    "scene": "base",
+    "cameraPreset": "spawn_focus",
+    "title": "Keep them coming",
+    "body": "Hold to release continuously until your camp is full.",
+    "highlightTarget": "drop-button",
+    "allowedActions": [
+      "DROP_BALL",
+      "LONG_PRESS_DROP"
+    ],
+    "completionEvent": "CAMP_FULL",
+    "nextStep": "merge_first"
+  },
+  {
+    "id": "merge_first",
+    "phase": "merge",
+    "scene": "base",
+    "cameraPreset": "base_overview",
+    "title": "Merge identical Summons",
+    "body": "Combine two identical F tiers to create one E tier.",
+    "highlightTarget": "camp-grid",
+    "allowedActions": [
+      "MERGE_SUMMONS"
+    ],
+    "completionEvent": "MERGE_COMPLETED",
+    "nextStep": "merge_to_c"
+  },
+  {
+    "id": "merge_to_c",
+    "phase": "merge",
+    "scene": "base",
+    "cameraPreset": null,
+    "title": "Climb the tiers",
+    "body": "Continue until one Summon reaches C. D unlocks its next major form and Skill 2.",
+    "highlightTarget": "tier-progress",
+    "allowedActions": [
+      "MERGE_SUMMONS",
+      "VIEW_PROGRESS"
+    ],
+    "completionEvent": "SUMMON_REACHED_C",
+    "nextStep": "raid_open"
+  },
+  {
+    "id": "raid_open",
+    "phase": "raid",
+    "scene": "raid",
+    "cameraPreset": "raid_overview",
+    "title": "Your first Raid",
+    "body": "Choose squads for 1v1, 3v3 and 6v6. Summons can repeat across rounds.",
+    "highlightTarget": "raid-squad-builder",
+    "allowedActions": [
+      "SELECT_RAID_SUMMON",
+      "START_RAID"
+    ],
+    "completionEvent": "RAID_STARTED",
+    "nextStep": "raid_complete"
+  },
+  {
+    "id": "raid_complete",
+    "phase": "raid",
+    "scene": "raid",
+    "cameraPreset": null,
+    "title": "Take the win",
+    "body": "Win the best-of-three raid.",
+    "highlightTarget": "raid-arena",
+    "allowedActions": [],
+    "completionEvent": "RAID_WON",
+    "nextStep": "steal_one"
+  },
+  {
+    "id": "steal_one",
+    "phase": "raid",
+    "scene": "opponentCamp",
+    "cameraPreset": "opponent_camp",
+    "title": "Claim one exposed Summon",
+    "body": "Illuminati cells are protected. Choose one exposed Summon to steal.",
+    "highlightTarget": "opponent-camp-exposed",
+    "allowedActions": [
+      "SELECT_STEAL",
+      "CONFIRM_STEAL"
+    ],
+    "completionEvent": "STEAL_COMPLETED",
+    "nextStep": "defense_setup"
+  },
+  {
+    "id": "defense_setup",
+    "phase": "raid",
+    "scene": "base",
+    "cameraPreset": "base_overview",
+    "title": "Prepare your defense",
+    "body": "Choose your 1, 3 and 6-Summon defensive squads.",
+    "highlightTarget": "defense-builder",
+    "allowedActions": [
+      "SELECT_DEFENSE_SUMMON",
+      "SAVE_DEFENSE"
+    ],
+    "completionEvent": "DEFENSE_COMPLETE",
+    "nextStep": "tutorial_done"
+  },
+  {
+    "id": "tutorial_done",
+    "phase": "complete",
+    "scene": "base",
+    "cameraPreset": null,
+    "title": "You\u2019re ready",
+    "body": "Campaign, Camp, Spawn and Raid are now yours to explore.",
+    "highlightTarget": "nav-dock",
+    "allowedActions": [],
+    "completionEvent": "TUTORIAL_COMPLETE",
+    "nextStep": null
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "striker",
+    "name": "Striker",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+10% basic attack damage"
+      },
+      {
+        "count": 4,
+        "effect": "+20%"
+      }
+    ]
+  },
+  {
+    "id": "controller",
+    "name": "Controller",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+10% status duration"
+      },
+      {
+        "count": 4,
+        "effect": "+20%"
+      }
+    ]
+  },
+  {
+    "id": "disruptor",
+    "name": "Disruptor",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+10% durability"
+      },
+      {
+        "count": 4,
+        "effect": "+20%"
+      }
+    ]
+  }
+]

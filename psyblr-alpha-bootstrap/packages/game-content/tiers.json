@@ -1,0 +1,56 @@
+[
+  {
+    "tier": "F",
+    "multiplier": 1,
+    "form": 0,
+    "unlock": "Skill 1"
+  },
+  {
+    "tier": "E",
+    "multiplier": 1.15,
+    "form": 0,
+    "unlock": "Skill 1 enhancement"
+  },
+  {
+    "tier": "D",
+    "multiplier": 1.35,
+    "form": 1,
+    "unlock": "Evolution 1 + Skill 2"
+  },
+  {
+    "tier": "C",
+    "multiplier": 1.6,
+    "form": 1,
+    "unlock": "Skill enhancement"
+  },
+  {
+    "tier": "B",
+    "multiplier": 1.9,
+    "form": 1,
+    "unlock": "Stat bump"
+  },
+  {
+    "tier": "A",
+    "multiplier": 2.25,
+    "form": 2,
+    "unlock": "Evolution 2 + Ultimate"
+  },
+  {
+    "tier": "S",
+    "multiplier": 2.65,
+    "form": 2,
+    "unlock": "Skill 1 enhancement"
+  },
+  {
+    "tier": "SS",
+    "multiplier": 3.1,
+    "form": 2,
+    "unlock": "Skill 2 enhancement"
+  },
+  {
+    "tier": "SSS",
+    "multiplier": 3.65,
+    "form": 3,
+    "unlock": "Final Evolution + Ultimate upgrade"
+  }
+]

@@ -2,26 +2,28 @@
 
 Status: canonical V1 product and gameplay source of truth.
 
-This document defines the intended product even where the current code has not migrated yet. `AGENTS.md` defines how to implement it. `README.md` defines how to operate the repository.
+`PRODUCT_FINAL.md` defines what the game is. `AGENTS.md` defines implementation constraints. `README.md` is operational. When current code conflicts with this document, migrate the code unless the product decision itself is intentionally changed here first.
 
 ## 1. Product promise
 
-PSYBLR is an incremental auto battler where the player's growing collection is physically constrained to a 6x6 Battle Camp. The satisfying loop is to acquire Summons through a Pachinko Spawn Machine, merge duplicates into stronger tiers, create increasingly effective six-unit builds, push an infinite Campaign until a roadblock, and risk real Summon ownership in asynchronous PvP Raids.
+PSYBLR is an incremental auto battler built around one physical constraint: every usable Summon lives inside a fixed 6x6 Battle Camp.
 
-The game should feel immediate and tactile like a merge/inventory game while the battles read like short anime fights. Long-term depth comes from constrained inventory, tier progression, formation, Alliances, changing Spawn configurations, Campaign requirements and asymmetric PvP risk.
+Players acquire F-tier Summons through a tactile Pachinko Spawn Machine, merge duplicates into stronger tiers, construct six-unit builds around Alliances and positioning, auto-progress through an increasingly difficult persistent Campaign, and risk actual Summon ownership in asynchronous PvP Raids.
 
-## 2. Design pillars
+The product should combine the satisfaction of merge/inventory games with the strategic readability of an auto battler and the escalating momentum of an incremental game.
 
-1. **Everything valuable is visible.** Owned Summons live in the Battle Camp, not an abstract infinite list.
-2. **Inventory pressure creates decisions.** The 36-cell cap never expands. Progress eventually requires merging, releasing, risking, or later using paid temporary storage.
-3. **Acquisition is tactile.** Balls run through a configurable Pachinko machine rather than a generic loot-box button.
-4. **Combat is automatic, preparation is skill.** The player chooses what to own, merge, protect, deploy and position. Combat then resolves automatically.
-5. **Numbers go up until strategy matters.** Campaign Auto Progress delivers incremental momentum but stops at meaningful boss checks and defeats.
-6. **PvP has ownership stakes.** A Raid winner takes a Summon. An attacking loser can lose one too.
-7. **Server authority protects the economy.** Any action that creates, destroys or transfers value is transactional and idempotent.
-8. **Content is replaceable.** Current anime identities are prototype placeholders, not architecture.
+## 2. Product pillars
 
-## 3. Canonical world state
+1. **Visible ownership.** The Battle Camp is the inventory. Valuable units are physical objects in the world, not rows in an unlimited menu.
+2. **Hard inventory pressure.** Camp capacity is always 36. Progress requires merging, releasing, risking, or later using temporary storage without increasing usable Camp capacity.
+3. **Tactile acquisition.** Balls physically run through a configurable Pachinko machine rather than a generic summon button.
+4. **Preparation is the skill.** The player chooses what to own, protect, merge, deploy and position. Combat itself is automatic.
+5. **Incremental momentum with roadblocks.** Campaign can push itself through ordinary levels but stops before bosses and on defeat.
+6. **PvP has downside.** An attacker can win a defender Summon, but a losing attacker surrenders one of the Summons they actually used.
+7. **Server authority protects value.** Creation, destruction, timers, matchmaking and ownership transfers are authoritative, atomic and idempotent.
+8. **Content is replaceable.** Current anime identities are prototype content, not hard-coded game architecture.
+
+## 3. World and mode hierarchy
 
 ```text
 WORLD
@@ -52,113 +54,114 @@ WORLD
     └── RAID_SHIELD_APPLIED
 ```
 
-Campaign, Base, Raid and Opponent Camp are primary worlds. Dealer, Spawn Machine, Defense and Summon Inspect are focus modes inside Base and preserve Base spatial continuity.
+Campaign, Base, Raid and Opponent Camp are primary worlds. Dealer, Spawn Machine, Defense and Summon Inspect are Base focus modes, not independent worlds.
 
 ## 4. Core loop
 
 ```text
 Dealer refills Balls
-      ↓
-Spawn Machine creates F-tier Summons
-      ↓
-Battle Camp receives Summons
-      ↓
+        ↓
+Spawn Machine produces F-tier Summons
+        ↓
+Battle Camp receives them
+        ↓
 Merge identical Summons to increase tier
-      ↓
-Build six-unit Campaign formations
-      ↓
-Auto-progress until boss or roadblock
-      ↓
-Earn milestone Balls / improve build
-      ↓
-Set 2 / 4 / 6 Raid defense
-      ↓
-Raid similar-power opponent
-      ↓
+        ↓
+Build and position a six-unit formation
+        ↓
+Campaign Auto Progress pushes until a boss or defeat
+        ↓
+Earn milestone Balls / diagnose roadblock / rebuild
+        ↓
+Configure 2 / 4 / 6 Raid defense
+        ↓
+Raid a similar-power opponent
+        ↓
 Win a Summon or risk surrendering one
-      ↓
-Rebuild, merge, protect, progress
+        ↓
+Protect, rebuild, merge and push farther
 ```
 
-## 5. Summons and tiers
+## 5. Summon identity and tier progression
 
-A `SummonDefinition` describes identity, copy, base stats, abilities, Alliances and asset manifest. A `SummonInstance` is one owned copy with a unique instance ID and current tier.
-
-Tiers are:
+A `SummonDefinition` describes an identity, copy, base stats, abilities, Alliances and assets. A `SummonInstance` is one uniquely owned copy with a current tier.
 
 ```text
 F → E → D → C → B → A → S → SS → SSS
 ```
 
-Merge rule:
+Merge rules:
 
-- Exactly two Summon instances with the same definition and same tier are merge-compatible.
-- Merging permanently consumes the source instance.
+- Two instances must have the same definition and the same tier.
+- The source instance is permanently consumed.
 - The target instance survives and advances exactly one tier.
-- A merge is an ownership/economy mutation and is server authoritative.
-- SSS cannot merge further in V1.
+- SSS is the maximum V1 tier.
+- Merge is a server-authoritative ownership mutation.
 
-Tier is progression state, not a separate character definition. Presentation may use tier-form visual overrides while retaining one underlying Summon identity.
+Tier is instance state. Do not create a separate character definition for every tier. Asset manifests may provide tier-form visual overrides.
 
-## 6. Battle Camp and the inventory constraint
+## 6. Battle Camp: the central invariant
 
-The Battle Camp is a fixed `6 x 6` grid with exactly 36 cells.
+The Battle Camp is exactly `6 x 6 = 36` usable inventory cells.
 
 ```text
 BATTLE_CAMP_CAPACITY = 36
 ```
 
-This is a hard product invariant. Inventory expansion is not a feature.
+Inventory expansion is explicitly not allowed. Every usable owned Summon occupies one Camp cell.
 
-Every usable owned Summon occupies exactly one Camp cell. No Spawn, Raid steal, purchase, claim or server correction may produce a 37th Camp Summon.
+No Spawn, Raid steal, purchase, reward claim or recovery path may create Summon number 37 in the Camp.
 
 When Camp is full:
 
-- Spawn Machine cannot release another Ball and no Ball is consumed.
-- A pending Defense reward cannot be claimed.
-- A player cannot enter an outgoing Raid because a Raid win requires a destination slot.
-- The player must merge or permanently release a Summon before creating space.
+- Spawn is disabled before Ball consumption.
+- Defense FIFO rewards cannot be claimed.
+- Outgoing Raid is disabled because a Raid win needs a destination.
+- The player must merge or permanently release a Summon to make room.
 
-A basic permanent Summon Release action must exist from inspection before inventory pressure can hard-lock progression. Paid temporary storage can be added later, but it must not increase the Battle Camp's 36 usable slots.
+A basic permanent Summon Release action must exist before inventory pressure can hard-lock the player. Future paid temporary storage may hold Summons outside active Camp, but it does not increase the 36 usable Camp cells.
 
-### Direct manipulation
+### Raid slot reservation
 
-The Camp is the primary Base interaction surface.
+Raid entry requires at least one free Camp cell. Once matchmaking starts, one free cell is reserved for the attacker until settlement/cancellation. Spawn and other incoming Camp mutations treat that reserved cell as unavailable.
 
-- Drag Summon to empty cell: move.
-- Drag onto non-mergeable Summon: swap.
-- Drag onto identical definition + identical tier: merge.
-- Tap Summon: select it and open Summon Inspect.
+## 7. Battle Camp interaction
+
+The Camp remains the primary Base surface.
+
+- Drag to empty cell: move.
+- Drag onto a non-mergeable Summon: swap.
+- Drag onto the same definition and same tier: merge.
+- Tap Summon: select and open inspection.
 - Tap-to-move is supported as a mobile-friendly alternative to drag.
-- Invalid targets communicate why they are invalid without jittering or moving the wrong piece.
+- Invalid targets stay stable and clearly explain failure. No jitter, accidental selection or click-through.
 
-Spatial actions happen directly. Do not force the user through roster picker modals for ordinary Camp movement.
+Interaction should have the directness and predictability of a mature auto battler board rather than a sequence of inventory modals.
 
-## 7. Summon Inspect
+## 8. Summon Inspect
 
-Selecting a Summon automatically opens a contextual drawer while the Battle Camp remains visible and interactive.
+Selecting a Summon automatically opens a contextual right-side drawer while the Battle Camp remains visible and interactive.
 
-The drawer is non-modal. It has no fullscreen backdrop and must not consume pointer input intended for visible Camp cells outside the drawer.
+The drawer is non-modal and must not add a fullscreen backdrop. Selecting another Summon updates the same drawer immediately.
 
-It shows at minimum:
+Show at minimum:
 
-- Identity and current tier.
-- Summon Power.
-- Core stats.
-- Ability descriptions and cooldowns.
-- Alliance memberships.
-- Active Alliance effects relevant to the currently viewed formation when applicable.
-- Next Alliance threshold when applicable.
-- Merge progression.
-- Permanent Release action with appropriate destructive confirmation.
+- identity and tier,
+- Summon Power,
+- resolved stats,
+- abilities and cooldowns,
+- Alliance memberships,
+- active and next Alliance thresholds when relevant,
+- merge progression,
+- permanent Release action.
 
-Selecting another Summon updates the open drawer immediately. On narrow landscape screens, reframe the Camp rather than covering critical cells.
+On narrow landscape screens, reframe the Camp to preserve grid access rather than covering important cells.
 
-## 8. Alliances
+## 9. Alliances
 
-**Alliance is the only player-facing synergy taxonomy.** The previous Origin + Combat Function split is retired.
+**Alliance is the only player-facing synergy system.** The old Origin + Combat Function distinction is retired.
 
-Canonical character shape:
+Target definition:
 
 ```ts
 SummonDefinition {
@@ -172,8 +175,6 @@ SummonDefinition {
 }
 ```
 
-Canonical Alliance shape:
-
 ```ts
 AllianceDefinition {
   id
@@ -183,256 +184,236 @@ AllianceDefinition {
 }
 ```
 
-A Summon may belong to multiple Alliances. For migration, the current six prototype synergy identities can all become ordinary Alliances: Ascendant, Rebel, Mastermind, Striker, Controller and Disruptor.
+A Summon may belong to multiple Alliances. During migration, the existing prototype concepts Ascendant, Rebel, Mastermind, Striker, Controller and Disruptor can all become ordinary Alliances so current balance is preserved while the duplicate taxonomy disappears.
 
-Alliance counts come only from the actual deployed formation for the battle being evaluated. Owning a Summon elsewhere in Camp does not activate its Alliance.
+Alliance activation is calculated only from the actual formation being evaluated, never the entire Battle Camp.
 
-Alliance configuration is static, versioned game content. Combat receives resolved modifiers through a deterministic rules package.
+## 10. Power system
 
-## 9. Power scores
-
-Power is guidance and matchmaking infrastructure, not a guaranteed outcome.
+Power communicates expected strength and supports matchmaking, but it does not guarantee a winner.
 
 ### Summon Power
 
-A deterministic score derived from the Summon's resolved tier stats and combat-relevant ability coefficients.
+A deterministic score from resolved tier stats and combat-relevant ability coefficients.
 
 ### Formation Power
 
-The deterministic effective score of the actual deployed formation, including active Alliance modifiers. Used for Campaign preview and battle summaries.
+The score of the actual deployed formation after active Alliance modifiers. Used in Campaign and formation previews.
 
 ### Account Power
 
-The score of the player's six strongest usable Battle Camp Summons. Used as the primary Raid matchmaking strength signal.
+The score of the six strongest usable Battle Camp Summons. Used as the primary Raid matchmaking signal.
 
 ### Enemy Power
 
-The target score for a Campaign level or enemy formation.
+Campaign difficulty target for the current level.
 
-All formulas and coefficients live in one versioned `PowerScoreResolver` in shared game rules. UI never reimplements the calculation.
+All power calculations live in one versioned shared `PowerScoreResolver`. UI must not invent independent formulas.
 
-The UI may show a power delta such as:
+Players should still be able to beat a numerically stronger opponent through composition, positioning, Alliances and ability matchups.
 
-```text
-YOUR FORMATION   18,420
-ENEMY POWER      21,100
-POWER DELTA        -13%
-```
+## 11. Base
 
-A lower-power formation can still win through positioning, abilities and Alliances.
+### IDLE
 
-## 10. Base
+Returning-player home. Camera prioritizes the full 6x6 Camp and surrounding structures.
 
-Base is the home world. Its center is the Battle Camp. Other structures are spatial anchors around it.
+### SUMMON_INSPECT
 
-### BASE.IDLE
+Non-modal contextual drawer described above.
 
-The default returning-player state. The Camp grid is the main focus.
+### DEALER
 
-### BASE.SUMMON_INSPECT
+Free Ball refill and education surface now, future IAP shop later.
 
-Non-modal drawer described above.
+### SPAWN_MACHINE
 
-### BASE.DEALER
+Pachinko focus mode inside Base.
 
-The Dealer is the free Ball faucet and future in-app-purchase shop surface. In V1 it explains Balls, Spawn and protection systems and performs free refills.
+### DEFENSE
 
-### BASE.SPAWN_MACHINE
+Configure Raid defenses, inspect protection status and manage defended-Raid reward claims.
 
-Camera/UI focuses on the Pachinko machine while remaining conceptually inside Base.
+## 12. Balls and Dealer
 
-### BASE.DEFENSE
+Balls power the Spawn Machine.
 
-Defense Podium setup and defended-Raid reward collection.
+Ball balance may exceed 100 through Campaign milestones, purchases or future rewards.
 
-## 11. Balls and Dealer
-
-Balls are consumed to run the Spawn Machine.
-
-The player's Ball balance may exceed 100 from Campaign milestone rewards, purchases or future reward sources.
-
-The Dealer is a **refill**, not a +100 grant.
-
-Dealer rule:
+The Dealer is a refill, not a +100 grant.
 
 ```text
-REFILL_TARGET = 100 Balls
-REFILL_COOLDOWN = 2 hours after a successful refill
+REFILL_TARGET = 100
+REFILL_COOLDOWN = 2 hours after successful refill
 ```
 
-A Dealer refill is claimable only when:
+A refill is available only if:
 
-1. the 2-hour cooldown has completed, and
+1. two hours have elapsed since the last successful Dealer refill, and
 2. current Ball balance is below 100.
 
-On claim:
+Settlement:
 
 ```text
 balls_after = 100
 balls_granted = 100 - balls_before
 ```
 
-If the cooldown completed while the player had 100 or more Balls, the refill simply waits. Once the balance falls below 100, it may be claimed immediately because the time requirement has already been satisfied.
+If the cooldown finishes while Ball balance is 100 or higher, the refill remains waiting. As soon as balance later drops below 100, it can be collected immediately.
 
 Dealer timing and Ball balance are server authoritative.
 
-## 12. Spawn Machine
+## 13. Spawn Machine
 
-The Spawn Machine is a configurable Pachinko/gacha system. Product architecture must not assume today's reward bins or Blob effects are permanent.
+The Spawn Machine is configurable. The architecture must not assume today's bin distribution or Blob behavior is permanent.
 
-### Daily global pool
+### Daily global six
 
-For V1, all players share the same six Summon identities for a given server day. The pool resets globally at a fixed server reset boundary. Use a server-defined daily pool ID, preferably UTC date-based, so all clients reference the same pool.
+For V1, every player sees the same six Summon identities for a server day. The server creates one global daily pool from six random active Summon identities, without replacement when the catalog has at least six candidates.
 
-Choose six random active Summon identities without replacement when at least six are available.
+The global pool changes once per fixed server-day boundary. Use a stable `dailyPoolId` so all clients resolve the same configuration.
 
-All six base reward bins spawn **F-tier** Summons. Direct E- and D-tier drops are not part of V1 because they bypass too much merge progression.
+All six base reward bins produce **F-tier** Summons. E and D are earned through merging rather than directly dropped in V1.
 
-Current bin probabilities from left to right are:
+Current left-to-right probabilities:
 
 ```text
 10% | 15% | 25% | 25% | 15% | 10%
 ```
 
-These probabilities and identities are content/server configuration, not client constants.
+Identity and probabilities are authoritative configuration, not a client economy constant.
 
-### Authority and physics
+### Spawn authority
 
-The server determines the actual reward and returns a replay/presentation descriptor. Pachinko physics is a satisfying presentation of an authoritative outcome, not a client-controlled random economy.
+Server determines reward, commits Ball consumption and Summon creation, and returns a deterministic presentation/replay descriptor.
 
-Production cannot silently fall back to local random resolution if the server is unavailable.
+Pachinko physics is the satisfying visual realization of an authoritative result. Production may not silently fall back to client `Math.random` if authority is unavailable.
 
-A Ball may be released only if:
-
-- player owns at least one Ball, and
-- Battle Camp has at least one unreserved free cell.
-
-If the Camp is full, the action fails before Ball consumption.
+A Ball can be released only when the player owns at least one Ball and Camp has an unreserved free cell. Failure consumes nothing.
 
 ### Blob targets
 
-There are two visually obvious special Blob targets. Each Blob owns an independent meter and a configurable effect contract because its purpose may change as progression expands.
+Two visually obvious special Blob targets exist in the machine. Each owns an independent meter and configurable effect because the two Blob functions may diverge later into mini-games or other benefits.
 
-A Blob definition should be able to configure:
+A Blob contract should support:
 
 ```text
 id
 visual identity
-hits required
+hitsRequired
 meter state
-reward/effect type
-effect magnitude
+effect type
+effect amount
 availability rules
 ```
 
-In V1, Blob effects may grant Time Shield progress. A reasonable initial tuning is 5 registered Blob hits for +1 hour of Time Shield, independently configurable per Blob.
+For V1, a Blob may grant Time Shield progress. Initial tuning can use 5 registered hits for +1 hour, independently configurable per Blob.
 
-## 13. Time Shield
+## 14. Time Shield
 
-Time Shield protects the **entire Battle Camp from being selected as an incoming Raid defender**.
+Time Shield protects the **entire Battle Camp from incoming Raid selection**.
 
 Rules:
 
-- Maximum active Time Shield duration: 8 hours.
-- Additional Shield grants extend remaining time only up to the 8-hour cap.
-- A shielded player is excluded from defender matchmaking.
-- Starting an outgoing Raid immediately breaks the attacker's own Time Shield.
-- If a defender loses a Raid, their Time Shield is reset to a full 8 hours at settlement.
-- Time Shield does not expand inventory and does not replace Illuminati protection.
+- Maximum remaining Time Shield: 8 hours.
+- New grants extend remaining duration only up to 8 hours.
+- A shielded player cannot be matched as a defender.
+- Starting an outgoing Raid immediately breaks the attacker's Time Shield.
+- A defender who loses a Raid receives a full 8-hour Time Shield reset at settlement.
+- Shield uses authoritative server time.
 
-Time Shield expiry is server time, never device time.
+Time Shield does not protect individual exposed cells after a Raid has already been validly locked. Illuminati handles cell-level protection.
 
-## 14. Illuminati protection
+## 15. Illuminati protection
 
-Illuminati protects specific Battle Camp cells from Summon theft even when Time Shield is inactive.
+Illuminati protects specific Camp cells from theft.
 
 Base entitlement:
 
 ```text
-6 protected cells
-24? no, total exposed = 30
+6 protected + 30 exposed = 36 total
 ```
 
-The default protected area is one full row of the 6x6 Camp.
+The first protected row contains six cells.
 
-Permanent purchasable entitlement:
+Permanent paid entitlement:
 
 ```text
-12 protected cells
-24 exposed cells
-36 total cells unchanged
+12 protected + 24 exposed = 36 total
 ```
 
-The upgrade unlocks a second full protected row. It does not create inventory capacity.
+The upgrade unlocks a second protected row. It does not add inventory capacity.
 
-A Summon in a protected cell is never eligible for a successful attacker's steal pool. Moving Summons between exposed/protected cells changes future Raid eligibility, subject to authoritative snapshot timing.
+A Summon in an Illuminati cell is excluded from the stealable pool in the authoritative Raid snapshot.
 
-## 15. Campaign
+## 16. Campaign
 
-Campaign is a persistent infinite ladder. It is not a run-reset roguelike in V1.
+Campaign is a persistent ladder with no V1 run reset.
 
 ### Setup
 
-The player selects up to six owned Camp Summons and positions them on the player side of the Campaign battlefield. The selected formation persists across ordinary Auto Progress levels until changed or invalidated by ownership change.
+Player explicitly selects up to six owned Summons and positions them on the player side. The formation persists across ordinary Auto Progress battles until the player changes it or ownership invalidates it.
 
-Never choose the player's Campaign squad by `roster.slice(0, 6)` or an equivalent implicit ordering.
+Never infer Campaign formation from roster order such as `slice(0, 6)`.
 
 ### Combat
 
 Once started, combat is fully automatic.
 
-### Level structure
+### Level rhythm
 
-- Ordinary level: all levels that are not boss milestones.
-- Mini-boss: every 10 levels except multiples of 100.
-- Main Arc boss: every 100 levels.
-- Every 100-level block is a new story Arc.
-
-Enemy difficulty and Enemy Power increase persistently. Exact curves are balance data, not hard-coded UI logic.
+- Ordinary levels fill the ladder.
+- Mini-boss every 10 levels except multiples of 100.
+- Main Arc boss every 100 levels.
+- Each 100-level block represents a new story Arc.
+- Enemy Power continually increases according to versioned balance curves.
 
 ### Auto Progress
 
-The battle interface has a small symbolic Auto Progress control.
+A small symbolic Auto Progress control appears in the battle UI.
 
 When enabled:
 
-- An ordinary victory automatically starts the next ordinary level using the same formation.
-- Auto Progress continues as an authoritative session even if the player navigates to another game world inside the app.
-- Auto Progress stops immediately on defeat.
-- Auto Progress pauses **before** every mini-boss Level 10 milestone and every Level 100 Arc boss.
-- The player deliberately starts that boss encounter. Auto Progress may resume afterward.
+- ordinary wins automatically advance to the next ordinary level,
+- the same deployed formation continues fighting,
+- the authoritative progression session continues even if the player navigates elsewhere inside the app,
+- defeat stops Auto Progress,
+- Auto Progress pauses **before** every Level 10 mini-boss milestone,
+- Auto Progress pauses **before** every Level 100 Arc boss.
 
-V1 does not promise unlimited closed-app/offline Campaign simulation. The server/session contract should leave that extension possible later.
+The player deliberately starts boss battles. Auto Progress may resume afterward.
 
-### Campaign rewards
+Closed-app/offline farming is not promised in V1, but the server contract should not prevent that future extension.
 
-Ordinary victories do not continuously print Balls.
+### Campaign Ball rewards
 
-Ball rewards occur at every 10-level milestone. Current initial balance target can preserve +10 Balls for mini-boss milestones and +25 Balls for each Level 100 Arc boss, but those amounts are configurable balance values.
+Ordinary levels do not continuously generate Balls.
 
-Because Balls can exceed 100, Campaign milestone rewards are additive and do not interact with the Dealer's refill ceiling.
+Every 10-level milestone can grant Balls. Initial balance may preserve +10 at mini-boss milestones and +25 at Level 100 Arc bosses, but exact quantities are balance configuration.
+
+Campaign rewards are additive and may push Ball balance above 100.
 
 ### Roadblock summary
 
-On defeat, stop Auto Progress and show a build-oriented battle summary including:
+On defeat, stop Auto Progress and make the failure useful.
 
-- player Formation Power vs Enemy Power,
-- damage dealt per Summon,
-- damage taken per Summon,
-- order/identity of first deaths,
+Show:
+
+- Formation Power versus Enemy Power,
+- damage dealt by each Summon,
+- damage taken by each Summon,
+- first deaths,
 - surviving enemies and remaining health,
 - active Alliances,
 - near-miss Alliance thresholds,
 - important enemy traits/abilities,
-- concise suggestions grounded in the battle data rather than generic advice.
+- concise data-grounded build suggestions.
 
-The goal is to make a dead end legible enough that the player can decide whether to reposition, change composition, merge, acquire new Summons or free inventory space for a different build.
+The player should understand whether the next move is repositioning, a different Alliance mix, merging, acquiring a missing Summon or freeing Camp space to pursue a new build.
 
-## 16. Defense Podium
+## 17. Defense Podium
 
-Defense defines the immutable formations other players may fight when this player is selected as a Raid defender.
-
-The player configures three formations:
+Defense stores three persistent formations:
 
 ```text
 Round 1: 2 Summons
@@ -442,73 +423,65 @@ Round 3: 6 Summons
 
 Rules:
 
-- Drag/select from actual Battle Camp inventory.
-- A Summon instance may appear in multiple different rounds.
-- A Summon instance may appear only once inside the same round.
-- Formation cells and positions are gameplay state.
-- Show active Alliances and Formation Power while editing.
-- Show current Time Shield status and expiry/cooldown context.
-- Save through a server-authoritative persistent Defense snapshot.
-- If ownership changes and a saved defense references a missing Summon, the defense becomes invalid until repaired or server auto-repairs according to explicit rules. Do not silently fight with fabricated units.
+- Build by dragging/selecting actual Camp Summons.
+- Same instance may appear across different rounds.
+- Same instance cannot appear twice within one round.
+- Position/cell is gameplay state.
+- Show Formation Power and Alliances while editing.
+- Show Time Shield state and expiry.
+- Save a server-authoritative canonical Defense formation using real Summon instance IDs.
+- Ownership changes must revalidate saved Defense rather than fabricate unavailable units.
 
-When a player enters matchmaking as a defender, the server creates an immutable versioned Defense snapshot for that Raid.
+When matched, the server creates an immutable versioned snapshot for that Raid.
 
-### Defense reward FIFO
+### Defended-Raid reward FIFO
 
-When an attacker loses and surrenders a Summon, the defender receives that Summon into an **unlimited server-owned FIFO pending reward queue**.
+A losing attacker transfers their surrendered Summon to the defender's unlimited pending FIFO queue.
 
-This is deliberately not controllable overflow inventory.
+The queue is intentionally not controllable storage.
 
-Pending reward rules:
+Pending Summons:
 
-- Unlimited queue length.
-- Strict FIFO claim order. Only the head can be claimed.
-- Cannot reorder.
-- Cannot merge while pending.
-- Cannot release/sell while pending.
-- Cannot deploy in Campaign, Raid attack or Defense.
-- Does not count toward Account Power, Formation Power or Alliances.
-- Does not occupy a Battle Camp cell until claimed.
-- Claim is disabled while Camp has no free cell.
-- Claiming atomically transfers the FIFO head into a selected/free Camp cell.
+- are ordered strictly FIFO,
+- cannot be reordered,
+- cannot merge,
+- cannot be released or sold while pending,
+- cannot battle or defend,
+- do not count toward Power or Alliances,
+- do not occupy Camp,
+- can only claim from the queue head into a free Camp cell.
 
-## 17. Raid eligibility and matchmaking
+## 18. Raid matchmaking
 
-Raid is asynchronous PvP against the defender's saved 2/4/6 Defense snapshot.
+Raid is asynchronous PvP against saved Defense.
 
-### Attacker eligibility
+### Attacker requirements
 
-- At least one genuinely free Battle Camp slot.
-- Not already in a Raid or Raid reservation.
-- Valid owned inventory and account state.
+- at least one free/unreserved Camp slot,
+- not already in a Raid,
+- valid account/inventory state.
 
-At matchmaking start, reserve one attacker Camp slot for the potential stolen Summon. Other Spawn/claim mutations must treat that reserved slot as unavailable until Raid settlement or cancellation.
+Starting matchmaking:
 
-Starting matchmaking immediately clears the attacker's Time Shield.
+- immediately breaks attacker's Time Shield,
+- reserves one free Camp destination cell,
+- acquires an exclusive active-Raid lock.
 
-### Defender eligibility
+### Defender requirements
 
-- Time Shield inactive.
-- Not already locked/reserved/active in another Raid.
-- Valid Defense snapshot.
-- At least one exposed stealable Summon in the authoritative Camp snapshot.
-- Within the server's configurable matchmaking power band.
+- Time Shield inactive,
+- no existing Raid lock/reservation,
+- valid 2/4/6 Defense,
+- at least one exposed stealable Summon,
+- within server-configured Account Power matchmaking range.
 
-### Power matching
+A defender can be reserved by exactly one attacker at a time. The server lock has a TTL/recovery strategy for abandoned sessions.
 
-Primary strength signal is Account Power: the player's six strongest usable Camp Summons. Matching bands may widen with search time but remain server controlled and observable for balancing.
+Matchmaking primarily compares Account Power, with balance-configurable search bands.
 
-### Exclusive locking
+## 19. Raid series
 
-A defender can belong to only one active Raid reservation at a time. Matchmaking acquires an atomic server lock with an expiry/TTL before exposing the match to the attacker.
-
-The same principle applies to the attacker: one active Raid at a time.
-
-Summon instances whose ownership could change at Raid settlement must not be mergeable/releasable/transferred in a way that invalidates the locked Raid snapshot without an explicit transaction rule.
-
-## 18. Raid series
-
-Every Raid is a three-round series:
+Every Raid is three automatic combat rounds:
 
 ```text
 Round 1: 2v2
@@ -516,71 +489,63 @@ Round 2: 4v4
 Round 3: 6v6
 ```
 
-### Attacker setup timers
+Attacker setup timers:
 
-- Round 1: 10 seconds.
-- Round 2: 20 seconds.
-- Round 3: 30 seconds.
+```text
+Round 1: 10 seconds
+Round 2: 20 seconds
+Round 3: 30 seconds
+```
 
-During each timer, the attacker chooses and positions the required number of Summons.
+If the player does not complete a legal setup in time, the server automatically deploys the strongest legal 2/4/6 formation and starts that round.
 
-If the timer expires before a complete legal setup, the server auto-deploys the strongest eligible legal formation for that round and resolves combat.
+A Summon can be reused across rounds but cannot occupy multiple slots inside one round.
 
-A Summon instance may be reused across rounds but cannot occupy two slots within one round.
+Each round resets HP, cooldowns, statuses, temporary effects and other transient combat state.
 
-Each round starts fresh. HP, cooldowns, temporary buffs/debuffs, statuses and transient combat state reset between rounds.
+Combat is deterministic from authoritative snapshots and seeds. Each round ultimately resolves win/loss so best-of-three always settles. If battle duration reaches a cap, use deterministic tie-break rules in combat-core, ending with a seeded tie-break only if prior metrics are exactly equal.
 
-### Resolution
+Client disconnect does not stop server setup or settlement timers.
 
-Combat is deterministic and server resolved from locked inputs and seeds. Each round must ultimately resolve to win/loss so the best-of-three series cannot stall on an unresolved draw. At the maximum combat duration, use deterministic tie-break criteria defined in combat rules, such as surviving unit count, remaining-team HP percentage, damage dealt and finally seeded tie-break if still identical.
+## 20. Attacker wins: steal settlement
 
-First side to two round wins wins the series.
+If attacker wins the series:
 
-Disconnecting does not stop authoritative setup/result timers. Server auto-actions finalize the Raid if a client disappears.
+1. Show `OPPONENT_CAMP.STEAL_SELECTION` from the locked defender Camp snapshot.
+2. Only exposed, non-Illuminati instances are eligible.
+3. Attacker has 30 seconds to choose one.
+4. Timeout causes the **server to select randomly from the eligible pool**, not the strongest unit.
+5. Server atomically transfers that exact Summon instance to the attacker's reserved Camp cell.
+6. Defender gets a full 8-hour Time Shield reset.
+7. Raid locks release only after idempotent settlement completes.
 
-## 19. Successful attacker settlement
+## 21. Attacker loses: surrender settlement
 
-If the attacker wins the series:
+If attacker loses the series:
 
-1. Open `OPPONENT_CAMP.STEAL_SELECTION` using the locked defender Camp snapshot.
-2. Only exposed, non-Illuminati Summon instances are selectable.
-3. Attacker has 30 seconds to select exactly one eligible Summon.
-4. If no selection is made before timeout, the **server chooses randomly from the eligible exposed pool**.
-5. Server atomically transfers the exact Summon instance from defender ownership into the attacker's reserved Camp slot.
-6. The reserved slot is consumed by that new Summon.
-7. Defender's Time Shield is reset to a full 8 hours.
-8. Raid/player locks are released after successful idempotent settlement.
-
-The random timeout choice is not strongest-unit auto-steal.
-
-## 20. Losing attacker settlement
-
-If the attacker loses the series:
-
-1. Build the eligible surrender pool from the distinct Summon instances actually used across the 12 deployment slots of the `2 + 4 + 6` rounds.
-2. Reusing one Summon in multiple rounds still creates one candidate instance.
-3. Attacker has 30 seconds to choose exactly one eligible used Summon to surrender.
-4. If no choice is made before timeout, the server selects the **weakest eligible used Summon** according to the canonical Power resolver.
-5. Server atomically transfers that exact instance away from the attacker.
-6. The defender receives it at the tail of the Defense reward FIFO.
+1. Create the candidate pool from distinct Summon instances actually used across the 12 deployment slots in the `2 + 4 + 6` rounds.
+2. Reusing one instance across multiple rounds still makes it one candidate.
+3. Attacker has 30 seconds to select the surrendered Summon.
+4. Timeout causes the server to select the **weakest eligible used Summon** according to the canonical Power resolver.
+5. Server atomically removes ownership from attacker.
+6. Defender receives the Summon at the tail of Defense reward FIFO.
 7. Attacker's reserved win slot is released.
 8. Attacker's Time Shield remains broken.
-9. Raid/player locks are released after successful idempotent settlement.
 
-Losing a Raid therefore has real downside and prevents risk-free attack spam.
+This makes outgoing Raids meaningfully risky.
 
-## 21. Combat presentation
+## 22. Combat and anime presentation
 
-Combat control is automatic, but presentation should feel like a compact anime fight rather than passive spreadsheet resolution.
+Combat is automatic after formation lock, but it should look and read like a short anime battle.
 
-Desired readable behaviors:
+Required visual readability:
 
-- Units move toward valid targets.
-- Targeting/retargeting is visible and coherent.
-- Basic attacks have clear anticipation, contact/projectile and hit reaction.
-- Skills have distinct animation/VFX language.
-- Health loss, crowd control and deaths are understandable at a glance.
-- Camera may add restrained emphasis for major skills without obscuring board state.
+- movement toward valid targets,
+- coherent targeting and retargeting,
+- anticipation and hit feedback for basic attacks,
+- distinct skills and VFX,
+- visible crowd-control/status outcomes,
+- understandable deaths and remaining threats.
 
 Battle viewer supports:
 
@@ -588,62 +553,63 @@ Battle viewer supports:
 1x | 2x | 4x
 ```
 
-These are presentation replay speeds only. Switching speed cannot alter simulation seed, result, cooldown decisions, targeting, damage or event order.
+These are presentation speeds only. Speed changes may not alter simulation seed, targeting, cooldowns, movement decisions, damage, event order or winner.
 
-## 22. Tutorial and first session
+Server/deterministic simulation produces the event stream. PlayCanvas presents it.
 
-New players start in Campaign. Returning players start in Base.
+## 23. Tutorial
 
-Tutorial philosophy: affordance, demonstration, concise microcopy. Avoid blocking instruction cards that cover the world.
+New players boot into Campaign tutorial. Returning players boot into Base.
+
+Tutorial should use world affordances and concise guidance rather than blocking modal instruction cards.
 
 Canonical first journey:
 
-1. **Campaign:** select and position the starter formation, start an automatic fight, understand that formation drives combat.
-2. **Battle Camp:** arrive at Base and understand that Camp is the physical inventory.
-3. **Illuminati:** move a Summon into a protected cell and learn permanent cell protection.
-4. **Dealer:** learn Balls, the 2-hour refill-to-100 rule and basic Shield concept.
-5. **Spawn Machine:** release a Ball, see an F-tier Summon arrive in Camp, interact with a special Blob and see its independent meter.
-6. **Merge:** acquire/tutorial-guarantee a legal duplicate and merge identical F-tier Summons into E tier.
-7. **Defense:** configure basic 2/4/6 Defense and see Alliances/Shield state.
-8. **Raid:** enter a legal Raid, experience timed formation setup and automatic combat.
-9. **Opponent Camp:** after a tutorial-safe win, select an exposed steal target and understand ownership risk.
+1. **Campaign:** select/position a starter formation and watch automatic combat.
+2. **Battle Camp:** learn that the 6x6 Camp is the physical inventory.
+3. **Illuminati:** move a Summon into a protected cell.
+4. **Dealer:** learn Balls, 2-hour refill-to-100 and Time Shield.
+5. **Spawn Machine:** release an F-tier Ball reward and interact with a special Blob meter.
+6. **Merge:** use an explicitly scripted tutorial duplicate to merge F → E.
+7. **Defense:** configure basic 2/4/6 defense and see Alliances/protection.
+8. **Raid:** experience timed setup and automatic combat.
+9. **Opponent Camp:** after a tutorial-safe win, steal an exposed Summon.
 
-Tutorial rewards may use explicitly scripted server-authoritative outcomes so onboarding does not depend on random luck. That script is separate from the normal global daily pool.
+Tutorial reward scripting is explicitly server-authoritative and separate from normal daily random outcomes.
 
-Tutorial copy must match actual controls. There is no manual skill-cast/Auto-Cast tutorial in V1 because combat is always automatic.
+Do not teach manual skill casting or Auto-Cast. V1 combat is always automatic.
 
-## 23. Persistence and authority
+## 24. Authority, timers and ownership
 
-The client presents intent. The server commits value.
+The client submits intent. The server commits value.
 
-Every persistent action must be idempotent and retry-safe, including:
+Persistent/economic actions require idempotent action IDs, including:
 
-- move/merge where persistence matters,
-- Spawn release,
+- Spawn,
+- merge/release,
 - Dealer refill,
 - Campaign milestone settlement,
 - Defense save,
-- Raid matchmaking reservation,
-- timed Raid auto-deploy,
-- combat resolution record,
-- steal selection/timeout,
-- surrender selection/timeout,
-- shield reset/break,
+- matchmaking reservation,
+- Raid timeout auto-deploy,
+- Raid result settlement,
+- steal/surrender selection or timeout,
+- Time Shield break/reset,
 - FIFO claim.
 
-Ownership-changing settlement uses database transactions and row/advisory locks as appropriate. A concurrent retry cannot duplicate or transfer the same Summon twice.
+Ownership transfers use database transactions and locking so retries, disconnects or concurrent requests cannot duplicate a Summon or transfer one instance twice.
 
-Client local storage may cache non-authoritative preferences such as camera/replay speed. It is not the source of truth for Balls, Summons, Campaign progress, protection or PvP settlement.
+Client local storage may cache non-economic preferences such as camera/replay speed. It is not authoritative for Summons, Balls, progress, protection or PvP.
 
-## 24. Content and asset contracts
+## 25. Content and assets
 
-Static content is versioned and data-driven.
+Static game content is versioned and data-driven.
 
-Each Summon asset manifest should be able to provide:
+Each Summon asset manifest must be able to describe:
 
 ```text
 world model / GLB
-portrait and icon
+portrait / icon
 idle animation
 run animation
 basic attack animation
@@ -652,23 +618,19 @@ hit animation
 death animation
 scale
 ground offset
-attack / projectile origin
+attack or projectile origin
 VFX anchors
 optional tier-form overrides
 fallback presenter
 ```
 
-Heavy scene and character assets load lazily by world/bundle. Do not instantiate every possible world at startup.
+Heavy worlds and character assets load lazily. Do not instantiate every future world or heavy asset at boot.
 
-A combat replay references content version + stable identity + event log so visual upgrades do not rewrite the underlying battle result.
+## 26. Input and layout
 
-## 25. UX and input
+Landscape is the primary orientation, supporting desktop pointer and mobile touch.
 
-Primary orientation is landscape.
-
-Support desktop pointer and mobile touch. The world remains the visual anchor wherever possible.
-
-Input consumption priority:
+Input priority:
 
 ```text
 blocking system modal
@@ -677,54 +639,52 @@ blocking system modal
 → camera gesture
 ```
 
-Only one layer consumes a gesture. Feature drawers cannot leak clicks into world actions beneath them, and non-modal drawers cannot unnecessarily block visible world space.
+Only one layer consumes a gesture. Summon Inspect is deliberately non-modal. Other true blocking system modals must prevent world click-through.
 
-Base inspection and Defense setup should take inspiration from the clarity of established auto battlers: direct board manipulation, immediate unit inspection, visible synergy thresholds and predictable drag/tap behavior.
+## 27. V1 acceptance invariants
 
-## 26. V1 acceptance invariants
+V1 is not correct until automated tests protect these statements:
 
-The implementation is not V1-correct until these remain true under tests:
-
-- Battle Camp never exceeds 36 Summons.
-- Full Camp Spawn rejects before consuming Ball.
-- Dealer refills to 100 every eligible 2 hours and never grants while balance is 100+.
-- Daily Spawn pool is globally consistent and all six base rewards are F tier at `10/15/25/25/15/10` probabilities.
-- Each Blob can own independent progress/effect configuration.
-- Time Shield caps at 8h.
-- Outgoing Raid breaks the attacker's Time Shield.
-- Losing defender receives full 8h Time Shield reset.
-- Base Illuminati protects 6 cells and purchased entitlement protects 12 without changing 36 capacity.
-- Raid cannot start without a free/reservable Camp cell.
+- Camp never exceeds 36 usable Summons.
+- Full Camp Spawn consumes no Ball.
+- Raid reserves its win destination slot.
+- Dealer refills below-100 balance to exactly 100 after each eligible 2-hour cooldown.
+- Daily global Spawn uses six F-tier identities at `10/15/25/25/15/10` bin probabilities.
+- Blob meters can be independently configured.
+- Time Shield caps at 8 hours.
+- Outgoing Raid breaks attacker Shield.
+- Defender Raid loss resets Shield to full 8 hours.
+- Illuminati protects 6 base cells or 12 upgraded cells while total Camp remains 36.
 - No player participates in parallel Raids.
 - Matchmaking is server-side and Power-aware.
-- Raid setup timeouts auto-deploy 2/4/6 legal formations.
-- Winning steal timeout selects randomly from eligible exposed defender pool.
-- Losing surrender timeout selects weakest distinct used attacker Summon.
+- Raid setup timeouts auto-deploy legal 2/4/6 formations.
+- Winning steal timeout chooses randomly from eligible exposed defender pool.
+- Losing surrender timeout chooses the weakest distinct used attacker Summon.
 - Ownership transfer is atomic and idempotent.
-- Defense reward FIFO is unlimited but non-usable/non-reorderable until claimed.
-- Campaign formation is explicit, not first-six roster order.
-- Campaign Auto Progress survives navigation inside the app, stops on defeat and pauses before each Level 10/100 boss milestone.
-- `1x/2x/4x` changes replay speed only.
-- New-player tutorial boots Campaign.
-- Summon Inspect is non-modal and leaves the Camp usable.
-- Alliances are the only synergy language exposed to players.
+- Defense FIFO is unlimited but unusable/unreorderable until claimed.
+- Campaign formation is explicitly selected and positioned.
+- Campaign Auto Progress continues while navigating inside the app, stops on defeat and pauses before 10/100 bosses.
+- `1x/2x/4x` affects presentation only.
+- New-player tutorial starts Campaign.
+- Summon Inspect keeps Camp usable.
+- Alliances are the only synergy terminology exposed to players.
 
-## 27. V1 non-goals and extension seams
+## 28. V1 non-goals and future seams
 
-Not required for V1:
+Not required in V1:
 
-- Closed-app/offline Campaign farming.
-- Inventory expansion beyond 36.
-- Separate Origin and Combat Function systems.
-- Manual combat skill casting.
-- Roguelike run resets.
-- Destructible Spawn Machines.
-- A fully monetized Dealer shop.
-- Paid temporary storage/Vault, though the inventory architecture must allow it later without increasing usable Camp capacity.
-- Advanced alternate Blob mini-games, though Blob contracts are deliberately configurable.
+- closed-app/offline Campaign farming,
+- Camp inventory expansion,
+- separate Origin/Combat Function synergy categories,
+- manual combat skill casting,
+- Campaign run resets,
+- destructible Spawn Machine,
+- full Dealer IAP shop,
+- paid temporary Vault/storage,
+- advanced alternate Blob mini-games.
 
-Future systems should extend these seams rather than bypass the core constraints.
+Future systems may extend these seams but cannot bypass the 36-cell economy, authority model or ownership transaction rules without an explicit product change here.
 
-## 28. IP boundary
+## 29. IP boundary
 
-Goku, Naruto, Luffy, Eren, L, Lelouch and similar named anime references are prototype content only. Commercial release requires licensed rights or original replacement characters. Game systems must not depend on any specific copyrighted identity.
+Current named anime characters such as Goku, Naruto, Luffy, Eren, L and Lelouch are prototype placeholders only. Commercial release requires licensing or original replacement IP. Game rules, Alliances and assets must remain replaceable without rewriting combat systems.

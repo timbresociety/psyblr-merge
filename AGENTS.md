@@ -1,48 +1,35 @@
-# PSYBLR Codex Instructions
+# PSYBLR Codex Instructions (V2 Revamp)
+
+Canonical reference: [`docs/V2_SOURCE_OF_TRUTH.md`](file:///Users/deepsheth/Documents/GitHub/psyblr-merge/docs/V2_SOURCE_OF_TRUTH.md)
 
 ## Mission
-Build the production-shaped alpha of PSYBLR. Placeholder visuals are acceptable; placeholder architecture is not.
+Build the production-shaped V2 alpha of PSYBLR. Placeholder visuals are acceptable; placeholder architecture is not.
 
 ## Non-negotiables
-1. React owns product UI. PlayCanvas owns realtime 3D world rendering/simulation playback.
-2. Never put economy authority in the browser. Spawn rewards, merges, raid results, steals and progression writes are server-authoritative.
-3. `packages/combat-core` must remain deterministic, pure TypeScript and independent of React/PlayCanvas.
-4. Static content is versioned under `packages/game-content`; database rows hold player/runtime state.
-5. Tutorial progression is data-driven. Do not scatter tutorial-step conditionals across components.
-6. Every economy mutation requires an idempotency/client_action_id.
-7. Every summon uses the same asset contract. Missing art must fall back to procedural placeholders without breaking gameplay.
-8. Keep the world visible under overlays whenever possible. Avoid page-navigation UX for inventory/detail/tutorial flows.
-9. Landscape is the gameplay orientation for alpha. Portrait shows a rotate-device gate.
-10. Add tests with each vertical slice. Do not defer the happy-path Playwright test to the end.
+1. **Direct PlayCanvas Runtime (`apps/game`)**: Pure TypeScript + PlayCanvas Engine; NO React or `@playcanvas/react` in the gameplay client. UI is native PlayCanvas Screen/Element UI + world-space UI.
+2. **Direct Manipulation Only**: Drag-and-drop directly between dock, camp, and battlefield. No persistent `selectedSummon` / placement mode or confirm dialogs for spatial actions.
+3. **Server-authoritative Economy**: Never put economy authority in the browser. Spawn rewards, merges, raid results, steals, and progression writes are server-authoritative with idempotent `client_action_id`.
+4. **Deterministic Combat Core**: `packages/combat-core` must remain deterministic, pure TypeScript, and independent of PlayCanvas/React.
+5. **Data-driven Content**: Static content is versioned under `packages/game-content`; database rows hold player/runtime state.
+6. **Silent Onboarding**: No blocking cue cards or DOM focus masks. Onboarding uses Affordance → Demonstration → Microcopy.
+7. **Spatial World Continuity**: World is the visual anchor. Opening inspectors, Pachinko, or raid reframes the world camera rather than replacing it with full-page overlays.
+8. **Landscape First**: Landscape is the primary gameplay orientation.
+9. **Single Summon Identity**: 1 Summon definition across F→SSS (9 tiers); tier is progression state, not 9 separate character definitions.
+10. **Test with Each Slice**: Vitest for deterministic logic and Playwright tests for game interaction.
 
 ## Engineering boundaries
-- `apps/web/src/game`: 3D presentation and world interaction only.
-- `apps/web/src/ui`: DOM UI, HUD, menus, tutorial overlays.
-- `packages/game-rules`: progression/synergy/merge rules.
-- `packages/combat-core`: deterministic combat simulator + event log.
-- `packages/contracts`: shared schemas and API contracts.
-- `packages/game-content`: static definitions.
-- `supabase/functions`: privileged mutations.
+- `apps/game`: Standalone Vite + Direct PlayCanvas Engine + TypeScript game client.
+- `apps/web`: Legacy V1 client (preserved temporarily during V2 slice; no new gameplay feature work).
+- `packages/game-rules`: Progression, synergy, coordinate, and merge rules.
+- `packages/combat-core`: Deterministic combat simulator + event log.
+- `packages/contracts`: Canonical shared schemas and API contracts.
+- `packages/game-content`: Static summon/ability/tier definitions.
+- `supabase/functions`: Privileged mutations & economy transactions.
 
-## Performance rules
-- Do not drive per-frame motion through React state. Use PlayCanvas scripts/engine update loops.
-- Avoid barrel imports in hot UI paths.
-- Lazy-load heavy secondary menus and art.
-- Keep asset manifests small and independently streamable.
-- Inventory grids use bust renders; only detail view needs an interactive 3D preview.
-
-## UI rules
-- 3D world is the spatial anchor.
-- Primary action sits bottom-right on desktop/landscape mobile.
-- Summon tray/picker enters from bottom.
-- Details enter from right on desktop and as a nearly-full-height sheet on small landscape screens.
-- Tutorial focus mask blocks unrelated interactions only when required.
-- Use short, actionable tutorial copy; one concept per beat.
-
-## Definition of done for every PR
+## Definition of done for every PR / Task
 - Typecheck passes.
-- Relevant unit tests pass.
+- Relevant unit and visual tests pass.
 - No new console errors.
-- Keyboard/pointer interactions have accessible DOM equivalents where UI is DOM based.
-- Loading, empty and error states exist.
-- Any persistent mutation survives a retry without duplication.
+- Micro-interactions feel responsive and follow motion tokens (`MICRO`, `QUICK`, `STANDARD`, `FOCUS`, `REWARD`, `HERO`).
+- Every persistent mutation survives a retry without duplication.
+- Completion record committed under `docs/exec-plans/completed/`.

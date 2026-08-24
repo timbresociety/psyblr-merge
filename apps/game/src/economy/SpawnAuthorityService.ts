@@ -5,25 +5,42 @@ import type {
   SummonInstance,
   Tier,
 } from '@psyblr/contracts';
-import { findFirstExposedCampCell, isCampCellOccupied } from '@psyblr/game-rules';
+import { CAMP_CAPACITY, findFirstExposedCampCell, isCampCellOccupied } from '@psyblr/game-rules';
+
+const DEALER_REFILL_TARGET = 100;
+const DEALER_REFILL_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const SHIELD_GRANT_MS = 60 * 60 * 1000;
+const SHIELD_MAX_MS = 8 * 60 * 60 * 1000;
+
+type SpawnAuthorityOptions = {
+  allowDevelopmentFallback?: boolean;
+};
+
+function defaultDevelopmentFallback(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
 
 export class SpawnAuthorityService {
-  private balls: number = 100;
+  private balls: number = DEALER_REFILL_TARGET;
   private lastDealerClaimTime: number = 0;
   private shieldCharges: number = 0;
-  private shieldExpiresAt: number = 0; // Timestamp ms
+  private shieldExpiresAt: number = 0;
+  private readonly allowDevelopmentFallback: boolean;
 
-  // Curated 6-Summon Daily Pool with exact specified probabilities: [30, 15, 5, 5, 15, 30]
+  // Development placeholder for the server-provided global daily pool.
+  // All six bins are F tier. Production identities and outcome come from authority.
   private dailyPool: (SpawnDailyPoolSlot & { tier: Tier })[] = [
-    { slotIndex: 0, summonDefinitionId: 'goku', probability: 0.30, tier: 'F' },
-    { slotIndex: 1, summonDefinitionId: 'naruto', probability: 0.15, tier: 'E' },
-    { slotIndex: 2, summonDefinitionId: 'luffy', probability: 0.05, tier: 'D' },
-    { slotIndex: 3, summonDefinitionId: 'eren', probability: 0.05, tier: 'D' },
-    { slotIndex: 4, summonDefinitionId: 'l', probability: 0.15, tier: 'E' },
-    { slotIndex: 5, summonDefinitionId: 'lelouch', probability: 0.30, tier: 'F' },
+    { slotIndex: 0, summonDefinitionId: 'goku', probability: 0.10, tier: 'F' },
+    { slotIndex: 1, summonDefinitionId: 'naruto', probability: 0.15, tier: 'F' },
+    { slotIndex: 2, summonDefinitionId: 'luffy', probability: 0.25, tier: 'F' },
+    { slotIndex: 3, summonDefinitionId: 'eren', probability: 0.25, tier: 'F' },
+    { slotIndex: 4, summonDefinitionId: 'l', probability: 0.15, tier: 'F' },
+    { slotIndex: 5, summonDefinitionId: 'lelouch', probability: 0.10, tier: 'F' },
   ];
 
-  constructor() {
+  constructor(options: SpawnAuthorityOptions = {}) {
+    this.allowDevelopmentFallback = options.allowDevelopmentFallback ?? defaultDevelopmentFallback();
     this.loadPersistedState();
   }
 
@@ -31,7 +48,7 @@ export class SpawnAuthorityService {
     try {
       if (typeof localStorage !== 'undefined') {
         const savedBalls = localStorage.getItem('psyblr_balls');
-        if (savedBalls !== null) this.balls = parseInt(savedBalls, 10);
+        if (savedBalls !== null) this.balls = Math.max(0, parseInt(savedBalls, 10));
 
         const savedClaim = localStorage.getItem('psyblr_last_dealer_claim');
         if (savedClaim !== null) this.lastDealerClaimTime = parseInt(savedClaim, 10);
@@ -40,7 +57,7 @@ export class SpawnAuthorityService {
         if (savedShield !== null) this.shieldExpiresAt = parseInt(savedShield, 10);
       }
     } catch {
-      // Ignore localStorage errors
+      // Persistence is a development convenience only. Server state is canonical.
     }
   }
 
@@ -52,7 +69,7 @@ export class SpawnAuthorityService {
         localStorage.setItem('psyblr_shield_expires', this.shieldExpiresAt.toString());
       }
     } catch {
-      // Ignore localStorage errors
+      // Ignore development storage failures.
     }
   }
 
@@ -61,44 +78,48 @@ export class SpawnAuthorityService {
   }
 
   addBalls(count: number): void {
-    this.balls += count;
+    this.balls = Math.max(0, this.balls + count);
     this.saveState();
   }
 
-  // --- DEALER 24-HOUR GENERATION (100 BALLS) ---
+  // --- DEALER: REFILL TO 100 AFTER A 2-HOUR COOLDOWN ---
   canClaimDailyDealer(): boolean {
-    const elapsed = Date.now() - this.lastDealerClaimTime;
-    return elapsed >= 24 * 60 * 60 * 1000;
+    if (this.balls >= DEALER_REFILL_TARGET) return false;
+    if (this.lastDealerClaimTime === 0) return true;
+    return Date.now() - this.lastDealerClaimTime >= DEALER_REFILL_COOLDOWN_MS;
   }
 
   getTimeUntilNextDealerClaimMs(): number {
+    if (this.lastDealerClaimTime === 0) return 0;
     const elapsed = Date.now() - this.lastDealerClaimTime;
-    const remaining = 24 * 60 * 60 * 1000 - elapsed;
-    return Math.max(0, remaining);
+    return Math.max(0, DEALER_REFILL_COOLDOWN_MS - elapsed);
   }
 
   claimDailyDealerBalls(): { success: boolean; ballsGranted: number; nextClaimMs: number } {
-    if (!this.canClaimDailyDealer() && this.lastDealerClaimTime > 0) {
+    if (!this.canClaimDailyDealer()) {
       return { success: false, ballsGranted: 0, nextClaimMs: this.getTimeUntilNextDealerClaimMs() };
     }
-    this.balls += 100;
+
+    const ballsGranted = DEALER_REFILL_TARGET - this.balls;
+    this.balls = DEALER_REFILL_TARGET;
     this.lastDealerClaimTime = Date.now();
     this.saveState();
-    return { success: true, ballsGranted: 100, nextClaimMs: 24 * 60 * 60 * 1000 };
+    return { success: true, ballsGranted, nextClaimMs: DEALER_REFILL_COOLDOWN_MS };
   }
 
-  // --- SHIELD BUMPER BOUNCE CHARGES & 1-HOUR ACTIVE SHIELD ---
+  // --- DEVELOPMENT SHIELD METER PLACEHOLDER ---
+  // Product source of truth requires two independent configurable Blob meters.
   addBumperBounceCharge(): { currentCharges: number; shieldGranted: boolean; shieldExpiresAt: number } {
     this.shieldCharges++;
     let shieldGranted = false;
 
     if (this.shieldCharges >= 5) {
       this.shieldCharges = 0;
-      shieldGranted = true;
-      // Grant 1 Hour Shield
       const now = Date.now();
-      const currentExpiry = Math.max(now, this.shieldExpiresAt);
-      this.shieldExpiresAt = currentExpiry + 60 * 60 * 1000; // +1 hour
+      const before = this.shieldExpiresAt;
+      const currentExpiry = Math.max(now, before);
+      this.shieldExpiresAt = Math.min(now + SHIELD_MAX_MS, currentExpiry + SHIELD_GRANT_MS);
+      shieldGranted = this.shieldExpiresAt > before;
       this.saveState();
     }
 
@@ -126,15 +147,19 @@ export class SpawnAuthorityService {
   }
 
   /**
-   * Authoritative spawn resolution for Pachinko machine.
+   * Requests an authoritative Pachinko result. Local resolution exists only for
+   * explicit localhost development and must never be a production fallback.
    */
   async requestReleaseBall(
     currentPlacements: readonly CampPlacement[],
     clientActionId?: string
   ): Promise<ReleaseBallResult> {
-    const actionId = clientActionId ?? `action_spawn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    if (this.balls <= 0) throw new Error('No Balls available.');
+    if (currentPlacements.length >= CAMP_CAPACITY) throw new Error('Battle Camp is full. Free a slot before spawning.');
 
-    // Try server-authoritative local DB endpoint first if available
+    const actionId = clientActionId ?? `action_spawn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    let serverFailure = false;
+
     try {
       const response = await fetch('http://127.0.0.1:54321/api/economy/release-ball', {
         method: 'POST',
@@ -149,11 +174,16 @@ export class SpawnAuthorityService {
           return serverResult;
         }
       }
+      serverFailure = true;
     } catch {
-      // Local DB offline, fallback to standalone simulation
+      serverFailure = true;
     }
 
-    // Select reward slot based on probability distribution [30, 15, 5, 5, 15, 30]
+    if (serverFailure && !this.allowDevelopmentFallback) {
+      throw new Error('Spawn authority unavailable. Ball was not consumed.');
+    }
+
+    // Explicit development-only simulation of the server-provided daily pool.
     const rand = Math.random();
     let cumulative = 0;
     let selectedSlot = this.dailyPool[0]!;
@@ -169,10 +199,11 @@ export class SpawnAuthorityService {
     const createdSummon: SummonInstance = {
       id: `spawn:${selectedSlot.summonDefinitionId}:${Date.now()}`,
       definitionId: selectedSlot.summonDefinitionId,
-      tier: selectedSlot.tier,
+      tier: 'F',
     };
 
-    // Find destination cell in Camp (Rows 1-5 first, then Row 0)
+    // Prefer exposed cells, then any genuinely free cell. Never fabricate a
+    // destination when the Camp is full or malformed.
     let destCell = findFirstExposedCampCell(currentPlacements);
     if (!destCell) {
       for (let y = 0; y < 6; y++) {
@@ -186,17 +217,18 @@ export class SpawnAuthorityService {
       }
     }
 
-    const finalCell = destCell ?? { x: 0, y: 1 };
+    if (!destCell) throw new Error('Battle Camp has no free destination. Ball was not consumed.');
+
     this.balls = Math.max(0, this.balls - 1);
     this.saveState();
 
-    const result: ReleaseBallResult = {
+    return {
       clientActionId: actionId,
       rewardSlot: selectedSlot.slotIndex,
       createdSummon,
       destination: {
         summonInstanceId: createdSummon.id,
-        cell: finalCell,
+        cell: destCell,
       },
       ballsRemaining: this.balls,
       blobProgress: {},
@@ -206,20 +238,20 @@ export class SpawnAuthorityService {
         presentationSeed: `seed_${Date.now()}`,
       },
     };
-
-    return result;
   }
 
   async resetLocalDb(): Promise<boolean> {
     try {
       const response = await fetch('http://127.0.0.1:54321/api/player/reset', { method: 'POST' });
       if (response.ok) {
-        this.balls = 100;
+        this.balls = DEALER_REFILL_TARGET;
+        this.lastDealerClaimTime = 0;
         this.saveState();
         return true;
       }
     } catch {
-      this.balls = 100;
+      this.balls = DEALER_REFILL_TARGET;
+      this.lastDealerClaimTime = 0;
       this.saveState();
     }
     return false;

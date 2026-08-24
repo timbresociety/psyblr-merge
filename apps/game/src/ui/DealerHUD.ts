@@ -38,7 +38,6 @@ export class DealerHUD {
     screenEntity.addChild(this.root);
     this.root.setLocalPosition(0, 0, 0);
 
-    // 1. Fullscreen transparent backdrop click catcher
     this.backdropCatcher = new Entity('DealerBackdropCatcher');
     this.root.addChild(this.backdropCatcher);
     this.backdropCatcher.addComponent('element', {
@@ -53,7 +52,6 @@ export class DealerHUD {
     this.backdropCatcher.setLocalPosition(0, 0, 0);
     this.backdropCatcher.element?.on('click', () => this.close());
 
-    // 2. Center Modal Panel (640x380)
     this.panelBg = new Entity('DealerPanelBackdrop');
     this.root.addChild(this.panelBg);
     this.panelBg.addComponent('element', {
@@ -69,7 +67,6 @@ export class DealerHUD {
     });
     this.panelBg.setLocalPosition(0, 0, 0);
 
-    // Top Emerald Border Trim
     const topTrim = new Entity('DealerTopTrim');
     this.panelBg.addChild(topTrim);
     topTrim.addComponent('element', {
@@ -83,7 +80,6 @@ export class DealerHUD {
     });
     topTrim.setLocalPosition(0, 188, 0);
 
-    // Top-Right [X] Close Button
     this.closeXBtn = new Entity('DealerCloseXBtn');
     this.panelBg.addChild(this.closeXBtn);
     this.closeXBtn.addComponent('element', {
@@ -115,14 +111,13 @@ export class DealerHUD {
     this.closeXBtn.element?.on('click', () => this.close());
     this.closeXBtn.element?.on('touchend', () => this.close());
 
-    // Header Title (Y: +140)
     this.headerText = new Entity('DealerTitle');
     this.panelBg.addChild(this.headerText);
     this.headerText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 18,
-      text: "DEALER'S PLINKO SUPPLIES",
+      text: "DEALER'S BALL SUPPLY",
       color: new Color(0.2, 0.9, 0.5),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
@@ -130,14 +125,13 @@ export class DealerHUD {
     });
     this.headerText.setLocalPosition(0, 140, 0);
 
-    // Subtitle (Y: +110)
     this.subText = new Entity('DealerSub');
     this.panelBg.addChild(this.subText);
     this.subText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 11,
-      text: 'Daily Supply Drop • Generates 100 Plinko balls every 24 hours',
+      text: 'Free refill every 2 hours • Refills Ball balance up to 100',
       color: new Color(0.7, 0.85, 0.8),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
@@ -145,7 +139,6 @@ export class DealerHUD {
     });
     this.subText.setLocalPosition(0, 110, 0);
 
-    // Body text (Y: +25)
     this.bodyText = new Entity('DealerBody');
     this.panelBg.addChild(this.bodyText);
     this.bodyText.addComponent('element', {
@@ -156,7 +149,7 @@ export class DealerHUD {
       wrapLines: true,
       width: 540,
       text:
-        'Greetings, Summoner!\n\nI deliver 100 free Plinko balls every 24 hours to fuel your Spawn Machine.\nUse them to summon new fighters, hit side bumpers to charge 1-hour Shields, and safeguard your Battle Camp from raiders!',
+        'Every 2 hours I can refill your Ball balance to 100 when it is below 100.\n\nCampaign and future shop rewards may take you above 100. Those extra Balls are yours, but the free refill waits until your balance drops below 100.\n\nUse Balls in the Spawn Machine. Special Blob targets can build Time Shield protection against incoming Raids.',
       color: new Color(0.95, 0.98, 1.0),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
@@ -164,7 +157,6 @@ export class DealerHUD {
     });
     this.bodyText.setLocalPosition(0, 25, 0);
 
-    // Claim Button (Y: -90)
     this.claimButton = new Entity('DealerClaimButton');
     this.panelBg.addChild(this.claimButton);
     this.claimButton.addComponent('element', {
@@ -185,7 +177,7 @@ export class DealerHUD {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 13,
-      text: 'CLAIM 100 PLINKO BALLS',
+      text: 'REFILL TO 100 BALLS',
       color: new Color(1, 1, 1),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
@@ -197,7 +189,6 @@ export class DealerHUD {
     this.claimButton.element?.on('click', onClaim);
     this.claimButton.element?.on('touchend', onClaim);
 
-    // Return Button (Y: -90)
     this.returnBtn = new Entity('DealerReturnBtn');
     this.panelBg.addChild(this.returnBtn);
     this.returnBtn.addComponent('element', {
@@ -229,24 +220,23 @@ export class DealerHUD {
     this.returnBtn.element?.on('click', () => this.close());
     this.returnBtn.element?.on('touchend', () => this.close());
 
-    // ESC key listener to exit
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.close();
-      }
+      if (e.key === 'Escape' && this.isOpen) this.close();
     });
   }
 
   setClaimStatus(canClaim: boolean, remainingMs: number = 0): void {
     if (this.claimBtnText.element && this.claimButton.element) {
       if (canClaim) {
-        this.claimBtnText.element.text = 'CLAIM 100 PLINKO BALLS';
+        this.claimBtnText.element.text = 'REFILL TO 100 BALLS';
         this.claimButton.element.color = new Color(0.1, 0.75, 0.4);
         this.claimButton.element.useInput = true;
       } else {
         const hours = Math.floor(remainingMs / (60 * 60 * 1000));
         const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
-        this.claimBtnText.element.text = `CLAIMED (${hours}h ${mins}m)`;
+        this.claimBtnText.element.text = remainingMs > 0
+          ? `READY IN ${hours}h ${mins}m`
+          : 'REFILL AVAILABLE BELOW 100';
         this.claimButton.element.color = new Color(0.28, 0.35, 0.45);
         this.claimButton.element.useInput = false;
       }

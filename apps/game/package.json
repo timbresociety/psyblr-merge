@@ -1,0 +1,23 @@
+{
+  "name": "@psyblr/game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@psyblr/contracts": "0.1.0",
+    "@psyblr/game-content": "0.1.0",
+    "@psyblr/game-rules": "0.1.0",
+    "playcanvas": "2.21.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.10"
+  }
+}

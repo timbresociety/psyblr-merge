@@ -5,9 +5,12 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "npm run dev -w @psyblr/web",
+    "dev:game": "npm run dev -w @psyblr/game",
     "build": "npm run build -w @psyblr/web",
+    "build:game": "npm run build -w @psyblr/game",
     "test": "npm run test -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present",
+    "typecheck:game": "npm run typecheck -w @psyblr/game",
     "validate:content": "node scripts/validate-content.mjs",
     "test:e2e": "playwright test"
   },

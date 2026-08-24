@@ -1,149 +1,634 @@
-# PSYBLR Alpha Product Specification
+# PSYBLR Product Specification
 
-## Product promise
-A world-first, asynchronous summon battler where players build a protected core collection, generate and merge summons, fight deterministic raids, and steal exposed summons from defeated opponents.
+## 1. Product summary
 
-## Alpha happy flow
-1. Start directly in Campaign Arena with guided tutorial.
-2. Open Summon Inventory and inspect identity, stats and skills.
-3. Deploy one F-tier summon, learn Origins and Combat Functions, then deploy all six.
-4. Fight six creeps. Manually cast first ready skill, then enable Auto Cast.
-5. Fly camera to the Battle Camp: 6x6 summon grid with a protected 6x1 Illuminati row.
-6. Teach vulnerability and move the six starters into Illuminati.
-7. Fly to Spawn Machine. Drop balls until camp reaches 36/36.
-8. Return to camp, merge identical summons F→E→D→C; explain immediate upgrade and future silhouettes.
-9. Enter Raid Gate. Deploy and resolve a 2v2 field, then a 4v4 field, then a 6v6 field. Repetition across rounds is allowed, but a Summon cannot occupy two slots in the same field.
-10. Each field computes Origin and Combat Function synergies from the deployed Summons only. Resolve the best-of-three raid after the final field.
-11. A raid victory travels directly into that opponent's read-only Camp. Illuminati occupants are protected; one exposed Summon may be selected and explicitly claimed.
-12. Return home, configure a 2/4/6 defensive formation with the same spatial Raid placement interaction, save it, then finish the tutorial and unlock navigation.
+PSYBLR is an anime-styled incremental auto battler where the player's Summon collection is also their spatial inventory, progression system, attack roster, defense roster, and PvP risk surface.
 
-## Core spatial model
-### Campaign Arena
-- Horizontal 8x8 board.
-- Player and enemy deployment regions are configuration, not separate implementations.
-- Six-summon tutorial cap.
+The player lives in a persistent Base, claims a limited daily resource, converts that resource into randomized Summons through a physical pachinko machine, merges duplicates into higher tiers, progresses through an infinite PvE Campaign, and raids other players in three escalating auto-battler rounds for the right to steal one exposed Summon.
 
-### Battle Camp
-- 6x6 summon occupancy grid.
-- Row 0 is Illuminati: six protected cells.
-- Rows 1-5 are exposed to raids.
-- The base environment contains fixed building sockets for future systems. Do not build free-form building placement in alpha.
+The game should feel closer to a living game world than an app with menus.
 
-### Raid Arena
-- Reuse combat scene and renderer.
-- Sequential field sizes: 2, 4, 6.
-- Resolve one field before opening the next; there is no pre-draft of future fields.
-- Origin and Combat Function synergies resolve independently from each round's field composition, so their effect naturally scales at the 2, 4, and 6 thresholds.
-- Best-of-three based on round W/D/L outcomes.
+## 2. Product pillars
 
-### Opponent Camp
-- Reuse the Base scene with a read-only opponent-state mode; do not fork a second base implementation.
+### 2.1 One collection, many uses
+Every Summon belongs to one persistent collection. There are no separate abstract card inventories for Campaign, Raid, defense, and merging.
 
-### Spawn Machine
-- Remains a building/focus mode inside the Base scene; do not create a separate world scene.
+### 2.2 Spatial home
+Base is the player's home screen. The Battle Camp is always visually central and systems are represented by physical objects around it.
 
-## UI information architecture
-There are no traditional gameplay pages. The 3D world remains mounted and React overlays appear on top.
+### 2.3 Satisfying incremental growth
+The player should repeatedly feel:
+- another Ball claimed,
+- another Summon spawned,
+- another duplicate found,
+- another tier merged,
+- another Campaign level cleared,
+- another defense improved,
+- another Raid won,
+- another valuable Summon stolen.
+
+### 2.4 Readable auto combat
+Combat must be visually legible like a board auto battler. Units visibly move, attack, cast, take damage, and die. The player should understand why a round is being won or lost by looking at the battlefield.
+
+### 2.5 World navigation, not page navigation
+Campaign and Raid are places reached through gates. The Spawn Machine and Dealer are physical Base objects. The Defense Podium is a physical Base object.
+
+## 3. Core loop
+
+1. Enter Base.
+2. Claim available Balls from Dealer.
+3. Spend Balls at Spawn Machine.
+4. Receive Summons into Battle Camp / inventory.
+5. Arrange, inspect, protect, and merge Summons.
+6. Choose progression:
+   - Campaign for PvE levels and story progression,
+   - Raid for PvP risk/reward.
+7. Improve Raid defense at Defense Podium.
+8. Return to Base and repeat.
+
+## 4. Scene architecture
+
+### 4.1 Base Scene
+
+Base is the default scene after loading and the scene the player returns to after activity completion.
+
+Visual composition:
+- Battle Camp grid in the center,
+- Dealer near one side of Camp,
+- Spawn Machine as a major landmark,
+- Campaign Gate,
+- Raid Gate,
+- Defense Podium,
+- future expansion sockets around the perimeter.
+
+The camera should make the Base feel like one coherent location. Interacting with an object may use a smooth camera focus or local UI, but it must not accidentally turn into a fake page layered over Base.
+
+Base supports:
+- Camp summon placement,
+- summon inspection,
+- merge interaction,
+- protected-zone management,
+- daily Ball claim,
+- Spawn Machine use,
+- defense setup,
+- Campaign entry,
+- Raid entry.
+
+### 4.2 Campaign Scene
+
+Campaign is a dedicated combat scene.
+
+Never display Campaign enemies or Campaign battle resolution on top of Base geometry.
+
+The Campaign scene contains:
+- auto-battler arena,
+- player deployment region,
+- encounter region,
+- six owned Summons,
+- creep/boss encounter composition,
+- level and Arc context,
+- combat HUD kept minimal enough to preserve battlefield readability.
+
+### 4.3 Raid Scene
+
+Raid is a dedicated combat scene.
+
+Never display Raid combat inside Base.
+
+A Raid session contains exactly three sequential battle rounds:
+- Round 1: 2v2
+- Round 2: 4v4
+- Round 3: 6v6
+
+Each round contains:
+1. attacker placement,
+2. defender formation reveal/placement,
+3. round lock,
+4. auto battle,
+5. round result,
+6. transition to next round.
+
+After Round 3, resolve the Raid from the three round outcomes.
+
+### 4.4 Opponent Camp Scene
+
+A Raid victory transitions to the defeated player's Camp in read-only opponent mode.
+
+Reuse the same Base spatial language. Do not create a disconnected card-list steal screen.
+
+The player can visually inspect:
+- protected Summons,
+- exposed Summons,
+- eligible steal targets.
+
+Exactly one eligible Summon can be claimed.
+
+## 5. Battle Camp
+
+The Battle Camp is the player's core collection surface.
+
+The current alpha grid remains 6x6 unless intentionally changed.
+
+Camp behavior:
+- each occupied cell represents one owned Summon instance,
+- Summons can be repositioned,
+- compatible identical same-tier Summons can merge,
+- some Camp positions may be protected from Raid theft,
+- Camp capacity is explicit,
+- spawning or stealing cannot silently exceed capacity.
+
+### Protected zone
+The existing protected row concept remains valid for the alpha unless replaced by a later explicit design decision.
+
+Protected occupants cannot be stolen after a Raid loss.
+
+Protection must be visibly understandable in the Base itself, not explained only through text.
+
+## 6. Summons
+
+A Summon instance has at minimum:
+- instance ID,
+- definition ID,
+- tier,
+- combat stats,
+- ability references,
+- presentation manifest,
+- ownership,
+- Camp placement if placed.
+
+Summons are reusable across Campaign and Raid modes. They are not consumed by normal combat.
+
+### Tier progression
+
+`F -> E -> D -> C -> B -> A -> S -> SS -> SSS`
+
+Merge rule:
+- source and target must share definition,
+- source and target must share tier,
+- they must be distinct instances,
+- one instance is consumed,
+- the survivor upgrades exactly one tier.
+
+Tier increases should produce immediate readable feedback:
+- visual burst,
+- tier label change,
+- power delta,
+- new form/ability unlock when applicable.
+
+## 7. Dealer and Ball economy
+
+### Daily grant
+The Dealer makes 100 free Balls available every 24 hours.
+
+For alpha:
+- free daily capacity: 100,
+- claim interaction happens at Dealer,
+- unclaimed/unused free allocation does not compound indefinitely,
+- the next grant should have a clear timer.
+
+The economy implementation must remain authoritative and idempotent.
+
+The UI must distinguish:
+- Balls currently owned,
+- next free refill/claim time,
+- whether the daily grant has been collected.
+
+## 8. Spawn Machine
+
+The Spawn Machine is a physical pachinko/gacha mechanic in Base.
+
+### Core interaction
+1. player spends one Ball,
+2. authoritative system decides the reward,
+3. a ball is released into the machine,
+4. ball bounces through physical presentation,
+5. bounce targets can advance Shield meter,
+6. ball lands in one of six reward bins,
+7. matching Summon dispense presentation plays,
+8. created Summon enters player ownership and available Camp capacity.
+
+### Daily summon pool
+The machine exposes six possible Summons for the current daily combination.
+
+Locked probability layout:
+
+| Slot | Probability |
+|---|---:|
+| 1 | 30% |
+| 2 | 15% |
+| 3 | 5% |
+| 4 | 5% |
+| 5 | 15% |
+| 6 | 30% |
+
+The six displayed Summons must correspond directly to these slots so the player understands what can drop that day.
+
+### Authority rule
+The physical ball trajectory must never determine the economic reward on the client.
+
+The authoritative result is selected first. Physics and landing animation must be driven or constrained so presentation resolves consistently with that result.
+
+### Shield bounce targets
+The machine contains two special bounce targets.
+
+Each valid hit advances a Shield meter.
+
+When the meter completes:
+- award one Shield,
+- activate one hour of Raid protection,
+- show remaining protection time in Base,
+- reset/advance the meter according to content tuning.
+
+For v1, Shield protection is treated as global Raid protection for the player's Camp while active. If the desired rule later changes to per-Summon or stackable durations, update this spec before implementation.
+
+## 9. Campaign
+
+Campaign is an infinite level-based PvE progression mode.
+
+### Team
+The player fields six owned Summons.
+
+### Encounter cadence
+- ordinary level: creeps,
+- every 10th level: mini boss unless it is also a 100th level,
+- every 100th level: main boss.
+
+Examples:
+- Level 1: creeps
+- Level 9: creeps
+- Level 10: mini boss
+- Level 20: mini boss
+- Level 90: mini boss
+- Level 100: main boss
+- Level 110: mini boss
+- Level 200: next main boss
+
+### Arcs
+Every 100 levels form one story Arc.
+
+Example:
+- Arc 1: Levels 1-100
+- Arc 2: Levels 101-200
+- Arc 3: Levels 201-300
+
+Each Arc can change:
+- environment,
+- creep families,
+- mini bosses,
+- main boss,
+- story framing,
+- reward table,
+- difficulty curve.
+
+### Combat presentation
+Campaign and Raid must share one combat grammar:
+- nav/pathing,
+- target acquisition,
+- attack cadence,
+- cast readability,
+- health/shield display,
+- death resolution,
+- victory resolution.
+
+Avoid bespoke combat presentation per mode.
+
+## 10. Raid
+
+Raid is asynchronous PvP built around a player's saved defense.
+
+### Attacking roster
+The attacker chooses from owned Summons.
+
+There is:
+- no shared shop,
+- no reroll shop,
+- no shared global summon pool,
+- no battle royale lobby.
+
+### Three-round structure
+
+#### Round 1
+2 attacker Summons versus 2 defender Summons.
+
+#### Round 2
+4 attacker Summons versus 4 defender Summons.
+
+#### Round 3
+6 attacker Summons versus 6 defender Summons.
+
+The attacker may reuse an owned Summon across different rounds. A single instance cannot occupy two positions within the same round.
+
+### Round combat
+Once a round starts:
+- placement locks,
+- immutable combat snapshot is created,
+- deterministic combat simulation resolves,
+- PlayCanvas replays that result using moving Summons,
+- no player repositioning occurs during the fight,
+- ability automation follows combat rules.
+
+The game can later introduce limited semi-auto choices, but v1 should not depend on constant manual actions.
+
+### Raid result
+Resolve overall Raid outcome from the three round results.
+
+Recommended v1:
+- win two or more rounds = Raid victory,
+- lose two or more rounds = Raid defeat,
+- explicit deterministic tie resolution if round draws make a 1-1-1 style state possible.
+
+The combat-core, not animation timing, decides the result.
+
+## 11. Raid steal reward
+
+After a Raid victory, transition to opponent Camp.
+
+Eligible target must:
+- still be owned by defender,
+- be physically present in defender Camp,
+- not be in protected zone,
+- not be protected by an active rule that forbids theft,
+- still exist when claim executes,
+- not have already been claimed from this Raid.
+
+Player selects exactly one eligible target and confirms theft.
+
+Claim transaction must atomically:
+- verify Raid victory,
+- verify eligibility,
+- verify available destination capacity,
+- transfer ownership,
+- assign destination state,
+- consume the Raid steal claim,
+- remain idempotent under retries.
+
+## 12. Defense Podium
+
+Defense Podium is a Base object used to configure defense.
+
+The player saves three formations:
+- 2-unit defense,
+- 4-unit defense,
+- 6-unit defense.
+
+The interaction should reuse Raid placement concepts so the user learns one placement language.
+
+The saved defense is what opponents fight during asynchronous Raid.
+
+Required state:
+- selected owned Summon instances,
+- board cells for each round size,
+- content version,
+- last saved timestamp.
+
+Defense editing never starts a battle.
+
+## 13. Combat system requirements
+
+Combat-core is deterministic pure TypeScript.
+
+PlayCanvas is presentation/playback.
+
+Minimum combat behavior:
+- unit position,
+- movement speed,
+- acquisition range,
+- attack range,
+- attack speed,
+- damage,
+- HP,
+- defense mitigation,
+- skill cooldown/energy if used,
+- target selection,
+- death,
+- win/loss resolution.
+
+Presentation minimum:
+- Summons physically move toward relevant targets,
+- melee and ranged units are visually distinct,
+- attacks have anticipation and impact,
+- units do not jitter between targets every frame,
+- corpses/downed state clear cleanly,
+- round-end camera does not cut before outcome is readable.
+
+## 14. UI and UX specification
 
 ### Persistent HUD
-- Top-left: player identity/avatar placeholder.
-- Top-center: contextual scene title only when useful.
-- Top-right: balls/currency/debug indicators.
-- Bottom-left: scene navigation after tutorial.
-- Bottom-right: context-sensitive primary action (Start Battle, Drop, Raid, Confirm).
+Keep it sparse.
 
-### Summon Picker
-- Bottom sheet/tray.
-- Bust cards only, never six+ live model viewports.
-- Filters later; alpha prioritizes tier, origin and function chips.
-- Drag from card to valid world cell. Click/tap selects and exposes a clear Place action as accessibility fallback.
+Recommended:
+- top-left: player identity / level,
+- top-right: Balls, Shield timer, important currencies,
+- contextual scene information where needed,
+- one primary action located consistently.
 
-### Summon Details
-- Desktop: right panel ~38% width, world remains visible.
-- Small landscape: near-full-height sheet.
-- Tabs: Overview, Skills, Progression.
-- Overview: identity, tier, Origin, Function, core stats.
-- Skills: Basic, Skill 1, Skill 2, Ultimate; locked slots are visible.
-- Progression: current tier emphasized; undiscovered major forms use silhouettes; next tier shows exact numeric/skill delta.
+### Panels
+Use panels only for information that cannot be communicated clearly in-world.
 
-### Tutorial overlay
-- Coach mark + focus mask + optional anchored speech bubble.
-- One concept per step.
-- Disable unrelated interactions only for mandatory actions.
-- Camera movement completes before copy appears.
-- Every step has an event-driven completion trigger and is resumable.
+Rules:
+- one blocking panel at a time,
+- panels never overlap each other accidentally,
+- responsive width is clamped,
+- typography remains legible at 844x390,
+- center battlefield remains visible whenever interaction requires it,
+- no globally mounted stack of unrelated gameplay overlays.
 
-## Starter summons
-The alpha uses six F-tier definitions so the player can freely choose the first and then deploy the remaining five.
+### Summon inspection
+Summon inspection should expose:
+- name,
+- tier,
+- stats,
+- role/function,
+- origin/faction if retained,
+- abilities,
+- merge eligibility,
+- progression preview.
 
-| Summon | Origin | Function | HP | ATK | DEF | APS | Range |
-|---|---|---:|---:|---:|---:|---:|---:|
-| Goku | Ascendant | Striker | 1000 | 120 | 70 | 1.10 | 2.5 |
-| Naruto | Ascendant | Controller | 950 | 100 | 65 | 1.15 | 3.0 |
-| Luffy | Rebel | Striker | 1150 | 110 | 80 | 1.05 | 1.5 |
-| Eren | Rebel | Disruptor | 1400 | 105 | 100 | 0.85 | 1.25 |
-| L | Mastermind | Controller | 800 | 80 | 55 | 1.00 | 4.5 |
-| Lelouch | Mastermind | Disruptor | 820 | 85 | 60 | 0.95 | 4.0 |
+Opening inspection should not move the world camera repeatedly due to DOM rerenders.
 
-These are tuning placeholders. The identifiers and schemas are stable; numbers are not.
+## 15. Tutorial
 
-## Tier system
-F → E → D → C → B → A → S → SS → SSS
+The tutorial begins in Base.
 
-Merge: two identical summon definitions at the same tier produce one instance at the next tier.
+It teaches systems through actual play.
 
-Recommended alpha multipliers:
-- F 1.00
-- E 1.15
-- D 1.35 (major form 1, Skill 2)
-- C 1.60
-- B 1.90
-- A 2.25 (major form 2, Ultimate)
-- S 2.65
-- SS 3.10
-- SSS 3.65 (final form)
+### Tutorial sequence
+1. **Battle Camp**
+   - identify Camp as the player's Summon collection.
+2. **Dealer**
+   - move/focus to Dealer,
+   - claim tutorial Balls.
+3. **Spawn Machine**
+   - focus machine,
+   - explain one Ball creates one Summon chance,
+   - release a Ball,
+   - show physical drop and resulting Summon.
+4. **Camp placement**
+   - show new Summon entering Camp.
+5. **Merge**
+   - tutorial grant/spawn sequence guarantees a valid duplicate pair,
+   - player merges identical same-tier Summons,
+   - explain tier power increase.
+6. **Campaign Gate**
+   - player enters separate Campaign scene.
+7. **Campaign battle**
+   - deploy/use six tutorial Summons as appropriate,
+   - win a simple creep encounter,
+   - observe movement-based auto combat.
+8. **Return to Base**
+   - establish Base as home.
+9. **Defense Podium**
+   - configure 2/4/6 defense with guided placements.
+10. **Raid Gate**
+   - enter separate Raid scene.
+11. **Raid**
+   - complete guided 2v2,
+   - complete guided 4v4,
+   - complete guided 6v6.
+12. **Steal**
+   - tutorial opponent should produce a deterministic Raid victory,
+   - enter opponent Camp,
+   - explain protected versus exposed,
+   - steal one exposed Summon.
+13. **Free play**
+   - return to Base,
+   - dismiss tutorial restrictions.
 
-Visual forms are shared across tier bands: F/E, D/C/B, A/S/SS, SSS.
+Tutorial state must persist across refresh/crash.
 
-## Spawn Machine
-- Capacity: 100 free balls.
-- Global daily reset refills up to 100; unused free balls do not stack above cap.
-- Six reward bins map to the player's six tutorial summons.
-- Locked probability distribution: 30/15/5/5/15/30 = 100%.
-- Two inactive blob targets exist from alpha day one: Shield and Tier Bonus. They have meshes/colliders/progress fields but `enabled=false`.
-- During tutorial, a deterministic seed guarantees enough identical copies to reach C and fill the camp exactly.
-- In production flow the server decides the reward before the ball animation. Pachinko physics is presentation, not economy authority.
+## 16. State ownership
 
-## Raid rules
-- Three sequential rounds: 2v2, 4v4, 6v6.
-- Only the active field can be assembled. Players choose a Summon and place it directly on an open player-side raid cell; there are no abstract field-slot controls. It locks when started; the opponent placement, immutable snapshots, and event log are then created by the authority. The next field opens only after that round replay completes.
-- A summon may be used in multiple rounds, but may not occupy multiple slots in the same round.
-- Origin and Combat Function synergies are evaluated from the current field and apply only to that round's combat snapshot. Content thresholds provide stronger implications as matching field members rise from 2 to 4 to 6.
-- Server simulates each locked field from immutable snapshots + content version + a raid-session RNG seed; the final result is the deterministic best-of-three resolution.
-- Client shows each resolved field as a semi-automatic authoritative combat replay and keeps the active Origin/Combat Function synergy panel visible during the fight.
-- A Raid victory records a pending opponent-camp handoff for one steal. Claim input contains only action, Raid, and target IDs; authority revalidates the Raid win, defender ownership, exposed placement, capacity, and idempotency in one transaction.
+Use a single authoritative client scene state for presentation routing.
 
-## Steal rules
-Eligible if the target summon:
-- is owned by defender,
-- is placed in defender camp,
-- is outside Illuminati,
-- is not already involved in a completed steal,
-- still exists at claim time.
+Suggested scene IDs:
+- `base`
+- `campaign`
+- `raid`
+- `opponentCamp`
 
-The ownership transfer, destination placement, steal record, and consumed claim state update occur in one transaction. Defense snapshots use normalized player-side 2/4/6 cells and mirror onto the enemy half when attacked.
+Focused Base interactions such as Spawn Machine and Defense Podium should be modeled as submodes/focus states, not fake scenes unless a future implementation truly loads a separate world.
 
-## Production blindspots already resolved
-- Spawn weights total 100%.
-- Tutorial randomness cannot soft-lock tier progression.
-- Initial six are moved into Illuminati before 30 new spawns fill exposed cells, producing exactly 36/36.
-- Reward RNG is not trusted to client-side physics.
-- Raid result uses deterministic shared combat-core.
-- Player must have destination capacity before a real steal can be claimed.
-- All critical mutations are idempotent.
-- Asset replacement is contract-driven.
-- Tutorial is resumable after refresh/crash.
-- Base growth uses building sockets instead of premature arbitrary-placement infrastructure.
+Suggested interaction state:
+- active scene,
+- active Base focus,
+- active panel,
+- selected Summon,
+- placement mode,
+- tutorial step.
 
-## IP warning
-The named anime characters are prototype content. A commercial release needs licensed IP or original characters. Keep content identifiers replaceable and avoid coupling gameplay logic to franchise-specific names.
+Do not allow unrelated booleans such as `spawnOpen`, `detailsOpen`, `raidBuilderOpen`, and multiple other overlays to all be true independently without a state machine controlling compatibility.
+
+## 17. Architecture target
+
+### PlayCanvas
+Owns:
+- Base world,
+- Campaign world,
+- Raid world,
+- opponent Camp rendering,
+- cameras,
+- direct world input,
+- summon entities,
+- combat animation/playback,
+- Spawn Machine physics/presentation,
+- gates/buildings,
+- spatial selection feedback.
+
+### React
+Owns:
+- app boot/loading,
+- account/settings,
+- accessibility DOM controls,
+- compact resource HUD,
+- readable detail panels,
+- error/retry UI,
+- non-gameplay shell concerns.
+
+### Shared pure packages
+Preserve and strengthen:
+- contracts,
+- game rules,
+- deterministic combat,
+- content definitions.
+
+## 18. Current-code migration plan
+
+The latest remote implementation contains legacy React-authored gameplay UI and scene composition. The user's unpublished local work has moved more of the game into PlayCanvas and should be treated as the likely implementation base once available.
+
+Migration order:
+
+### Phase 1: establish ownership
+- Base becomes initial scene.
+- Introduce one explicit scene router/state machine.
+- Introduce one panel/focus state machine.
+- Ensure entering Raid unloads/hides Base world and loads Raid world.
+- Ensure entering Campaign unloads/hides Base world and loads Campaign world.
+
+### Phase 2: remove competing legacy UI
+Delete obsolete React gameplay components as PlayCanvas replacements exist.
+
+Likely legacy candidates from current remote code include:
+- globally mounted Spawn Machine overlay,
+- globally mounted Raid squad builder,
+- globally mounted formation panel,
+- legacy navigation dock,
+- old scene-specific CSS that positions large overlays over the canvas.
+
+Do not delete pure rules or contracts merely because presentation is replaced.
+
+### Phase 3: rebuild Base
+- stable camera,
+- central Camp,
+- Dealer,
+- Spawn Machine,
+- Campaign Gate,
+- Raid Gate,
+- Defense Podium,
+- direct world hit targets,
+- readable lightweight HUD.
+
+### Phase 4: combat scenes
+- shared auto-battler movement playback,
+- Campaign encounters,
+- Raid 2/4/6 sequential rounds,
+- clear scene transitions.
+
+### Phase 5: acquisition and defense
+- physical Spawn Machine,
+- Ball resource timing,
+- Shield meter,
+- defense formation save flow.
+
+### Phase 6: tutorial
+Implement the full Base-first guided loop only after the underlying actions work without tutorial overrides.
+
+## 19. Acceptance criteria for the product reset
+
+The reset is successful when a new player can:
+1. load directly into a readable stable Base,
+2. understand Battle Camp without opening a menu,
+3. claim Balls from Dealer,
+4. drop a physical Ball in Spawn Machine,
+5. receive a Summon,
+6. merge duplicates,
+7. walk/transition through Campaign Gate to a separate Campaign scene,
+8. watch six Summons move and fight an encounter,
+9. return to Base,
+10. configure defense,
+11. transition through Raid Gate to a separate Raid scene,
+12. play 2v2, 4v4, and 6v6 sequential fights,
+13. win and visit opponent Camp,
+14. steal one exposed Summon,
+15. return to Base without stale Raid/Campaign overlays remaining mounted or visible.
+
+At 844x390 and standard desktop landscape:
+- no important card text is clipped,
+- no blocking panels overlap,
+- no interaction causes repeated layout jumping,
+- no scene visually contains geometry from the previous scene unless explicitly designed as a transition effect.
+
+## 20. Commercial content warning
+
+Existing anime character names/assets are prototype references. Commercial distribution requires licensed content or original IP.
+
+All gameplay logic must remain definition-driven so replacing prototype characters does not require combat, economy, or UI rewrites.

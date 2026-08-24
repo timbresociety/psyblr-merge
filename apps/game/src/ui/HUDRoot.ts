@@ -20,7 +20,7 @@ export class HUDRoot {
     // Create 2D Screen Space Root
     this.screenEntity.addComponent('screen', {
       screenSpace: true,
-      referenceResolution: [1280, 720],
+      referenceResolution: [1440, 900],
       scaleMode: SCALEMODE_BLEND,
       scaleBlend: 0.5,
     });
@@ -31,17 +31,17 @@ export class HUDRoot {
   }
 
   private initFont(): void {
-    // Generate native PlayCanvas CanvasFont dynamically
+    // Generate native PlayCanvas CanvasFont with high resolution
     this.font = new CanvasFont(this.app, {
       fontName: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontSize: 48,
+      fontSize: 64,
       fontWeight: 'bold',
       color: new Color(1, 1, 1),
       padding: 6,
     });
 
     const characters =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;!?-+/()[]{}#~_%$ ©®•|';
+      ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~©®•→←↑↓';
     this.font.createTextures(characters);
 
     this.fontAsset = new Asset('HUDCanvasFont', 'font', { url: '' });

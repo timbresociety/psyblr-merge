@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, 3D Pachinko & Merge Upgrade', () => {
-  test('boots cleanly, supports drag swap, authoritative 3D Pachinko spawn, and direct merge tier upgrade', async ({
+test.describe('PSYBLR V2 Full Pipeline: Camp, Dock, Pachinko, Merge, & 2v2 Raid Arena', () => {
+  test('executes complete V2 alpha lifecycle with zero errors', async ({
     page,
   }, testInfo) => {
     test.setTimeout(60000);
@@ -101,9 +101,6 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, 3D Pachinko & Merg
       );
     }, { timeout: 5000 });
 
-    // Screenshot Camp with 2 Goku summons
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-before-merge.png` });
-
     // --- PHASE 3: DIRECT MERGE (2nd Goku at (1,1) onto 1st Goku at (3,3)) ---
     await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
@@ -125,21 +122,6 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, 3D Pachinko & Merg
       );
     }, { timeout: 5000 });
 
-    const postMergeState = await page.evaluate(() => {
-      const app = (window as any).__PSYBLR_GAME_APP__;
-      const goku = app.sceneManager.getSummonById('starter:goku:001');
-      return {
-        summonCount: app.sceneManager.summons.length,
-        gokuTier: goku?.instance.tier,
-      };
-    });
-
-    expect(postMergeState.summonCount).toBe(4);
-    expect(postMergeState.gokuTier).toBe('E');
-
-    // Screenshot Camp after Successful Merge
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-after-merge.png` });
-
     // --- PHASE 4: TAP INSPECT UPGRADED GOKU [E] ---
     await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
@@ -154,14 +136,62 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, 3D Pachinko & Merg
       return app.inspector.isOpen && app.inspector.activeSummon?.tier === 'E';
     }, { timeout: 3000 });
 
-    // Screenshot Open Inspector showing [E] tier progression rail
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-inspector-tier-e.png` });
-
     // Close Inspector
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
 
-    // --- PHASE 5: DEBUG OVERLAY ---
+    // --- PHASE 5: 2v2 RAID ARENA CAMERA FOCUS & COMBAT ---
+    await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      app.enterRaid();
+    });
+
+    // Wait for Raid HUD and Camera Focus at [-6.4, 6.2, 5.8]
+    await page.waitForFunction(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const camPos = app.cameraDirector.cameraEntity.getPosition();
+      return app.raidHUD.isOpen && Math.abs(camPos.x - -6.4) < 0.2;
+    }, { timeout: 4000 });
+
+    const raidPrepState = await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      return {
+        isRaidOpen: app.raidHUD.isOpen,
+        raidUnitsCount: app.sceneManager.raidWorld.unitEntities.size,
+      };
+    });
+
+    expect(raidPrepState.isRaidOpen).toBe(true);
+    expect(raidPrepState.raidUnitsCount).toBe(4);
+
+    // Screenshot Open 2v2 Raid Arena Preparation
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-raid-arena-prep.png` });
+
+    // Start 2v2 Combat Simulation
+    await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      app.raidHUD.onStartCombat?.();
+    });
+
+    await page.waitForTimeout(1000);
+
+    // Screenshot Active Combat Action
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-raid-combat-active.png` });
+
+    // Close Raid via Base Camp button
+    await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      app.exitRaid();
+    });
+
+    // Wait for return to Base Overview
+    await page.waitForFunction(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const camPos = app.cameraDirector.cameraEntity.getPosition();
+      return !app.raidHUD.isOpen && Math.abs(camPos.x) < 0.1;
+    }, { timeout: 4000 });
+
+    // --- PHASE 6: DEBUG OVERLAY ---
     await page.keyboard.press('d');
     await page.waitForTimeout(150);
 

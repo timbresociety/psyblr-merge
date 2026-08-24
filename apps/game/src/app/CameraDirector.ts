@@ -27,6 +27,12 @@ export const PACHINKO_CAMERA_PRESET: CameraPreset = {
   fov: 38,
 };
 
+export const RAID_CAMERA_PRESET: CameraPreset = {
+  position: [-6.4, 6.2, 5.8],
+  rotation: [-32, 0, 0],
+  fov: 40,
+};
+
 export class CameraDirector {
   public cameraEntity: Entity;
   public cameraComponent: CameraComponent;
@@ -77,6 +83,10 @@ export class CameraDirector {
 
   focusOnPachinko(duration: number = DURATION.FOCUS): void {
     this.transitionTo(PACHINKO_CAMERA_PRESET, duration);
+  }
+
+  focusOnRaid(duration: number = DURATION.FOCUS): void {
+    this.transitionTo(RAID_CAMERA_PRESET, duration);
   }
 
   returnToBaseOverview(duration: number = DURATION.FOCUS): void {

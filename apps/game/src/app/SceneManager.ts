@@ -2,9 +2,11 @@ import type { Application, Layer } from 'playcanvas';
 import type { CampCell, CampPlacement, SummonInstance } from '@psyblr/contracts';
 import { BaseWorld } from '../world/BaseWorld';
 import { PachinkoWorld } from '../world/PachinkoWorld';
+import { RaidWorld } from '../world/RaidWorld';
 import { SummonEntity } from '../summons/SummonEntity';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
+import type { VFXDirector } from '../presentation/VFXDirector';
 import type { PresentationEventEmitter } from '../presentation/PresentationEvents';
 import { canMerge, isCampCellOccupied, moveCampSummon, nextTier } from '@psyblr/game-rules';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
@@ -13,6 +15,7 @@ import { DURATION, EASING } from '../presentation/PresentationTokens';
 export class SceneManager {
   public baseWorld: BaseWorld;
   public pachinkoWorld: PachinkoWorld;
+  public raidWorld: RaidWorld;
   public summons: SummonEntity[] = [];
   public roster: SummonInstance[] = [];
   private placements: CampPlacement[] = [];
@@ -21,6 +24,7 @@ export class SceneManager {
     private app: Application,
     private motion: MotionDirector,
     private audio: AudioDirector,
+    private vfx: VFXDirector,
     private events: PresentationEventEmitter,
     private worldLayer?: Layer
   ) {
@@ -29,6 +33,14 @@ export class SceneManager {
       this.app,
       this.motion,
       this.audio,
+      this.events,
+      this.worldLayer
+    );
+    this.raidWorld = new RaidWorld(
+      this.app,
+      this.motion,
+      this.audio,
+      this.vfx,
       this.events,
       this.worldLayer
     );
@@ -263,6 +275,7 @@ export class SceneManager {
       summon.destroy();
     }
     this.summons.length = 0;
+    this.raidWorld.destroy();
     this.pachinkoWorld.destroy();
     this.baseWorld.destroy();
   }

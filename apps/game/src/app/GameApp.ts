@@ -26,10 +26,13 @@ import { HUDRoot } from '../ui/HUDRoot';
 import { SummonInspector } from '../ui/SummonInspector';
 import { BattleCampDock } from '../ui/BattleCampDock';
 import { PachinkoHUD } from '../ui/PachinkoHUD';
+import { RaidHUD } from '../ui/RaidHUD';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 import { PachinkoWorld } from '../world/PachinkoWorld';
+import { RAID_ORIGIN } from '../world/RaidWorld';
 import { SpawnAuthorityService } from '../economy/SpawnAuthorityService';
+import type { CombatSnapshot } from '@psyblr/contracts';
 
 export class GameApp {
   public app: Application;
@@ -48,8 +51,11 @@ export class GameApp {
   public inspector: SummonInspector;
   public dock: BattleCampDock;
   public pachinkoHUD: PachinkoHUD;
+  public raidHUD: RaidHUD;
   public debug: DebugOverlay;
   public spawnAuthority: SpawnAuthorityService;
+
+  private currentRaidSnapshot: CombatSnapshot | null = null;
 
   // Custom Layer references
   public layerWorld: Layer;
@@ -128,6 +134,7 @@ export class GameApp {
       this.app,
       this.motion,
       this.audio,
+      this.vfx,
       this.events,
       this.layerWorld
     );
@@ -211,9 +218,31 @@ export class GameApp {
       this.exitPachinko();
     };
 
+    // 9. Wire Raid HUD & Execution
+    this.raidHUD = new RaidHUD(
+      this.app,
+      this.audio,
+      this.hud.fontAsset!,
+      this.hud.screenEntity,
+      this.layerHud
+    );
+
+    this.raidHUD.onStartCombat = () => {
+      if (this.currentRaidSnapshot) {
+        this.raidHUD.setStatus('COMBAT ACTIVE • DETERMINISTIC SIMULATION', '#eab308');
+        this.sceneManager.raidWorld.startCombat(this.currentRaidSnapshot, (winner) => {
+          this.raidHUD.setStatus(`VICTORY! ${winner.toUpperCase()} WON THE MATCH`, '#22c55e');
+        });
+      }
+    };
+
+    this.raidHUD.onClose = () => {
+      this.exitRaid();
+    };
+
     this.debug = new DebugOverlay(this.app, this.dragController, this.sceneManager, this.layerDebug);
 
-    // 9. Wire Tap-to-Inspect, Ground Dismiss, and Pachinko Entry
+    // 10. Wire Tap-to-Inspect, Ground Dismiss, Pachinko & Raid Entry
     this.dragController.onSummonTapped = (summon) => {
       const worldPos = campCellToWorld(summon.currentCell);
       this.cameraDirector.focusOnSummon(worldPos);
@@ -226,12 +255,22 @@ export class GameApp {
 
     this.dragController.onGroundTapped = (point) => {
       // Check if tap was on the Pachinko Spawn Machine Pad (around [6.4, 0, 0])
-      const dx = point.x - PachinkoWorld.ORIGIN[0];
-      const dz = point.z - PachinkoWorld.ORIGIN[2];
-      const distToPachinko = Math.sqrt(dx * dx + dz * dz);
+      const dxPachinko = point.x - PachinkoWorld.ORIGIN[0];
+      const dzPachinko = point.z - PachinkoWorld.ORIGIN[2];
+      const distToPachinko = Math.sqrt(dxPachinko * dxPachinko + dzPachinko * dzPachinko);
 
       if (distToPachinko < 2.4 && !this.pachinkoHUD.isOpen) {
         this.enterPachinko();
+        return;
+      }
+
+      // Check if tap was on the Raid Gate Pad (around [-6.4, 0, 0])
+      const dxRaid = point.x - RAID_ORIGIN[0];
+      const dzRaid = point.z - RAID_ORIGIN[2];
+      const distToRaid = Math.sqrt(dxRaid * dxRaid + dzRaid * dzRaid);
+
+      if (distToRaid < 2.4 && !this.raidHUD.isOpen) {
+        this.enterRaid();
         return;
       }
 
@@ -252,7 +291,7 @@ export class GameApp {
       this.dock.setRoster(this.sceneManager.roster, this.sceneManager.getPlacements());
     });
 
-    // 10. Start PlayCanvas loop
+    // 11. Start PlayCanvas loop
     this.app.start();
 
     // Wire frame update
@@ -264,6 +303,7 @@ export class GameApp {
 
   enterPachinko(): void {
     if (this.inspector.isOpen) this.inspector.close();
+    if (this.raidHUD.isOpen) this.raidHUD.close();
     this.hud.setBadgeVisible(false);
     this.dock.root.enabled = false;
     this.cameraDirector.focusOnPachinko();
@@ -272,6 +312,25 @@ export class GameApp {
 
   exitPachinko(): void {
     this.pachinkoHUD.close();
+    this.dock.root.enabled = true;
+    this.hud.setBadgeVisible(true);
+    this.cameraDirector.returnToBaseOverview();
+  }
+
+  enterRaid(): void {
+    if (this.inspector.isOpen) this.inspector.close();
+    if (this.pachinkoHUD.isOpen) this.pachinkoHUD.close();
+    this.hud.setBadgeVisible(false);
+    this.dock.root.enabled = false;
+    this.cameraDirector.focusOnRaid();
+    const snapshot = this.sceneManager.raidWorld.prepare2v2Match();
+    this.currentRaidSnapshot = snapshot;
+    this.raidHUD.open();
+  }
+
+  exitRaid(): void {
+    this.raidHUD.close();
+    this.sceneManager.raidWorld.clearUnits();
     this.dock.root.enabled = true;
     this.hud.setBadgeVisible(true);
     this.cameraDirector.returnToBaseOverview();
@@ -298,6 +357,7 @@ export class GameApp {
     this.inspector.destroy();
     this.dock.destroy();
     this.pachinkoHUD.destroy();
+    this.raidHUD.destroy();
     this.hud.destroy();
     this.sceneManager.destroy();
     this.vfx.destroy();

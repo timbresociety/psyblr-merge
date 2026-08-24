@@ -9,9 +9,20 @@ import { campCellToWorld, CAMP_CELL_SIZE } from './CampCoordinateMapper';
 import { CAMP_SIZE } from '@psyblr/game-rules';
 import { baseLayoutDefinition } from '@psyblr/game-content';
 
+type FloatingObject = {
+  entity: Entity;
+  baseY: number;
+  bobSpeed: number;
+  bobAmp: number;
+  rotSpeedY: number;
+  phase: number;
+};
+
 export class BaseWorld {
   public root: Entity;
   private materials: StandardMaterial[] = [];
+  private floatingObjects: FloatingObject[] = [];
+  private time: number = 0;
 
   constructor(private app: Application, private worldLayer?: Layer) {
     this.root = new Entity('BaseWorld_Root');
@@ -21,6 +32,7 @@ export class BaseWorld {
     this.buildTerrain();
     this.buildCampPlatform();
     this.buildBuildingSockets();
+    this.buildAmbientMonoliths();
   }
 
   private createMaterial(options: {
@@ -60,7 +72,7 @@ export class BaseWorld {
     keyLight.addComponent('light', {
       type: 'directional',
       color: new Color(1.0, 0.96, 0.90),
-      intensity: 1.6,
+      intensity: 1.65,
       castShadows: true,
       shadowBias: 0.05,
       normalOffsetBias: 0.05,
@@ -75,7 +87,7 @@ export class BaseWorld {
     fillLight.addComponent('light', {
       type: 'directional',
       color: new Color(0.45, 0.60, 0.95),
-      intensity: 0.65,
+      intensity: 0.7,
       castShadows: false,
     });
     this.root.addChild(fillLight);
@@ -95,7 +107,7 @@ export class BaseWorld {
   private buildTerrain(): void {
     const layerOpt = this.getLayerOption();
 
-    // Outer Abyss / Low Foundation Plinth
+    // Outer Abyss / Deep Foundation Plinth
     const abyssMat = this.createMaterial({ diffuse: '#070b16', gloss: 0.1 });
     const outerPlinth = new Entity('OuterPlinth');
     outerPlinth.setPosition(0, -0.6, 0);
@@ -119,12 +131,12 @@ export class BaseWorld {
     });
     this.root.addChild(islandBase);
 
-    // Island Top Rim Accent
+    // Island Top Rim Accent (Cyan glow rim)
     const rimMat = this.createMaterial({
       diffuse: '#1e293b',
-      emissive: '#38bdf8',
-      emissiveIntensity: 0.18,
-      gloss: 0.6,
+      emissive: '#0284c7',
+      emissiveIntensity: 0.35,
+      gloss: 0.7,
     });
     const rimEntity = new Entity('IslandRim');
     rimEntity.setPosition(0, 0.01, 0);
@@ -155,7 +167,7 @@ export class BaseWorld {
     this.root.addChild(campSlab);
 
     // Inner Arena Surface
-    const arenaMat = this.createMaterial({ diffuse: '#1a2742', gloss: 0.5 });
+    const arenaMat = this.createMaterial({ diffuse: '#18243b', gloss: 0.5 });
     const arenaSurface = new Entity('ArenaSurface');
     arenaSurface.setPosition(0, 0.01, 0);
     arenaSurface.setLocalScale(campWidth, 0.02, campDepth);
@@ -166,16 +178,33 @@ export class BaseWorld {
     });
     this.root.addChild(arenaSurface);
 
-    // Illuminati Row (Row 0) Distinct Aura Platform
+    // Arena Gold Inlay Border
+    const borderMat = this.createMaterial({
+      diffuse: '#78350f',
+      emissive: '#f59e0b',
+      emissiveIntensity: 0.28,
+      gloss: 0.8,
+    });
+    const arenaBorder = new Entity('ArenaBorder');
+    arenaBorder.setPosition(0, 0.012, 0);
+    arenaBorder.setLocalScale(campWidth + 0.08, 0.01, campDepth + 0.08);
+    arenaBorder.addComponent('render', {
+      type: 'box',
+      material: borderMat,
+      ...layerOpt,
+    });
+    this.root.addChild(arenaBorder);
+
+    // Illuminati Row (Row 0) Distinct Aura Platform (Emerald glow)
     const illuminatiMat = this.createMaterial({
-      diffuse: '#1b2a47',
+      diffuse: '#064e3b',
       emissive: '#10b981',
-      emissiveIntensity: 0.22,
-      gloss: 0.7,
+      emissiveIntensity: 0.45,
+      gloss: 0.8,
     });
     const illuminatiRow = new Entity('IlluminatiRowPlinth');
-    illuminatiRow.setPosition(0, 0.015, (0 - 2.5) * CAMP_CELL_SIZE);
-    illuminatiRow.setLocalScale(campWidth, 0.015, CAMP_CELL_SIZE);
+    illuminatiRow.setPosition(0, 0.018, (0 - 2.5) * CAMP_CELL_SIZE);
+    illuminatiRow.setLocalScale(campWidth - 0.04, 0.015, CAMP_CELL_SIZE - 0.04);
     illuminatiRow.addComponent('render', {
       type: 'box',
       material: illuminatiMat,
@@ -187,7 +216,7 @@ export class BaseWorld {
     const dotMat = this.createMaterial({
       diffuse: '#64748b',
       emissive: '#94a3b8',
-      emissiveIntensity: 0.25,
+      emissiveIntensity: 0.35,
       gloss: 0.6,
     });
 
@@ -200,7 +229,7 @@ export class BaseWorld {
         const wz = (y - CAMP_SIZE / 2) * CAMP_CELL_SIZE;
 
         const dot = new Entity(`GridDot_${x}_${y}`);
-        dot.setPosition(wx, 0.022, wz);
+        dot.setPosition(wx, 0.024, wz);
         dot.setLocalScale(0.06, 0.01, 0.06);
         dot.addComponent('render', {
           type: 'box',
@@ -232,8 +261,8 @@ export class BaseWorld {
       const pedestalMat = this.createMaterial({
         diffuse: '#131e33',
         emissive: socketColor,
-        emissiveIntensity: 0.15,
-        gloss: 0.5,
+        emissiveIntensity: 0.22,
+        gloss: 0.6,
       });
 
       const pedestal = new Entity('Pedestal');
@@ -250,7 +279,7 @@ export class BaseWorld {
         const spawnMat = this.createMaterial({
           diffuse: '#f59e0b',
           emissive: '#d97706',
-          emissiveIntensity: 0.5,
+          emissiveIntensity: 0.6,
           gloss: 0.8,
         });
         const spawnCore = new Entity('SpawnMachineCore');
@@ -272,11 +301,21 @@ export class BaseWorld {
           ...layerOpt,
         });
         socketRoot.addChild(orb);
+
+        // Register floating orb for gentle ambient hover
+        this.floatingObjects.push({
+          entity: orb,
+          baseY: 1.25,
+          bobSpeed: 1.8,
+          bobAmp: 0.06,
+          rotSpeedY: 25,
+          phase: 0,
+        });
       } else if (socket.kind === 'raid_gate') {
         const gateMat = this.createMaterial({
-          diffuse: '#b91c1c',
+          diffuse: '#991b1b',
           emissive: '#ef4444',
-          emissiveIntensity: 0.4,
+          emissiveIntensity: 0.5,
           gloss: 0.7,
         });
         const pillarL = new Entity('GatePillarL');
@@ -308,7 +347,77 @@ export class BaseWorld {
           ...layerOpt,
         });
         socketRoot.addChild(archTop);
+
+        // Floating portal rune in gate center
+        const portalCrystal = new Entity('GateCrystal');
+        portalCrystal.setPosition(0, 0.85, 0);
+        portalCrystal.setLocalScale(0.3, 0.5, 0.15);
+        portalCrystal.addComponent('render', {
+          type: 'box',
+          material: gateMat,
+          ...layerOpt,
+        });
+        socketRoot.addChild(portalCrystal);
+
+        this.floatingObjects.push({
+          entity: portalCrystal,
+          baseY: 0.85,
+          bobSpeed: 2.2,
+          bobAmp: 0.08,
+          rotSpeedY: 45,
+          phase: Math.PI / 2,
+        });
       }
+    }
+  }
+
+  private buildAmbientMonoliths(): void {
+    const layerOpt = this.getLayerOption();
+
+    const crystalMat = this.createMaterial({
+      diffuse: '#0c4a6e',
+      emissive: '#38bdf8',
+      emissiveIntensity: 0.5,
+      gloss: 0.9,
+    });
+
+    const positions: [number, number, number][] = [
+      [-10.5, 0.8, -7.5],
+      [10.5, 1.1, -7.0],
+      [-11.0, 0.6, 7.0],
+      [10.8, 0.9, 7.5],
+    ];
+
+    positions.forEach((pos, i) => {
+      const monolith = new Entity(`AmbientMonolith_${i}`);
+      monolith.setPosition(pos[0], pos[1], pos[2]);
+      monolith.setLocalScale(0.45, 1.2, 0.45);
+      monolith.addComponent('render', {
+        type: 'cone',
+        material: crystalMat,
+        ...layerOpt,
+      });
+      this.root.addChild(monolith);
+
+      this.floatingObjects.push({
+        entity: monolith,
+        baseY: pos[1],
+        bobSpeed: 1.2 + i * 0.3,
+        bobAmp: 0.12,
+        rotSpeedY: 15 + i * 8,
+        phase: i * 1.5,
+      });
+    });
+  }
+
+  update(dt: number): void {
+    this.time += dt;
+
+    for (const obj of this.floatingObjects) {
+      const bob = Math.sin(this.time * obj.bobSpeed + obj.phase) * obj.bobAmp;
+      const curPos = obj.entity.getLocalPosition();
+      obj.entity.setLocalPosition(curPos.x, obj.baseY + bob, curPos.z);
+      obj.entity.rotateLocal(0, obj.rotSpeedY * dt, 0);
     }
   }
 
@@ -318,5 +427,6 @@ export class BaseWorld {
       mat.destroy();
     }
     this.materials.length = 0;
+    this.floatingObjects.length = 0;
   }
 }

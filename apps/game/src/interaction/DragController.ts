@@ -12,6 +12,16 @@ export class DragController {
   public startCell: CampCell | null = null;
   public hoveredTargetCell: CampCell | null = null;
 
+  // Tap vs Drag tracking
+  private pointerDownPoint: WorldPoint | null = null;
+  private pointerDownTime: number = 0;
+  private maxDragDistance: number = 0;
+  private hadSummonOnDown: boolean = false;
+
+  // Callbacks
+  public onSummonTapped?: (summon: SummonEntity) => void;
+  public onGroundTapped?: (groundPoint: WorldPoint) => void;
+
   constructor(
     private resolver: CampDropTargetResolver,
     private feedback: InteractionFeedback,
@@ -24,6 +34,10 @@ export class DragController {
     summons: readonly SummonEntity[]
   ): boolean {
     if (this.isDragging) return false;
+
+    this.pointerDownPoint = { ...groundPoint };
+    this.pointerDownTime = performance.now();
+    this.maxDragDistance = 0;
 
     // Find if clicked on / near a summon
     const pickRadius = 0.9;
@@ -43,8 +57,12 @@ export class DragController {
       }
     }
 
-    if (!closestSummon) return false;
+    if (!closestSummon) {
+      this.hadSummonOnDown = false;
+      return false;
+    }
 
+    this.hadSummonOnDown = true;
     this.isDragging = true;
     this.draggedSummon = closestSummon;
     this.startCell = { ...closestSummon.currentCell };
@@ -67,6 +85,15 @@ export class DragController {
     groundPoint: WorldPoint,
     placements: readonly CampPlacement[]
   ): void {
+    if (this.pointerDownPoint) {
+      const dx = groundPoint.x - this.pointerDownPoint.x;
+      const dz = groundPoint.z - this.pointerDownPoint.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > this.maxDragDistance) {
+        this.maxDragDistance = dist;
+      }
+    }
+
     if (!this.isDragging || !this.draggedSummon) return;
 
     this.draggedSummon.setDragWorldPosition(groundPoint.x, groundPoint.z);
@@ -104,7 +131,14 @@ export class DragController {
   onPointerUp(
     onPlacementCommitted?: (summon: SummonEntity, toCell: CampCell) => void
   ): boolean {
+    const elapsed = performance.now() - this.pointerDownTime;
+    const isTap = this.maxDragDistance < 0.15 && elapsed < 350;
+
     if (!this.isDragging || !this.draggedSummon || !this.startCell) {
+      if (!this.hadSummonOnDown && this.pointerDownPoint && isTap) {
+        this.onGroundTapped?.(this.pointerDownPoint);
+      }
+      this.pointerDownPoint = null;
       return false;
     }
 
@@ -117,6 +151,14 @@ export class DragController {
     this.draggedSummon = null;
     this.startCell = null;
     this.hoveredTargetCell = null;
+    this.pointerDownPoint = null;
+
+    if (isTap) {
+      // Tap on Summon: settle immediately and trigger inspection
+      summon.onTapSettle();
+      this.onSummonTapped?.(summon);
+      return true;
+    }
 
     if (targetCell) {
       // Valid placement committed
@@ -167,6 +209,7 @@ export class DragController {
     this.draggedSummon = null;
     this.startCell = null;
     this.hoveredTargetCell = null;
+    this.pointerDownPoint = null;
 
     summon.onReturnToOrigin();
 

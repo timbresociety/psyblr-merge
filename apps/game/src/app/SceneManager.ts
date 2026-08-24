@@ -52,6 +52,7 @@ export class SceneManager {
   }
 
   update(dt: number): void {
+    this.baseWorld.update(dt);
     for (const summon of this.summons) {
       summon.update(dt);
     }

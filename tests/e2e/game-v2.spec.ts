@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
-  test('boots cleanly, renders Base & Goku, executes golden drag-and-drop, and handles invalid drop return', async ({
+test.describe('PSYBLR V2 Native PlayCanvas Foundation & Summon Inspector', () => {
+  test('boots cleanly, supports tap-to-inspect with camera focus, and executes direct drag-and-drop', async ({
     page,
   }, testInfo) => {
+    test.setTimeout(60000);
     const consoleErrors: string[] = [];
 
     page.on('console', (msg) => {
@@ -49,7 +50,7 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
     const isDesktop = testInfo.project.name === 'desktop-chromium';
     const prefix = isDesktop ? 'desktop' : 'mobile';
 
-    // 1. Screenshot Initial State
+    // 1. Screenshot Initial Base Camp
     await page.screenshot({ path: `apps/game/screenshot-${prefix}-initial.png` });
 
     // Helper to get screen position of any world coordinate [x, y, z]
@@ -61,11 +62,9 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
           const canvas = gameApp.app.graphicsDevice.canvas as HTMLCanvasElement;
           const bounds = canvas.getBoundingClientRect();
 
-          // Camera worldToScreen gives canvas buffer coordinates
           const screenPos = { x: 0, y: 0, z: 0 };
           camera.worldToScreen({ x, y, z }, screenPos);
 
-          // Convert canvas coordinate to client coordinate
           const clientX = bounds.left + (screenPos.x * bounds.width) / canvas.width;
           const clientY = bounds.top + (screenPos.y * bounds.height) / canvas.height;
 
@@ -75,27 +74,71 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
       );
     }
 
-    // Get screen coordinates of Goku at (2, 3) -> world: [-0.625, 0, 0.625]
-    const gokuPos = await getWorldScreenPos(-0.625, 0.5, 0.625);
+    // --- PHASE 1: TAP TO INSPECT ---
+    // Goku at cell (2, 3) -> world: [-0.625, 0, 0.625]
+    const gokuPos = await getWorldScreenPos(-0.625, 0, 0.625);
 
-    // 2. Direct Grab
-    await page.mouse.move(gokuPos.x, gokuPos.y);
+    // Quick tap on Goku (< 200ms, stationary)
+    await page.mouse.click(gokuPos.x, gokuPos.y);
+    await page.waitForTimeout(350);
+
+    // Verify Inspector Opened & Camera Reframed
+    const inspectorState = await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      return {
+        isOpen: app.inspector.isOpen,
+        activeSummonId: app.inspector.activeSummonId,
+      };
+    });
+
+    expect(inspectorState.isOpen).toBe(true);
+    expect(inspectorState.activeSummonId).toBe('starter:goku:001');
+
+    // Screenshot Open Inspector Panel
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-inspector-open.png` });
+
+    // Close Inspector with Escape key
+    await page.keyboard.press('Escape');
+
+    // Wait for camera overview return to complete
+    await page.waitForFunction(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const camPos = app.cameraDirector.cameraEntity.getPosition();
+      return Math.abs(camPos.y - 10.8) < 0.1 && !app.inspector.isOpen && app.sceneManager.summons[0].state === 'IDLE';
+    }, { timeout: 3000 });
+
+    const closedInspectorState = await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      return {
+        isOpen: app.inspector.isOpen,
+      };
+    });
+    expect(closedInspectorState.isOpen).toBe(false);
+
+    // --- PHASE 2: DIRECT MANIPULATION DRAG ---
+    // Direct grab Goku at (2, 3)
+    const currentGokuPos = await getWorldScreenPos(-0.625, 0, 0.625);
+    await page.mouse.move(currentGokuPos.x, currentGokuPos.y);
     await page.mouse.down();
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(100);
+
+    // Drag slightly towards destination to initiate drag threshold
+    const stepPos = await getWorldScreenPos(-1.0, 0, -0.5);
+    await page.mouse.move(stepPos.x, stepPos.y, { steps: 4 });
+    await page.waitForTimeout(100);
 
     const grabState = await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
       return {
         isDragging: app.dragController.isDragging,
         draggedId: app.dragController.draggedSummon?.instance.id,
-        hoveredCell: app.dragController.hoveredTargetCell,
       };
     });
 
     expect(grabState.isDragging).toBe(true);
     expect(grabState.draggedId).toBe('starter:goku:001');
 
-    // 3. Drag to valid Camp Cell (1, 1) -> world: [-1.875, 0, -1.875]
+    // Drag to valid Camp Cell (1, 1) -> world: [-1.875, 0, -1.875]
     const targetPos = await getWorldScreenPos(-1.875, 0, -1.875);
     await page.mouse.move(targetPos.x, targetPos.y, { steps: 8 });
     await page.waitForTimeout(100);
@@ -111,10 +154,10 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
     // Screenshot Dragging Active
     await page.screenshot({ path: `apps/game/screenshot-${prefix}-drag-active.png` });
 
-    // 4. Release mouse for Landing
+    // Release mouse for Landing
     await page.mouse.up();
 
-    // Wait for authored landing & settle squash animation to complete
+    // Wait for landing sequence & squash settle
     await page.waitForFunction(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
       return app.sceneManager.summons[0].state === 'IDLE';
@@ -139,16 +182,15 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
     // Screenshot Landed
     await page.screenshot({ path: `apps/game/screenshot-${prefix}-landed.png` });
 
-    // 5. Test Immediate Repositioning & Invalid Drop Return
-    // Grab Goku again at (1, 1)
-    const newGokuPos = await getWorldScreenPos(-1.875, 0.5, -1.875);
+    // --- PHASE 3: INVALID DROP RETURN ---
+    const newGokuPos = await getWorldScreenPos(-1.875, 0, -1.875);
     await page.mouse.move(newGokuPos.x, newGokuPos.y);
     await page.mouse.down();
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(100);
 
-    // Drag far outside the camp into the abyss
-    const outsidePos = await getWorldScreenPos(12, 0, 12);
-    await page.mouse.move(outsidePos.x, outsidePos.y, { steps: 5 });
+    // Drag outside camp into safe on-screen void area
+    const outsidePos = await getWorldScreenPos(5.5, 0, 0);
+    await page.mouse.move(outsidePos.x, outsidePos.y, { steps: 6 });
     await page.waitForTimeout(100);
 
     const outsideDragState = await page.evaluate(() => {
@@ -159,10 +201,9 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
     });
     expect(outsideDragState.hoveredCell).toBeNull();
 
-    // Release mouse outside -> should perform elastic spring return
+    // Release mouse outside -> elastic return
     await page.mouse.up();
 
-    // Wait for return animation to complete
     await page.waitForFunction(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
       return app.sceneManager.summons[0].state === 'IDLE';
@@ -180,7 +221,7 @@ test.describe('PSYBLR V2 Native PlayCanvas Foundation', () => {
     expect(returnedState.cell).toEqual({ x: 1, y: 1 });
     expect(returnedState.state).toBe('IDLE');
 
-    // 6. Test Debug Overlay Toggle
+    // --- PHASE 4: DEBUG OVERLAY ---
     await page.keyboard.press('d');
     await page.waitForTimeout(150);
 

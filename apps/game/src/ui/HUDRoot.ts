@@ -10,8 +10,9 @@ import {
 
 export class HUDRoot {
   public screenEntity: Entity;
-  private fontAsset: Asset | null = null;
+  public fontAsset: Asset | null = null;
   private font: CanvasFont | null = null;
+  private badgeEntity: Entity | null = null;
 
   constructor(private app: Application, private hudLayer?: Layer) {
     this.screenEntity = new Entity('HUDRoot_Screen');
@@ -84,9 +85,9 @@ export class HUDRoot {
     this.screenEntity.addChild(subText);
 
     // Top-Right Badge: V2 ALPHA 0.1
-    const badgeEntity = new Entity('BadgeEntity');
-    badgeEntity.setLocalPosition(-28, -26, 0);
-    badgeEntity.addComponent('element', {
+    this.badgeEntity = new Entity('BadgeEntity');
+    this.badgeEntity.setLocalPosition(-28, -26, 0);
+    this.badgeEntity.addComponent('element', {
       type: 'text',
       fontAsset: font,
       fontSize: 12,
@@ -96,7 +97,13 @@ export class HUDRoot {
       pivot: [1, 1],
       ...layerOpt,
     });
-    this.screenEntity.addChild(badgeEntity);
+    this.screenEntity.addChild(this.badgeEntity);
+  }
+
+  setBadgeVisible(visible: boolean): void {
+    if (this.badgeEntity) {
+      this.badgeEntity.enabled = visible;
+    }
   }
 
   destroy(): void {

@@ -97,6 +97,17 @@ export class SummonEntity {
     this.ringMaterial.update();
   }
 
+  onTapSettle(): void {
+    this.motion.cancel(`summon_lift_${this.instance.id}`);
+    this.motion.cancel(`summon_scale_${this.instance.id}`);
+    this.state = 'IDLE';
+    this.liftY = 0;
+    this.scaleMultiplier = 1.0;
+    this.squashStretchY = 1.0;
+    this.ringMaterial.emissiveIntensity = 1.2;
+    this.ringMaterial.update();
+  }
+
   setDragWorldPosition(x: number, z: number): void {
     this.state = 'DRAGGING';
     this.targetWorldPos[0] = x;

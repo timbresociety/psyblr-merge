@@ -25,7 +25,9 @@ import { CampDropTargetResolver } from '../interaction/CampDropTargetResolver';
 import { InteractionFeedback } from '../interaction/InteractionFeedback';
 import { DragController } from '../interaction/DragController';
 import { HUDRoot } from '../ui/HUDRoot';
+import { SummonInspector } from '../ui/SummonInspector';
 import { DebugOverlay } from '../debug/DebugOverlay';
+import { campCellToWorld } from '../world/CampCoordinateMapper';
 
 export class GameApp {
   public app: Application;
@@ -41,6 +43,7 @@ export class GameApp {
   public sceneManager: SceneManager;
   public inputManager: InputManager;
   public hud: HUDRoot;
+  public inspector: SummonInspector;
   public debug: DebugOverlay;
 
   // Custom Layer references
@@ -106,7 +109,7 @@ export class GameApp {
     this.vfx = new VFXDirector(this.app, this.motion, this.events, this.layerWorldFx);
 
     // 4. Initialize Camera & World
-    this.cameraDirector = new CameraDirector(this.app, allCameraLayers);
+    this.cameraDirector = new CameraDirector(this.app, this.motion, allCameraLayers);
 
     // 5. Initialize Interaction
     this.resolver = new CampDropTargetResolver();
@@ -126,9 +129,43 @@ export class GameApp {
     this.inputManager.setCamera(this.cameraDirector.cameraComponent);
 
     this.hud = new HUDRoot(this.app, this.layerHud);
+    this.inspector = new SummonInspector(
+      this.app,
+      this.motion,
+      this.audio,
+      this.hud.fontAsset!,
+      this.hud.screenEntity,
+      this.layerHud
+    );
+
     this.debug = new DebugOverlay(this.app, this.dragController, this.sceneManager, this.layerDebug);
 
-    // 8. Start PlayCanvas loop
+    // 8. Wire Tap-to-Inspect and Ground Dismiss
+    this.dragController.onSummonTapped = (summon) => {
+      const worldPos = campCellToWorld(summon.currentCell);
+      this.cameraDirector.focusOnSummon(worldPos);
+      this.hud.setBadgeVisible(false);
+      this.inspector.open(summon.instance, () => {
+        this.hud.setBadgeVisible(true);
+        this.cameraDirector.returnToBaseOverview();
+      });
+    };
+
+    this.dragController.onGroundTapped = () => {
+      if (this.inspector.isOpen) {
+        this.hud.setBadgeVisible(true);
+        this.inspector.close();
+      }
+    };
+
+    this.events.on('summonGrabbed', () => {
+      if (this.inspector.isOpen) {
+        this.hud.setBadgeVisible(true);
+        this.inspector.close();
+      }
+    });
+
+    // 9. Start PlayCanvas loop
     this.app.start();
 
     // Wire frame update
@@ -144,10 +181,10 @@ export class GameApp {
     // Advance motion/tweens
     this.motion.update(frameDt);
 
-    // Update camera impulse
+    // Update camera impulse and transitions
     this.cameraDirector.update(frameDt);
 
-    // Update scene & summons (idle breathing, drag positions)
+    // Update scene & summons (idle breathing, drag positions, floating objects)
     this.sceneManager.update(frameDt);
 
     // Update drag controller & feedback pulse
@@ -165,6 +202,7 @@ export class GameApp {
     window.removeEventListener('resize', () => this.onResize());
     this.inputManager.destroy();
     this.debug.destroy();
+    this.inspector.destroy();
     this.hud.destroy();
     this.feedback.destroy();
     this.sceneManager.destroy();

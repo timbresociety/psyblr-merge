@@ -142,6 +142,52 @@ export class AudioDirector {
     osc.stop(now + 0.23);
   }
 
+  playInspectorOpen(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // Harmonic rune chord (440 + 660 + 880 Hz)
+    [440, 660, 880].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.03);
+
+      gain.gain.setValueAtTime(0.001, now + idx * 0.03);
+      gain.gain.linearRampToValueAtTime(0.06, now + idx * 0.03 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.03 + 0.26);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + idx * 0.03);
+      osc.stop(now + idx * 0.03 + 0.27);
+    });
+  }
+
+  playInspectorClose(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(340, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.15);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.09, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.19);
+  }
+
   setMuted(muted: boolean): void {
     this.isMuted = muted;
   }

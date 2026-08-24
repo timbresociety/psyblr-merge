@@ -39,8 +39,8 @@ export class DragController {
     this.pointerDownTime = performance.now();
     this.maxDragDistance = 0;
 
-    // Find if clicked on / near a summon
-    const pickRadius = 0.9;
+    // Find if clicked on / near a summon (full cell radius)
+    const pickRadius = 1.25;
     let closestSummon: SummonEntity | null = null;
     let closestDist = pickRadius;
 

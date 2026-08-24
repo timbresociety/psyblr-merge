@@ -43,8 +43,9 @@ export class InputManager {
       return null;
     }
 
-    const screenX = ((clientX - bounds.left) * this.canvas.width) / bounds.width;
-    const screenY = ((clientY - bounds.top) * this.canvas.height) / bounds.height;
+    // PlayCanvas screenToWorld expects CSS pixel coordinates within device.clientRect (0 to bounds.width, 0 to bounds.height)
+    const screenX = clientX - bounds.left;
+    const screenY = clientY - bounds.top;
 
     const start = this.camera.screenToWorld(screenX, screenY, this.camera.nearClip);
     const end = this.camera.screenToWorld(screenX, screenY, this.camera.farClip);

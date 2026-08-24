@@ -101,7 +101,19 @@ export function TutorialOverlay() {
     {rect && <>{!allowsPlacement && <><div className="tutorial-blocker top" style={{ height: rect.top }} /><div className="tutorial-blocker bottom" style={{ top: rect.bottom }} /><div className="tutorial-blocker left" style={{ top: rect.top, height: rect.height, width: rect.left }} /><div className="tutorial-blocker right" style={{ top: rect.top, left: rect.right, height: rect.height }} /></>}<div className="tutorial-focus" style={{ left: rect.left - 4, top: rect.top - 4, width: rect.width + 8, height: rect.height + 8 }} /></>}
     <section ref={cardRef} className={`tutorial-card${gameplayHint ? ' tutorial-gameplay-hint' : ''}`} style={cardStyle} data-continuation={continuation} data-testid="tutorial-coach">
       <span>ONBOARDING</span><strong>{step.title}</strong>{step.body && <p>{gameplayHint && step.id === 'raid_open' ? 'Drag 2 Summons onto blue cells.' : step.body}</p>}
-      {continuation && <button type="button" onClick={continueTutorial}>CONTINUE</button>}
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        {continuation && <button type="button" onClick={continueTutorial}>CONTINUE</button>}
+        <button
+          type="button"
+          style={{ background: '#1e293b', color: '#94a3b8', border: '1px solid #334155', fontSize: 11, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}
+          onClick={() => {
+            useGameStore.getState().setTutorial(null, [], {});
+            useGameStore.getState().setScene('base');
+          }}
+        >
+          SKIP TUTORIAL & UNLOCK ALL
+        </button>
+      </div>
     </section>
   </div>;
 }

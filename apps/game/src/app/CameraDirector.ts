@@ -21,16 +21,40 @@ export const BASE_CAMERA_PRESET: CameraPreset = {
   fov: 42,
 };
 
-export const PACHINKO_CAMERA_PRESET: CameraPreset = {
-  position: [6.4, 3.6, 4.4],
+export const DEALER_CAMERA_PRESET: CameraPreset = {
+  position: [4.8, 3.2, 8.5],
   rotation: [-22, 0, 0],
   fov: 38,
 };
 
+export const PACHINKO_CAMERA_PRESET: CameraPreset = {
+  position: [6.4, 3.8, 4.6],
+  rotation: [-22, 0, 0],
+  fov: 38,
+};
+
+export const DEFENSE_CAMERA_PRESET: CameraPreset = {
+  position: [-4.8, 3.2, 8.5],
+  rotation: [-22, 0, 0],
+  fov: 38,
+};
+
+export const CAMPAIGN_CAMERA_PRESET: CameraPreset = {
+  position: [0, 10.2, -28.5],
+  rotation: [-40, 0, 0],
+  fov: 42,
+};
+
 export const RAID_CAMERA_PRESET: CameraPreset = {
-  position: [-6.4, 6.2, 5.8],
-  rotation: [-32, 0, 0],
-  fov: 40,
+  position: [-40, 10.2, 11.5],
+  rotation: [-40, 0, 0],
+  fov: 42,
+};
+
+export const OPPONENT_CAMP_CAMERA_PRESET: CameraPreset = {
+  position: [40, 10.2, 11.5],
+  rotation: [-40, 0, 0],
+  fov: 42,
 };
 
 export class CameraDirector {
@@ -62,7 +86,7 @@ export class CameraDirector {
       clearColor: new Color().fromString('#0b1020'),
       fov: this.currentBaseFov,
       nearClip: 0.1,
-      farClip: 100,
+      farClip: 150,
       ...(layerIds ? { layers: layerIds } : {}),
     }) as CameraComponent;
 
@@ -81,12 +105,28 @@ export class CameraDirector {
     this.transitionTo({ position: targetPos, rotation: targetRot, fov: targetFov }, duration);
   }
 
+  focusOnDealer(duration: number = DURATION.FOCUS): void {
+    this.transitionTo(DEALER_CAMERA_PRESET, duration);
+  }
+
   focusOnPachinko(duration: number = DURATION.FOCUS): void {
     this.transitionTo(PACHINKO_CAMERA_PRESET, duration);
   }
 
+  focusOnDefense(duration: number = DURATION.FOCUS): void {
+    this.transitionTo(DEFENSE_CAMERA_PRESET, duration);
+  }
+
+  focusOnCampaign(duration: number = DURATION.FOCUS): void {
+    this.transitionTo(CAMPAIGN_CAMERA_PRESET, duration);
+  }
+
   focusOnRaid(duration: number = DURATION.FOCUS): void {
     this.transitionTo(RAID_CAMERA_PRESET, duration);
+  }
+
+  focusOnOpponentCamp(duration: number = DURATION.FOCUS): void {
+    this.transitionTo(OPPONENT_CAMP_CAMERA_PRESET, duration);
   }
 
   returnToBaseOverview(duration: number = DURATION.FOCUS): void {

@@ -62,9 +62,97 @@ export class DebugOverlay {
     });
     this.screenEntity.addChild(this.statsTextEntity);
 
+    // Cheats Panel on Top-Right / Center-Right
+    const cheatsPanel = new Entity('DebugCheatsPanel');
+    cheatsPanel.setLocalPosition(-24, -80, 0);
+    cheatsPanel.addComponent('element', {
+      type: 'group',
+      anchor: [1, 1, 1, 1],
+      pivot: [1, 1],
+      width: 220,
+      height: 380,
+      ...layerOpt,
+    });
+    this.screenEntity.addChild(cheatsPanel);
+
+    this.createCheatButton(cheatsPanel, 0, -10, 200, 32, '#1e293b', '#38bdf8', '+ Goku (F)', () => {
+      this.onAddSummon?.('goku', 'F');
+    });
+    this.createCheatButton(cheatsPanel, 0, -50, 200, 32, '#1e293b', '#fb923c', '+ Naruto (F)', () => {
+      this.onAddSummon?.('naruto', 'F');
+    });
+    this.createCheatButton(cheatsPanel, 0, -90, 200, 32, '#1e293b', '#a855f7', '+ Luffy (D)', () => {
+      this.onAddSummon?.('luffy', 'D');
+    });
+    this.createCheatButton(cheatsPanel, 0, -130, 200, 32, '#1e293b', '#22c55e', '+ Eren (E)', () => {
+      this.onAddSummon?.('eren', 'E');
+    });
+    this.createCheatButton(cheatsPanel, 0, -170, 200, 32, '#0f766e', '#ccfbf1', '⚡ Seed Merge Pairs', () => {
+      this.onSeedMergePairs?.();
+    });
+    this.createCheatButton(cheatsPanel, 0, -210, 200, 32, '#d97706', '#fef3c7', '🎰 Open Pachinko', () => {
+      this.onOpenPachinko?.();
+    });
+    this.createCheatButton(cheatsPanel, 0, -250, 200, 32, '#dc2626', '#fee2e2', '⚔️ Open Raid Arena', () => {
+      this.onOpenRaid?.();
+    });
+    this.createCheatButton(cheatsPanel, 0, -290, 200, 32, '#475569', '#f1f5f9', '🔄 Reset To Starters', () => {
+      this.onResetStarters?.();
+    });
+
     this.onKeyDownBound = this.onKeyDown.bind(this);
     window.addEventListener('keydown', this.onKeyDownBound);
   }
+
+  private createCheatButton(
+    parent: Entity,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    bgHex: string,
+    textHex: string,
+    label: string,
+    onClick: () => void
+  ): Entity {
+    const layerOpt = this.debugLayer ? { layers: [this.debugLayer.id] } : {};
+    const btn = new Entity(`CheatBtn_${label}`);
+    btn.setLocalPosition(x, y, 0);
+    btn.addComponent('element', {
+      type: 'image',
+      anchor: [1, 1, 1, 1],
+      pivot: [1, 1],
+      width,
+      height,
+      color: new Color().fromString(bgHex),
+      useInput: true,
+      ...layerOpt,
+    });
+
+    const text = new Entity(`CheatText_${label}`);
+    text.setLocalPosition(-width / 2, -height / 2, 0);
+    text.addComponent('element', {
+      type: 'text',
+      fontAsset: this.fontAsset,
+      fontSize: 11,
+      text: label,
+      color: new Color().fromString(textHex),
+      anchor: [1, 1, 1, 1],
+      pivot: [0.5, 0.5],
+      ...layerOpt,
+    });
+    btn.addChild(text);
+
+    btn.element?.on('click', onClick);
+    parent.addChild(btn);
+    return btn;
+  }
+
+  public onAddSummon?: (definitionId: string, tier: string) => void;
+  public onSeedMergePairs?: () => void;
+  public onOpenPachinko?: () => void;
+  public onOpenRaid?: () => void;
+  public onResetStarters?: () => void;
 
   private initFont(): void {
     this.font = new CanvasFont(this.app, {

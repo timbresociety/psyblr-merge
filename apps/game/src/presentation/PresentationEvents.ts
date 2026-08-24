@@ -23,6 +23,23 @@ export type PresentationEventMap = {
     targetCell: CampCell;
     worldPosition: [number, number, number];
   };
+  mergeCompleted: {
+    sourceId: string;
+    targetId: string;
+    upgradedTier: string;
+    worldPosition: [number, number, number];
+  };
+  spawnLanded: {
+    summonId: string;
+    definitionId: string;
+    cell: CampCell;
+  };
+  pachinkoEntered: Record<string, never>;
+  raidEntered: Record<string, never>;
+  raidWon: Record<string, never>;
+  stealCompleted: {
+    summonId: string;
+  };
 };
 
 export type PresentationEventType = keyof PresentationEventMap;

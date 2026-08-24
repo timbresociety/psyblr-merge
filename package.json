@@ -4,8 +4,11 @@
   "version": "0.1.0-alpha",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "npm run dev -w @psyblr/web",
+    "dev": "npm run dev -w @psyblr/game",
     "dev:game": "npm run dev -w @psyblr/game",
+    "dev:web": "npm run dev -w @psyblr/web",
+    "local-db": "node scripts/local-db-server.mjs",
+    "dev:all": "node scripts/local-db-server.mjs & npm run dev:game",
     "build": "npm run build -w @psyblr/web",
     "build:game": "npm run build -w @psyblr/game",
     "test": "npm run test -ws --if-present",

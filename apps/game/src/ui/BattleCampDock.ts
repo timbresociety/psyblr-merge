@@ -107,7 +107,7 @@ export class BattleCampDock {
 
       const posX = startX + index * (cardWidth + cardGap);
 
-      // Card Root
+      // Card Root (Frosted dark card)
       const cardRoot = new Entity(`DockCard_${summon.id}`);
       cardRoot.setLocalPosition(posX, 0, 0);
       cardRoot.addComponent('element', {
@@ -116,22 +116,36 @@ export class BattleCampDock {
         pivot: [0.5, 0.5],
         width: cardWidth,
         height: 76,
-        color: isDeployed ? new Color(0.10, 0.16, 0.28) : new Color(0.15, 0.25, 0.42),
-        opacity: isDeployed ? 0.9 : 1.0,
+        color: isDeployed ? new Color(0.06, 0.10, 0.20) : new Color(0.09, 0.16, 0.30),
+        opacity: 0.95,
         useInput: true,
         ...layerOpt,
       });
       this.cardsContainer.addChild(cardRoot);
 
+      // Card Top Border Highlight
+      const cardTrim = new Entity('CardTrim');
+      cardTrim.setLocalPosition(0, 36, 0);
+      cardTrim.addComponent('element', {
+        type: 'image',
+        anchor: [0.5, 0.5, 0.5, 0.5],
+        pivot: [0.5, 0.5],
+        width: cardWidth - 4,
+        height: 2,
+        color: isDeployed ? new Color(0.96, 0.62, 0.04) : new Color(0.22, 0.74, 0.97),
+        ...layerOpt,
+      });
+      cardRoot.addChild(cardTrim);
+
       // Name & Tier
       const nameText = new Entity('CardName');
-      nameText.setLocalPosition(0, 18, 0);
+      nameText.setLocalPosition(0, 14, 0);
       nameText.addComponent('element', {
         type: 'text',
         fontAsset: this.fontAsset,
-        fontSize: 11,
+        fontSize: 13,
         text: `${def.displayName.toUpperCase()} [${summon.tier}]`,
-        color: new Color(0.96, 0.62, 0.04), // Gold
+        color: new Color(1.0, 0.82, 0.2), // Bright Gold
         anchor: [0.5, 0.5, 0.5, 0.5],
         pivot: [0.5, 0.5],
         ...layerOpt,
@@ -140,13 +154,13 @@ export class BattleCampDock {
 
       // Status indicator
       const statusText = new Entity('CardStatus');
-      statusText.setLocalPosition(0, -10, 0);
+      statusText.setLocalPosition(0, -12, 0);
       statusText.addComponent('element', {
         type: 'text',
         fontAsset: this.fontAsset,
-        fontSize: 10,
-        text: isDeployed ? `CAMP (${placement.cell.x},${placement.cell.y})` : 'DEPLOY',
-        color: isDeployed ? new Color(0.70, 0.85, 1.0) : new Color(0.3, 0.95, 0.5),
+        fontSize: 11,
+        text: isDeployed ? `CAMP (${placement.cell.x},${placement.cell.y})` : 'READY',
+        color: isDeployed ? new Color(0.75, 0.90, 1.0) : new Color(0.35, 0.98, 0.6),
         anchor: [0.5, 0.5, 0.5, 0.5],
         pivot: [0.5, 0.5],
         ...layerOpt,
@@ -154,9 +168,11 @@ export class BattleCampDock {
       cardRoot.addChild(statusText);
 
       // Tap card
-      cardRoot.element?.on('click', () => {
+      const onCard = () => {
         this.onCardClick?.(summon);
-      });
+      };
+      cardRoot.element?.on('click', onCard);
+      cardRoot.element?.on('touchend', onCard);
 
       this.cardEntities.push({
         root: cardRoot,

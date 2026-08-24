@@ -239,7 +239,7 @@ export class PachinkoWorld {
     // Reset ball to top launcher chute with slight randomized entry trajectory
     const launchX = 1.35;
     const launchY = 1.95;
-    this.ballEntity.setPosition(launchX, launchY, 0.12);
+    this.ballEntity.setLocalPosition(launchX, launchY, 0.12);
     this.ballEntity.enabled = true;
 
     // Plunger pull anticipation
@@ -249,7 +249,7 @@ export class PachinkoWorld {
       to: -1.5,
       duration: DURATION.QUICK,
       easing: EASING.SNAP,
-      onUpdate: (y) => this.plungerEntity.setPosition(1.78, y, 0.15),
+      onUpdate: (y) => this.plungerEntity.setLocalPosition(1.78, y, 0.15),
       onComplete: () => {
         // Plunger snap release
         this.audio.playInspectorOpen();
@@ -257,9 +257,9 @@ export class PachinkoWorld {
           id: 'plunger_release',
           from: -1.5,
           to: -1.2,
-          duration: 100,
+          duration: 0.10,
           easing: EASING.SPRING,
-          onUpdate: (y) => this.plungerEntity.setPosition(1.78, y, 0.15),
+          onUpdate: (y) => this.plungerEntity.setLocalPosition(1.78, y, 0.15),
         });
 
         // Launch ball along curve to top center
@@ -267,10 +267,10 @@ export class PachinkoWorld {
           id: 'ball_launch',
           from: launchX,
           to: 0.1 * (Math.random() - 0.5),
-          duration: 350,
+          duration: 0.35,
           easing: EASING.SNAP,
           onUpdate: (x) => {
-            this.ballEntity.setPosition(x, launchY + 0.15 * Math.sin((x / launchX) * Math.PI), 0.12);
+            this.ballEntity.setLocalPosition(x, launchY + 0.15 * Math.sin((x / launchX) * Math.PI), 0.12);
           },
           onComplete: () => {
             // Start physical pin simulation
@@ -289,8 +289,8 @@ export class PachinkoWorld {
   private simulateFall(targetBinIndex: number, onComplete?: (bin: PachinkoBin) => void): void {
     const targetBin = this.bins[targetBinIndex] ?? this.bins[0]!;
     const gravity = -6.8;
-    let ballX = this.ballEntity.getPosition().x - PachinkoWorld.ORIGIN[0];
-    let ballY = this.ballEntity.getPosition().y - 1.8;
+    let ballX = this.ballEntity.getLocalPosition().x;
+    let ballY = this.ballEntity.getLocalPosition().y;
     let lastHitTime = 0;
 
     const interval = setInterval(() => {
@@ -337,12 +337,13 @@ export class PachinkoWorld {
         this.ballVelocity.x = -Math.abs(this.ballVelocity.x) * 0.7;
       }
 
-      this.ballEntity.setPosition(ballX, ballY, 0.12);
+      this.ballEntity.setLocalPosition(ballX, ballY, 0.12);
 
       // Check Bin Landing
       if (ballY <= -1.75) {
         clearInterval(interval);
         this.isDropping = false;
+        this.ballEntity.enabled = false;
 
         // Flash target bin glow
         targetBin.glowMaterial.emissiveIntensity = 2.0;

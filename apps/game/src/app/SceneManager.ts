@@ -7,6 +7,8 @@ import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { PresentationEventEmitter } from '../presentation/PresentationEvents';
 import { isCampCellOccupied, moveCampSummon } from '@psyblr/game-rules';
+import { campCellToWorld } from '../world/CampCoordinateMapper';
+import { DURATION, EASING } from '../presentation/PresentationTokens';
 
 export class SceneManager {
   public baseWorld: BaseWorld;
@@ -110,6 +112,71 @@ export class SceneManager {
       // Normal move
       this.placements = moveCampSummon(summon.instance.id, toCell, this.placements);
     }
+  }
+
+  /**
+   * Spawns a newly acquired summon from the Pachinko machine and flies it into a camp cell.
+   */
+  spawnAndTransferSummon(
+    instance: SummonInstance,
+    destinationCell: CampCell,
+    startWorldPos: [number, number, number] = [6.4, 1.8, 0],
+    onLanded?: (summon: SummonEntity) => void
+  ): SummonEntity {
+    // Add to roster if not already present
+    if (!this.roster.some((r) => r.id === instance.id)) {
+      this.roster.push(instance);
+    }
+
+    const entity = new SummonEntity(
+      this.app,
+      this.motion,
+      instance,
+      destinationCell,
+      this.worldLayer
+    );
+    this.summons.push(entity);
+
+    const destWorld = campCellToWorld(destinationCell);
+
+    // Initial position at spawn machine
+    entity.root.setPosition(startWorldPos[0], startWorldPos[1], startWorldPos[2]);
+    entity.setInteractionState('DRAGGING');
+
+    // Arc flight trajectory from Pachinko to Camp cell
+    this.motion.tween({
+      id: `spawn_fly_${instance.id}`,
+      from: 0,
+      to: 1,
+      duration: DURATION.REWARD,
+      easing: EASING.CINEMATIC,
+      onUpdate: (t) => {
+        const x = startWorldPos[0] + (destWorld[0] - startWorldPos[0]) * t;
+        const z = startWorldPos[2] + (destWorld[2] - startWorldPos[2]) * t;
+        // Parabolic arc height
+        const arcY = startWorldPos[1] + (destWorld[1] - startWorldPos[1]) * t + 1.8 * Math.sin(t * Math.PI);
+
+        entity.root.setPosition(x, arcY, z);
+      },
+      onComplete: () => {
+        entity.onLanding(destinationCell);
+        this.placements.push({
+          summonInstanceId: instance.id,
+          cell: { ...destinationCell },
+        });
+
+        this.events.emit('summonPlaced', {
+          summonId: instance.id,
+          fromCell: destinationCell,
+          toCell: destinationCell,
+          worldPosition: destWorld,
+        });
+
+        onLanded?.(entity);
+      },
+    });
+
+    return entity;
   }
 
   update(dt: number): void {

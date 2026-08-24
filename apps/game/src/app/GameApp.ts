@@ -29,6 +29,7 @@ import { PachinkoHUD } from '../ui/PachinkoHUD';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 import { PachinkoWorld } from '../world/PachinkoWorld';
+import { SpawnAuthorityService } from '../economy/SpawnAuthorityService';
 
 export class GameApp {
   public app: Application;
@@ -48,6 +49,7 @@ export class GameApp {
   public dock: BattleCampDock;
   public pachinkoHUD: PachinkoHUD;
   public debug: DebugOverlay;
+  public spawnAuthority: SpawnAuthorityService;
 
   // Custom Layer references
   public layerWorld: Layer;
@@ -130,7 +132,10 @@ export class GameApp {
       this.layerWorld
     );
 
-    // 7. Initialize Input & Native Screen UI
+    // 7. Initialize Economy Authority
+    this.spawnAuthority = new SpawnAuthorityService();
+
+    // 8. Initialize Input & Native Screen UI
     this.inputManager = new InputManager(this.app, this.dragController, this.sceneManager);
     this.inputManager.setCamera(this.cameraDirector.cameraComponent);
 
@@ -174,9 +179,32 @@ export class GameApp {
       this.layerHud
     );
 
-    this.pachinkoHUD.onDropBall = () => {
-      const targetIndex = Math.floor(Math.random() * 6);
-      this.sceneManager.pachinkoWorld.dropBall(targetIndex);
+    // Wire Authoritative Spawn Execution
+    this.pachinkoHUD.onDropBall = async () => {
+      const result = await this.spawnAuthority.requestReleaseBall(this.sceneManager.getPlacements());
+
+      this.sceneManager.pachinkoWorld.dropBall(result.rewardSlot, () => {
+        // Bin landed reward choreography
+        this.vfx.spawnBurst([6.4, 0.4, 0], '#fbbf24');
+        this.cameraDirector.triggerDropImpulse(0.12);
+
+        setTimeout(() => {
+          this.exitPachinko();
+
+          // Transfer and fly the new summon into Camp
+          this.sceneManager.spawnAndTransferSummon(
+            result.createdSummon,
+            result.destination.cell,
+            [6.4, 1.8, 0],
+            (summon) => {
+              const destPos = campCellToWorld(summon.currentCell);
+              this.vfx.spawnBurst(destPos, '#f59e0b');
+              this.cameraDirector.triggerDropImpulse(0.08);
+              this.dock.setRoster(this.sceneManager.roster, this.sceneManager.getPlacements());
+            }
+          );
+        }, 400);
+      });
     };
 
     this.pachinkoHUD.onClose = () => {
@@ -185,7 +213,7 @@ export class GameApp {
 
     this.debug = new DebugOverlay(this.app, this.dragController, this.sceneManager, this.layerDebug);
 
-    // 8. Wire Tap-to-Inspect, Ground Dismiss, and Pachinko Entry
+    // 9. Wire Tap-to-Inspect, Ground Dismiss, and Pachinko Entry
     this.dragController.onSummonTapped = (summon) => {
       const worldPos = campCellToWorld(summon.currentCell);
       this.cameraDirector.focusOnSummon(worldPos);
@@ -224,7 +252,7 @@ export class GameApp {
       this.dock.setRoster(this.sceneManager.roster, this.sceneManager.getPlacements());
     });
 
-    // 9. Start PlayCanvas loop
+    // 10. Start PlayCanvas loop
     this.app.start();
 
     // Wire frame update

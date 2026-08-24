@@ -40,6 +40,10 @@ export class VFXDirector {
     });
   }
 
+  spawnBurst(position: [number, number, number], colorHex: string = '#f59e0b'): void {
+    this.spawnLandingBurst(position, colorHex);
+  }
+
   spawnLandingBurst(position: [number, number, number], colorHex: string = '#f59e0b'): void {
     const burstRoot = new Entity(`LandingBurst_${Date.now()}`);
     burstRoot.setPosition(position[0], position[1], position[2]);

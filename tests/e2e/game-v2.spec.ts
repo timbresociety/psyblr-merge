@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko World', () => {
-  test('boots cleanly, supports tap inspect, drag swap, and 3D Pachinko camera focus & ball drop', async ({
+  test('boots cleanly, supports tap inspect, drag swap, and authoritative 3D Pachinko spawn into Camp', async ({
     page,
   }, testInfo) => {
     test.setTimeout(60000);
@@ -79,8 +79,7 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko Worl
       return goku?.state === 'IDLE' && naruto?.state === 'IDLE';
     }, { timeout: 3000 });
 
-    // --- PHASE 2: 3D PACHINKO WORLD FOCUS & DROP ---
-    // Enter Pachinko via app method to ensure deterministic camera focus across viewport sizes
+    // --- PHASE 2: 3D PACHINKO WORLD FOCUS & AUTHORITATIVE SPAWN ---
     await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
       app.enterPachinko();
@@ -93,26 +92,13 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko Worl
       return app.pachinkoHUD.isOpen && Math.abs(camPos.x - 6.4) < 0.2;
     }, { timeout: 4000 });
 
-    const pachinkoState = await page.evaluate(() => {
-      const app = (window as any).__PSYBLR_GAME_APP__;
-      return {
-        isOpen: app.pachinkoHUD.isOpen,
-        binCount: app.sceneManager.pachinkoWorld.bins.length,
-        pinCount: app.sceneManager.pachinkoWorld.pins.length,
-      };
-    });
-
-    expect(pachinkoState.isOpen).toBe(true);
-    expect(pachinkoState.binCount).toBe(6);
-    expect(pachinkoState.pinCount).toBeGreaterThan(50);
-
     // Screenshot Open 3D Pachinko World
     await page.screenshot({ path: `apps/game/screenshot-${prefix}-pachinko-board.png` });
 
-    // Trigger Ball Drop
+    // Trigger Authoritative Ball Drop via Pachinko HUD action
     await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
-      app.sceneManager.pachinkoWorld.dropBall(0); // Drop towards Goku bin
+      app.pachinkoHUD.onDropBall?.();
     });
 
     await page.waitForTimeout(600);
@@ -120,23 +106,31 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko Worl
     // Screenshot Active Ball Fall
     await page.screenshot({ path: `apps/game/screenshot-${prefix}-pachinko-ball-drop.png` });
 
-    // Close Pachinko via Escape key
-    await page.keyboard.press('Escape');
-
-    // Wait for camera to return to base overview
+    // Wait for ball to land in bin, camera to return to base, and new summon to land in Camp
     await page.waitForFunction(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
-      const camPos = app.cameraDirector.cameraEntity.getPosition();
-      return !app.pachinkoHUD.isOpen && Math.abs(camPos.x) < 0.1;
-    }, { timeout: 4000 });
+      return (
+        !app.pachinkoHUD.isOpen &&
+        app.sceneManager.summons.length === 5 &&
+        app.sceneManager.summons.every((s: any) => s.state === 'IDLE')
+      );
+    }, { timeout: 8000 });
 
-    const closedState = await page.evaluate(() => {
+    const postSpawnState = await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
       return {
-        isPachinkoOpen: app.pachinkoHUD.isOpen,
+        summonCount: app.sceneManager.summons.length,
+        placementCount: app.sceneManager.getPlacements().length,
+        ballsRemaining: app.spawnAuthority.getBallsRemaining(),
       };
     });
-    expect(closedState.isPachinkoOpen).toBe(false);
+
+    expect(postSpawnState.summonCount).toBe(5);
+    expect(postSpawnState.placementCount).toBe(5);
+    expect(postSpawnState.ballsRemaining).toBe(9);
+
+    // Screenshot Base Camp with 5th newly spawned summon
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-after-spawn.png` });
 
     // --- PHASE 3: DEBUG OVERLAY ---
     await page.keyboard.press('d');

@@ -1,12 +1,16 @@
 import type { Application, Layer } from 'playcanvas';
 import type { CampCell, CampPlacement, SummonInstance } from '@psyblr/contracts';
 import { BaseWorld } from '../world/BaseWorld';
+import { PachinkoWorld } from '../world/PachinkoWorld';
 import { SummonEntity } from '../summons/SummonEntity';
 import type { MotionDirector } from '../presentation/MotionDirector';
+import type { AudioDirector } from '../presentation/AudioDirector';
+import type { PresentationEventEmitter } from '../presentation/PresentationEvents';
 import { isCampCellOccupied, moveCampSummon } from '@psyblr/game-rules';
 
 export class SceneManager {
   public baseWorld: BaseWorld;
+  public pachinkoWorld: PachinkoWorld;
   public summons: SummonEntity[] = [];
   public roster: SummonInstance[] = [];
   private placements: CampPlacement[] = [];
@@ -14,9 +18,18 @@ export class SceneManager {
   constructor(
     private app: Application,
     private motion: MotionDirector,
+    private audio: AudioDirector,
+    private events: PresentationEventEmitter,
     private worldLayer?: Layer
   ) {
     this.baseWorld = new BaseWorld(this.app, this.worldLayer);
+    this.pachinkoWorld = new PachinkoWorld(
+      this.app,
+      this.motion,
+      this.audio,
+      this.events,
+      this.worldLayer
+    );
     this.initStarterRoster();
   }
 
@@ -111,6 +124,7 @@ export class SceneManager {
       summon.destroy();
     }
     this.summons.length = 0;
+    this.pachinkoWorld.destroy();
     this.baseWorld.destroy();
   }
 }

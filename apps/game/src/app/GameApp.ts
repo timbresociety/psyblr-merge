@@ -1,34 +1,34 @@
 import {
   Application,
+  Color,
   ElementInput,
-  FILLMODE_FILL_WINDOW,
   Keyboard,
   Layer,
+  Mouse,
+  TouchDevice,
   LAYERID_DEPTH,
-  LAYERID_IMMEDIATE,
   LAYERID_SKYBOX,
   LAYERID_UI,
-  LAYERID_WORLD,
-  Mouse,
-  RESOLUTION_AUTO,
-  TouchDevice,
+  LAYERID_IMMEDIATE,
 } from 'playcanvas';
-import { GameClock } from './GameClock';
-import { CameraDirector } from './CameraDirector';
-import { InputManager } from './InputManager';
-import { SceneManager } from './SceneManager';
 import { PresentationEventEmitter } from '../presentation/PresentationEvents';
 import { MotionDirector } from '../presentation/MotionDirector';
 import { AudioDirector } from '../presentation/AudioDirector';
 import { VFXDirector } from '../presentation/VFXDirector';
+import { CameraDirector } from './CameraDirector';
+import { SceneManager } from './SceneManager';
+import { InputManager } from './InputManager';
+import { GameClock } from './GameClock';
 import { CampDropTargetResolver } from '../interaction/CampDropTargetResolver';
 import { InteractionFeedback } from '../interaction/InteractionFeedback';
 import { DragController } from '../interaction/DragController';
 import { HUDRoot } from '../ui/HUDRoot';
 import { SummonInspector } from '../ui/SummonInspector';
 import { BattleCampDock } from '../ui/BattleCampDock';
+import { PachinkoHUD } from '../ui/PachinkoHUD';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
+import { PachinkoWorld } from '../world/PachinkoWorld';
 
 export class GameApp {
   public app: Application;
@@ -46,6 +46,7 @@ export class GameApp {
   public hud: HUDRoot;
   public inspector: SummonInspector;
   public dock: BattleCampDock;
+  public pachinkoHUD: PachinkoHUD;
   public debug: DebugOverlay;
 
   // Custom Layer references
@@ -58,22 +59,19 @@ export class GameApp {
   public layerDebug: Layer;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.clock = new GameClock();
-
-    // 1. Initialize PlayCanvas Engine Application directly
+    // 1. Create PlayCanvas Application instance
     this.app = new Application(canvas, {
       mouse: new Mouse(canvas),
       touch: new TouchDevice(canvas),
-      elementInput: new ElementInput(canvas),
       keyboard: new Keyboard(window),
+      elementInput: new ElementInput(canvas),
     });
 
-    this.app.setCanvasFillMode(FILLMODE_FILL_WINDOW);
-    this.app.setCanvasResolution(RESOLUTION_AUTO);
+    this.clock = new GameClock();
 
-    // 2. Setup Explicit Render Layer Architecture
+    // 2. Configure 7-Layer Rendering Pipeline
     const layers = this.app.scene.layers;
-    this.layerWorld = layers.getLayerById(LAYERID_WORLD)!;
+    this.layerWorld = layers.getLayerByName('World')!;
 
     this.layerWorldFx = new Layer({ name: 'WORLD_FX', id: 1001 });
     this.layerWorldUi = new Layer({ name: 'WORLD_UI', id: 1002 });
@@ -124,7 +122,13 @@ export class GameApp {
     );
 
     // 6. Initialize Scene & Summons
-    this.sceneManager = new SceneManager(this.app, this.motion, this.layerWorld);
+    this.sceneManager = new SceneManager(
+      this.app,
+      this.motion,
+      this.audio,
+      this.events,
+      this.layerWorld
+    );
 
     // 7. Initialize Input & Native Screen UI
     this.inputManager = new InputManager(this.app, this.dragController, this.sceneManager);
@@ -161,9 +165,27 @@ export class GameApp {
       });
     };
 
+    this.pachinkoHUD = new PachinkoHUD(
+      this.app,
+      this.motion,
+      this.audio,
+      this.hud.fontAsset!,
+      this.hud.screenEntity,
+      this.layerHud
+    );
+
+    this.pachinkoHUD.onDropBall = () => {
+      const targetIndex = Math.floor(Math.random() * 6);
+      this.sceneManager.pachinkoWorld.dropBall(targetIndex);
+    };
+
+    this.pachinkoHUD.onClose = () => {
+      this.exitPachinko();
+    };
+
     this.debug = new DebugOverlay(this.app, this.dragController, this.sceneManager, this.layerDebug);
 
-    // 8. Wire Tap-to-Inspect and Ground Dismiss
+    // 8. Wire Tap-to-Inspect, Ground Dismiss, and Pachinko Entry
     this.dragController.onSummonTapped = (summon) => {
       const worldPos = campCellToWorld(summon.currentCell);
       this.cameraDirector.focusOnSummon(worldPos);
@@ -174,7 +196,17 @@ export class GameApp {
       });
     };
 
-    this.dragController.onGroundTapped = () => {
+    this.dragController.onGroundTapped = (point) => {
+      // Check if tap was on the Pachinko Spawn Machine Pad (around [6.4, 0, 0])
+      const dx = point.x - PachinkoWorld.ORIGIN[0];
+      const dz = point.z - PachinkoWorld.ORIGIN[2];
+      const distToPachinko = Math.sqrt(dx * dx + dz * dz);
+
+      if (distToPachinko < 2.4 && !this.pachinkoHUD.isOpen) {
+        this.enterPachinko();
+        return;
+      }
+
       if (this.inspector.isOpen) {
         this.hud.setBadgeVisible(true);
         this.inspector.close();
@@ -202,22 +234,27 @@ export class GameApp {
     window.addEventListener('resize', () => this.onResize());
   }
 
+  enterPachinko(): void {
+    if (this.inspector.isOpen) this.inspector.close();
+    this.hud.setBadgeVisible(false);
+    this.dock.root.enabled = false;
+    this.cameraDirector.focusOnPachinko();
+    this.pachinkoHUD.open();
+  }
+
+  exitPachinko(): void {
+    this.pachinkoHUD.close();
+    this.dock.root.enabled = true;
+    this.hud.setBadgeVisible(true);
+    this.cameraDirector.returnToBaseOverview();
+  }
+
   private update(dt: number): void {
     const frameDt = this.clock.getDelta();
 
-    // Advance motion/tweens
     this.motion.update(frameDt);
-
-    // Update camera impulse and transitions
-    this.cameraDirector.update(frameDt);
-
-    // Update scene & summons (idle breathing, drag positions, floating objects)
     this.sceneManager.update(frameDt);
-
-    // Update drag controller & feedback pulse
-    this.dragController.update(frameDt);
-
-    // Update debug stats
+    this.cameraDirector.update(frameDt);
     this.debug.update(frameDt);
   }
 
@@ -226,15 +263,18 @@ export class GameApp {
   }
 
   destroy(): void {
-    window.removeEventListener('resize', () => this.onResize());
+    window.removeEventListener('resize', this.onResize);
     this.inputManager.destroy();
+    this.feedback.destroy();
     this.debug.destroy();
     this.inspector.destroy();
+    this.dock.destroy();
+    this.pachinkoHUD.destroy();
     this.hud.destroy();
-    this.feedback.destroy();
     this.sceneManager.destroy();
     this.vfx.destroy();
     this.cameraDirector.destroy();
+    this.events.clear();
     this.app.destroy();
   }
 }

@@ -4,13 +4,13 @@ import {
   type Application,
   type Layer,
 } from 'playcanvas';
-import type { CampCell, SummonInstance } from '@psyblr/contracts';
+import type { CampCell, SummonInstance, Tier } from '@psyblr/contracts';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 import { SummonPresenter } from './SummonPresenter';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import { DURATION, EASING } from '../presentation/PresentationTokens';
 
-export type SummonInteractionState = 'IDLE' | 'GRABBED' | 'DRAGGING' | 'LANDING' | 'RETURNING';
+export type SummonInteractionState = 'IDLE' | 'GRABBED' | 'DRAGGING' | 'LANDING' | 'RETURNING' | 'MERGING' | 'SPAWNING';
 
 export class SummonEntity {
   public root: Entity;
@@ -62,6 +62,13 @@ export class SummonEntity {
 
   setInteractionState(state: SummonInteractionState): void {
     this.state = state;
+  }
+
+  upgradeTier(newTier: Tier): void {
+    this.instance = {
+      ...this.instance,
+      tier: newTier,
+    };
   }
 
   onGrabbed(): void {
@@ -168,6 +175,47 @@ export class SummonEntity {
     });
   }
 
+  playMergeAnticipation(): void {
+    this.state = 'MERGING';
+    this.ringMaterial.emissiveIntensity = 3.6;
+    this.ringMaterial.update();
+
+    this.motion.tween({
+      id: `summon_merge_antic_${this.instance.id}`,
+      from: 1.0,
+      to: 0.72,
+      duration: DURATION.QUICK,
+      easing: EASING.SNAP,
+      onUpdate: (val) => {
+        this.squashStretchY = val;
+      },
+    });
+  }
+
+  playMergeUpgrade(onComplete?: () => void): void {
+    this.state = 'LANDING';
+
+    this.motion.tween({
+      id: `summon_merge_upgrade_${this.instance.id}`,
+      from: 1.4,
+      to: 1.0,
+      duration: DURATION.FOCUS,
+      easing: EASING.LAND,
+      onUpdate: (val) => {
+        this.squashStretchY = val;
+        this.scaleMultiplier = Math.max(1.0, val * 0.95);
+      },
+      onComplete: () => {
+        this.state = 'IDLE';
+        this.scaleMultiplier = 1.0;
+        this.squashStretchY = 1.0;
+        this.ringMaterial.emissiveIntensity = 1.2;
+        this.ringMaterial.update();
+        onComplete?.();
+      },
+    });
+  }
+
   onReturnToOrigin(onComplete?: () => void): void {
     this.state = 'RETURNING';
     const originWorld = campCellToWorld(this.currentCell);
@@ -256,7 +304,7 @@ export class SummonEntity {
         this.scaleMultiplier
       );
     } else {
-      // LANDING / RETURNING state
+      // LANDING / RETURNING / MERGING state
       this.root.setPosition(
         this.currentWorldPos[0],
         this.currentWorldPos[1] + this.liftY,
@@ -283,6 +331,8 @@ export class SummonEntity {
     this.motion.cancel(`summon_landing_${this.instance.id}`);
     this.motion.cancel(`summon_squash_${this.instance.id}`);
     this.motion.cancel(`summon_return_${this.instance.id}`);
+    this.motion.cancel(`summon_merge_antic_${this.instance.id}`);
+    this.motion.cancel(`summon_merge_upgrade_${this.instance.id}`);
     this.presenter.destroy();
     this.root.destroy();
   }

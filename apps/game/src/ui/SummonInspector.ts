@@ -27,6 +27,7 @@ export class SummonInspector {
   public root: Entity;
   public isOpen: boolean = false;
   public activeSummonId: string | null = null;
+  public activeSummon: SummonInstance | null = null;
 
   private panelBg: Entity;
   private headerText: Entity;
@@ -143,6 +144,7 @@ export class SummonInspector {
 
   populateData(summon: SummonInstance): void {
     this.activeSummonId = summon.id;
+    this.activeSummon = summon;
     const def = getSummonDefinition(summon.definitionId);
     const origin = getOriginDefinition(def.originId);
     const fn = getCombatFunctionDefinition(def.combatFunctionId);
@@ -218,6 +220,7 @@ export class SummonInspector {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.activeSummonId = null;
+    this.activeSummon = null;
     this.audio.playInspectorClose();
 
     // Slide-out animation

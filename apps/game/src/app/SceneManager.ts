@@ -6,7 +6,7 @@ import { SummonEntity } from '../summons/SummonEntity';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { PresentationEventEmitter } from '../presentation/PresentationEvents';
-import { isCampCellOccupied, moveCampSummon } from '@psyblr/game-rules';
+import { canMerge, isCampCellOccupied, moveCampSummon, nextTier } from '@psyblr/game-rules';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 import { DURATION, EASING } from '../presentation/PresentationTokens';
 
@@ -86,15 +86,22 @@ export class SceneManager {
     toCell: CampCell,
     fromCell: CampCell
   ): void {
-    // Check if target cell was occupied by another summon (SWAP)
+    // Check if target cell was occupied by another summon
     const existingOccupantPlacement = this.placements.find(
       (p) => p.summonInstanceId !== summon.instance.id && p.cell.x === toCell.x && p.cell.y === toCell.y
     );
 
     if (existingOccupantPlacement) {
       const occupantSummon = this.getSummonById(existingOccupantPlacement.summonInstanceId);
+
+      if (occupantSummon && canMerge(summon.instance, occupantSummon.instance)) {
+        // --- MERGE FLOW ---
+        this.executeMerge(summon, occupantSummon, toCell);
+        return;
+      }
+
       if (occupantSummon) {
-        // Swap: existing occupant lands on the previous cell
+        // --- SWAP FLOW ---
         occupantSummon.onLanding(fromCell);
       }
 
@@ -112,6 +119,71 @@ export class SceneManager {
       // Normal move
       this.placements = moveCampSummon(summon.instance.id, toCell, this.placements);
     }
+  }
+
+  private executeMerge(
+    consumedSummon: SummonEntity,
+    targetSummon: SummonEntity,
+    targetCell: CampCell
+  ): void {
+    const targetWorld = campCellToWorld(targetCell);
+
+    // Cancel any active placement/landing tweens on consumed summon
+    this.motion.cancel(`summon_landing_${consumedSummon.instance.id}`);
+    this.motion.cancel(`summon_squash_${consumedSummon.instance.id}`);
+    this.motion.cancel(`summon_move_${consumedSummon.instance.id}`);
+    consumedSummon.setInteractionState('MERGING');
+
+    // 1. Target summon squashes into anticipation
+    targetSummon.playMergeAnticipation();
+
+    // 2. Consumed summon collapses into target center
+    const startX = consumedSummon.root.getPosition().x;
+    const startZ = consumedSummon.root.getPosition().z;
+
+    this.motion.tween({
+      id: `merge_collapse_${consumedSummon.instance.id}`,
+      from: 0,
+      to: 1,
+      duration: DURATION.QUICK,
+      easing: EASING.SNAP,
+      onUpdate: (t) => {
+        const x = startX + (targetWorld[0] - startX) * t;
+        const z = startZ + (targetWorld[2] - startZ) * t;
+        consumedSummon.root.setPosition(x, 0.2 * (1 - t), z);
+        consumedSummon.root.setLocalScale(1 - 0.8 * t, 1 - 0.8 * t, 1 - 0.8 * t);
+      },
+      onComplete: () => {
+        // Remove and destroy consumed summon
+        this.summons = this.summons.filter((s) => s !== consumedSummon);
+        this.placements = this.placements.filter((p) => p.summonInstanceId !== consumedSummon.instance.id);
+        this.roster = this.roster.filter((r) => r.id !== consumedSummon.instance.id);
+        consumedSummon.destroy();
+
+        // 60ms silence pocket before upgrade burst
+        setTimeout(() => {
+          const next = nextTier(targetSummon.instance.tier);
+          if (next) {
+            targetSummon.upgradeTier(next);
+            // Update roster entry
+            this.roster = this.roster.map((r) =>
+              r.id === targetSummon.instance.id ? { ...r, tier: next } : r
+            );
+          }
+
+          // Trigger explosive tier upgrade celebration
+          targetSummon.playMergeUpgrade();
+          this.audio.playInspectorOpen();
+
+          this.events.emit('summonPlaced', {
+            summonId: targetSummon.instance.id,
+            fromCell: targetCell,
+            toCell: targetCell,
+            worldPosition: targetWorld,
+          });
+        }, 60);
+      },
+    });
   }
 
   /**
@@ -141,7 +213,7 @@ export class SceneManager {
 
     // Initial position at spawn machine
     entity.root.setPosition(startWorldPos[0], startWorldPos[1], startWorldPos[2]);
-    entity.setInteractionState('DRAGGING');
+    entity.setInteractionState('SPAWNING');
 
     // Arc flight trajectory from Pachinko to Camp cell
     this.motion.tween({

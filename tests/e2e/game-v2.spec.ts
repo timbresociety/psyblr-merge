@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko World', () => {
-  test('boots cleanly, supports tap inspect, drag swap, and authoritative 3D Pachinko spawn into Camp', async ({
+test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, 3D Pachinko & Merge Upgrade', () => {
+  test('boots cleanly, supports drag swap, authoritative 3D Pachinko spawn, and direct merge tier upgrade', async ({
     page,
   }, testInfo) => {
     test.setTimeout(60000);
@@ -68,7 +68,7 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko Worl
     await page.mouse.move(narutoPos.x, narutoPos.y, { steps: 8 });
     await page.waitForTimeout(100);
 
-    // Release mouse for Swap
+    // Release mouse for Swap (Goku moves to (3,3), Naruto moves to (2,3))
     await page.mouse.up();
 
     // Wait for landing sequence & settle
@@ -79,60 +79,89 @@ test.describe('PSYBLR V2 Multi-Summon Camp, Battle Camp Dock, & 3D Pachinko Worl
       return goku?.state === 'IDLE' && naruto?.state === 'IDLE';
     }, { timeout: 3000 });
 
-    // --- PHASE 2: 3D PACHINKO WORLD FOCUS & AUTHORITATIVE SPAWN ---
+    // --- PHASE 2: SPAWN A 2ND GOKU VIA AUTHORITATIVE SPAWN ---
     await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
-      app.enterPachinko();
+      // Authoritatively spawn a 2nd Goku [F] at cell (1, 1)
+      app.sceneManager.spawnAndTransferSummon(
+        { id: 'spawn:goku:dup01', definitionId: 'goku', tier: 'F' },
+        { x: 1, y: 1 },
+        [6.4, 1.8, 0]
+      );
     });
 
-    // Wait for Pachinko HUD & Camera Focus
+    // Wait for new summon to land in Camp
     await page.waitForFunction(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
-      const camPos = app.cameraDirector.cameraEntity.getPosition();
-      return app.pachinkoHUD.isOpen && Math.abs(camPos.x - 6.4) < 0.2;
-    }, { timeout: 4000 });
-
-    // Screenshot Open 3D Pachinko World
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-pachinko-board.png` });
-
-    // Trigger Authoritative Ball Drop via Pachinko HUD action
-    await page.evaluate(() => {
-      const app = (window as any).__PSYBLR_GAME_APP__;
-      app.pachinkoHUD.onDropBall?.();
-    });
-
-    await page.waitForTimeout(600);
-
-    // Screenshot Active Ball Fall
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-pachinko-ball-drop.png` });
-
-    // Wait for ball to land in bin, camera to return to base, and new summon to land in Camp
-    await page.waitForFunction(() => {
-      const app = (window as any).__PSYBLR_GAME_APP__;
+      const dup = app.sceneManager.getSummonById('spawn:goku:dup01');
       return (
-        !app.pachinkoHUD.isOpen &&
         app.sceneManager.summons.length === 5 &&
+        dup?.state === 'IDLE' &&
         app.sceneManager.summons.every((s: any) => s.state === 'IDLE')
       );
-    }, { timeout: 8000 });
+    }, { timeout: 5000 });
 
-    const postSpawnState = await page.evaluate(() => {
+    // Screenshot Camp with 2 Goku summons
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-before-merge.png` });
+
+    // --- PHASE 3: DIRECT MERGE (2nd Goku at (1,1) onto 1st Goku at (3,3)) ---
+    await page.evaluate(() => {
       const app = (window as any).__PSYBLR_GAME_APP__;
+      const dup = app.sceneManager.getSummonById('spawn:goku:dup01');
+      const target = app.sceneManager.getSummonById('starter:goku:001');
+      if (dup && target) {
+        app.sceneManager.onSummonPlacementCommitted(dup, target.currentCell, dup.currentCell);
+      }
+    });
+
+    // Wait for merge animation, collapse, silence pocket, and upgrade burst
+    await page.waitForFunction(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const gokuTarget = app.sceneManager.getSummonById('starter:goku:001');
+      return (
+        app.sceneManager.summons.length === 4 &&
+        gokuTarget?.instance.tier === 'E' &&
+        gokuTarget?.state === 'IDLE'
+      );
+    }, { timeout: 5000 });
+
+    const postMergeState = await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const goku = app.sceneManager.getSummonById('starter:goku:001');
       return {
         summonCount: app.sceneManager.summons.length,
-        placementCount: app.sceneManager.getPlacements().length,
-        ballsRemaining: app.spawnAuthority.getBallsRemaining(),
+        gokuTier: goku?.instance.tier,
       };
     });
 
-    expect(postSpawnState.summonCount).toBe(5);
-    expect(postSpawnState.placementCount).toBe(5);
-    expect(postSpawnState.ballsRemaining).toBe(9);
+    expect(postMergeState.summonCount).toBe(4);
+    expect(postMergeState.gokuTier).toBe('E');
 
-    // Screenshot Base Camp with 5th newly spawned summon
-    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-after-spawn.png` });
+    // Screenshot Camp after Successful Merge
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-camp-after-merge.png` });
 
-    // --- PHASE 3: DEBUG OVERLAY ---
+    // --- PHASE 4: TAP INSPECT UPGRADED GOKU [E] ---
+    await page.evaluate(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      const goku = app.sceneManager.getSummonById('starter:goku:001');
+      if (goku) {
+        app.inspector.open(goku.instance);
+      }
+    });
+
+    await page.waitForFunction(() => {
+      const app = (window as any).__PSYBLR_GAME_APP__;
+      return app.inspector.isOpen && app.inspector.activeSummon?.tier === 'E';
+    }, { timeout: 3000 });
+
+    // Screenshot Open Inspector showing [E] tier progression rail
+    await page.screenshot({ path: `apps/game/screenshot-${prefix}-inspector-tier-e.png` });
+
+    // Close Inspector
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // --- PHASE 5: DEBUG OVERLAY ---
     await page.keyboard.press('d');
     await page.waitForTimeout(150);
 

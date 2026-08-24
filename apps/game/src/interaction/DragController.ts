@@ -129,7 +129,7 @@ export class DragController {
   }
 
   onPointerUp(
-    onPlacementCommitted?: (summon: SummonEntity, toCell: CampCell) => void
+    onPlacementCommitted?: (summon: SummonEntity, toCell: CampCell, fromCell: CampCell) => void
   ): boolean {
     const elapsed = performance.now() - this.pointerDownTime;
     const isTap = this.maxDragDistance < 0.15 && elapsed < 350;
@@ -177,9 +177,8 @@ export class DragController {
       });
 
       if (onPlacementCommitted) {
-        onPlacementCommitted(summon, targetCell);
+        onPlacementCommitted(summon, targetCell, startCell);
       }
-
       return true;
     } else {
       // Invalid drop — elastic spring return

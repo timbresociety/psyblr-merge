@@ -75,8 +75,8 @@ export class InputManager {
   }
 
   private onPointerUp(e: PointerEvent): void {
-    this.dragController.onPointerUp((summon, toCell) => {
-      this.sceneManager.onSummonPlacementCommitted(summon, toCell);
+    this.dragController.onPointerUp((summon, toCell, fromCell) => {
+      this.sceneManager.onSummonPlacementCommitted(summon, toCell, fromCell);
     });
   }
 

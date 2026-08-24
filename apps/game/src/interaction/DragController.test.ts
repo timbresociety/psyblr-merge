@@ -123,7 +123,7 @@ describe('DragController', () => {
         toCell: { x: 1, y: 1 },
       })
     );
-    expect(commitCallback).toHaveBeenCalledWith(summon, targetCell);
+    expect(commitCallback).toHaveBeenCalledWith(summon, targetCell, { x: 2, y: 3 });
   });
 
   it('triggers return to origin on pointer up over an invalid area', () => {

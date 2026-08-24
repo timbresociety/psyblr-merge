@@ -26,6 +26,7 @@ import { InteractionFeedback } from '../interaction/InteractionFeedback';
 import { DragController } from '../interaction/DragController';
 import { HUDRoot } from '../ui/HUDRoot';
 import { SummonInspector } from '../ui/SummonInspector';
+import { BattleCampDock } from '../ui/BattleCampDock';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 
@@ -44,6 +45,7 @@ export class GameApp {
   public inputManager: InputManager;
   public hud: HUDRoot;
   public inspector: SummonInspector;
+  public dock: BattleCampDock;
   public debug: DebugOverlay;
 
   // Custom Layer references
@@ -138,6 +140,27 @@ export class GameApp {
       this.layerHud
     );
 
+    this.dock = new BattleCampDock(
+      this.app,
+      this.hud.fontAsset!,
+      this.hud.screenEntity,
+      this.layerHud
+    );
+    this.dock.setRoster(this.sceneManager.roster, this.sceneManager.getPlacements());
+
+    this.dock.onCardClick = (summon) => {
+      const activeSummon = this.sceneManager.getSummonById(summon.id);
+      if (activeSummon) {
+        const worldPos = campCellToWorld(activeSummon.currentCell);
+        this.cameraDirector.focusOnSummon(worldPos);
+      }
+      this.hud.setBadgeVisible(false);
+      this.inspector.open(summon, () => {
+        this.hud.setBadgeVisible(true);
+        this.cameraDirector.returnToBaseOverview();
+      });
+    };
+
     this.debug = new DebugOverlay(this.app, this.dragController, this.sceneManager, this.layerDebug);
 
     // 8. Wire Tap-to-Inspect and Ground Dismiss
@@ -163,6 +186,10 @@ export class GameApp {
         this.hud.setBadgeVisible(true);
         this.inspector.close();
       }
+    });
+
+    this.events.on('summonPlaced', () => {
+      this.dock.setRoster(this.sceneManager.roster, this.sceneManager.getPlacements());
     });
 
     // 9. Start PlayCanvas loop

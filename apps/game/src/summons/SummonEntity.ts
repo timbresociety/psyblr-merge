@@ -53,7 +53,7 @@ export class SummonEntity {
     this.root.setPosition(worldPos[0], worldPos[1], worldPos[2]);
 
     this.presenter = new SummonPresenter(worldLayer);
-    const visuals = this.presenter.createGokuVisuals(this.root);
+    const visuals = this.presenter.createVisuals(instance.definitionId, this.root);
     this.bodyRoot = visuals.bodyRoot;
     this.baseRing = visuals.baseRing;
     this.shadowRoot = visuals.shadowRoot;

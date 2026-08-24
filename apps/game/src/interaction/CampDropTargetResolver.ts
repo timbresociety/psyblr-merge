@@ -1,5 +1,5 @@
 import type { CampCell, CampPlacement } from '@psyblr/contracts';
-import { isCampCell, canPlaceCampSummon, CAMP_SIZE } from '@psyblr/game-rules';
+import { isCampCell, CAMP_SIZE } from '@psyblr/game-rules';
 import {
   CAMP_CELL_SIZE,
   CAMP_ORIGIN,
@@ -58,11 +58,6 @@ export class CampDropTargetResolver {
     const candidateCell: CampCell = { x: cellX, y: cellY };
 
     if (!isCampCell(candidateCell)) {
-      return null;
-    }
-
-    // Check legality against game rules (unoccupied or already occupied by this summon)
-    if (!canPlaceCampSummon(summonInstanceId, candidateCell, placements)) {
       return null;
     }
 

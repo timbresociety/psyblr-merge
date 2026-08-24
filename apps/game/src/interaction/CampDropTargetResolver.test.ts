@@ -55,7 +55,7 @@ describe('CampDropTargetResolver', () => {
     expect(target).toBeNull();
   });
 
-  it('rejects cells occupied by another summon', () => {
+  it('resolves occupied cells as valid targets for position swapping', () => {
     const occupiedCell = { x: 3, y: 3 };
     const placements: CampPlacement[] = [
       { summonInstanceId: 'starter:naruto:002', cell: occupiedCell },
@@ -68,7 +68,7 @@ describe('CampDropTargetResolver', () => {
       placements
     );
 
-    expect(target).toBeNull();
+    expect(target).toEqual(occupiedCell);
   });
 
   it('permits dropping onto the cell currently occupied by the dragged summon itself', () => {

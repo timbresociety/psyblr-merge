@@ -82,16 +82,16 @@ apps/game/src/
 └── dev/
 ```
 
-Do not perform mechanical moves that leave broken imports.
+Do not perform mechanical moves that leave broken imports. Move ownership and behavior in small tested slices.
 
 ## Shared domain boundaries
 
 - `packages/contracts`: shared schemas, snapshots, request/result contracts, and serialization types.
-- `packages/contracts/src/catalog.ts`: canonical launch catalog contract for 36 Summons, 10 ordered tiers, four required skills, one Alliance per Summon, and exact 2/4/6 Alliance thresholds.
-- `packages/game-content`: versioned Summon, Alliance, ability, enemy, Spawn, and Arc content.
+- `packages/contracts/src/catalog.ts`: canonical launch catalog contract.
+- `packages/game-content`: versioned Summon, Alliance, passive, ability, enemy, Spawn, and Arc content.
 - `packages/game-rules`: pure inventory, merge, Alliance, formation, power-score, protection, and progression rules.
-- `packages/combat-core`: deterministic combat simulation and event log. No PlayCanvas, browser API, database, network, or wall-clock dependencies.
-- `packages/raid-core`: deterministic Raid snapshots, seeds, round construction, and series resolution.
+- `packages/combat-core`: deterministic automatic combat simulation and event log. No PlayCanvas, browser API, database, network, or wall-clock dependencies.
+- `packages/raid-core`: deterministic Raid snapshots, seeds, round construction, series resolution, and tie resolution.
 - `packages/tutorial-core`: tutorial state and completion rules, not presentation.
 - Add `campaign-core` or `spawn-core` only when those domains justify a pure package.
 - `supabase/functions`: privileged mutations, matchmaking, timers, reward resolution, and ownership transfers.
@@ -99,19 +99,22 @@ Do not perform mechanical moves that leave broken imports.
 ## Launch catalog invariants
 
 1. Launch content contains exactly 36 active Summon definitions.
-2. Progression contains exactly 10 ordered tiers. Tier labels are content-defined and must not be hard-coded into client architecture.
-3. Each Summon definition spans all 10 tiers. Tier is instance progression state, not a separate character definition.
-4. Every Summon has exactly four required skill references: `basic`, `skill1`, `skill2`, `ultimate`.
-5. Every Summon has exactly one `allianceId`.
-6. Every Alliance defines exactly three thresholds: 2, 4, and 6 deployed Summons.
-7. Alliance modifiers may only target the approved stat families defined by the catalog contract: offense, defense, mobility, skill economy, status control, and sustain.
-8. The old Origin and Combat Function taxonomy is legacy prototype schema. Do not add new content or product behavior that depends on it. Cut current runtime callers over when the final 36-character content sheet lands.
+2. Launch content contains exactly 6 Alliances.
+3. Each Alliance contains exactly 6 launch Summons so its 6-piece threshold is achievable.
+4. Progression contains exactly 10 ordered tiers. Tier IDs and labels are content-defined until the final character sheet locks them and must not be hard-coded into client architecture.
+5. Tier is instance progression state, not a separate character definition.
+6. Every Summon has exactly four required skill references: `basic`, `skill1`, `skill2`, `ultimate`.
+7. Every Summon also has exactly one required passive reference, stored separately as `passiveId`.
+8. Every Summon has exactly one `allianceId`.
+9. Every Alliance defines exactly three thresholds: 2, 4, and 6 deployed Summons.
+10. Alliance modifiers may only target the approved stat families defined by the catalog contract: offense, defense, mobility, skill economy, status control, and sustain.
+11. The old Origin and Combat Function taxonomy is legacy prototype schema. Do not add new content or product behavior that depends on it.
 
 ## Authority model
 
 Production economy and PvP are server authoritative.
 
-Use explicit gateway interfaces such as `PlayerGateway`, `SpawnGateway`, `CampaignGateway`, `DefenseGateway`, and `RaidGateway`. A dev mock adapter may be selected explicitly in development. Production must never silently fall back from a failed server call to `Math.random`, `localStorage`, or client-side mutation.
+Use explicit gateway interfaces such as `PlayerGateway`, `SpawnGateway`, `CampaignGateway`, `DefenseGateway`, and `RaidGateway`. A dev mock adapter may be selected explicitly in development. Production must never silently fall back from a failed server call to `Math.random`, `localStorage`, client-side mutation, or a localhost service.
 
 Every persistent mutation requires an idempotent `clientActionId` or equivalent action key. Ownership-changing operations must be atomic.
 
@@ -121,8 +124,8 @@ The server owns at minimum:
 - Ball balances and Dealer refill timing.
 - Daily Spawn pool and Spawn rewards.
 - Time Shield and Illuminati entitlement state.
-- Campaign progress and milestone rewards.
-- Defense snapshots.
+- Campaign formation, progress, and milestone rewards.
+- Defense formations and immutable match snapshots.
 - Raid matchmaking and exclusive player locks.
 - Raid combat inputs, deterministic seeds, and final outcomes.
 - Steal and surrender transfers.
@@ -138,10 +141,14 @@ The server owns at minimum:
 6. Alliance is the only player-facing synergy taxonomy.
 7. Starting an outgoing Raid breaks the attacker's Time Shield.
 8. `1x`, `2x`, and `4x` are presentation speeds only.
+9. Combat has no manual skill-cast control in V1.
+10. Raid series settlement cannot remain a draw. Any combat or series tie must resolve through one deterministic server-owned tie-break path.
 
 ## Combat and replay
 
 Combat is automatic after formation lock. The deterministic simulator resolves combat. PlayCanvas presents the returned event stream.
+
+The canonical combat model must support the full character kit: Basic, Passive, Skill 1, Skill 2, and Ultimate. Ability availability, upgrades, cooldowns, targeting, status effects, and tier unlock state are simulation data, never UI-owned rules.
 
 Replay speed must never change seed, targeting, cooldowns, simulated time, damage, movement decisions, event ordering, or winner.
 
@@ -153,9 +160,9 @@ Only one layer consumes a gesture. Input priority is:
 
 ```text
 blocking system modal
-→ active feature UI
-→ active scene interaction
-→ camera gesture
+-> active feature UI
+-> active scene interaction
+-> camera gesture
 ```
 
 Battle Camp behavior:
@@ -184,6 +191,30 @@ The Summon drawer must not block the Camp grid.
 - Combat should read like an anime battle without compromising deterministic simulation.
 - New-player bootstrap begins in Campaign tutorial. Returning players begin in Base.
 
+## Legacy cutover gate
+
+The current prototype may remain temporarily runnable, but the following symbols and behaviors are not valid launch architecture:
+
+- hard-coded nine-tier `TierSchema`, `TIERS`, and `TIER_MULTIPLIER`,
+- `originId`, `combatFunctionId`, `OriginDefinition`, `CombatFunctionDefinition`, and `resolveFormationSynergies`,
+- nullable launch `skill2` or `ultimate`,
+- missing passive references,
+- manual `cast_skill_1` combat commands and tutorial actions,
+- combat snapshots that only model Skill 1,
+- unresolved `draw` Raid outcomes,
+- client-owned Campaign progression, Raid outcomes, or ownership mutation,
+- HUD or World classes as durable state stores,
+- production `localStorage` or `Math.random` authority,
+- the app-local onboarding director as a competing tutorial state machine.
+
+Do not delete a legacy contract until all callers have moved to its canonical replacement. Do not preserve a legacy contract simply because a caller has not yet been migrated.
+
+## Content-version rule
+
+All authoritative Campaign battles, Defense snapshots, Raid locks, Raid combat snapshots, and settlements must pin the content version they started with. An in-flight battle or Raid never changes rules because a new catalog was deployed. The server must retain enough versioned content or resolved snapshot data to replay and settle an already-started session.
+
+Stable IDs are migration boundaries. Player-owned instances reference stable Summon definition IDs and tier IDs, not display names.
+
 ## Testing definition of done
 
 A feature is not complete because an internal method can be called. Test the user path.
@@ -199,13 +230,17 @@ Critical regression cases include:
 
 - Camp capacity and full-Camp Spawn rejection without Ball consumption.
 - Dealer refill semantics.
+- Six Alliances with exactly six launch characters each.
+- Four required skills plus one passive per Summon.
 - Raid slot reservation, Time Shield break/reset, and parallel Raid prevention.
 - Setup timeout auto-deploy.
 - Random steal timeout and weakest-used surrender timeout.
+- Deterministic no-draw Raid settlement.
 - FIFO restrictions.
 - Campaign boss pauses and continuation after in-app navigation.
 - `1x/2x/4x` replay invariance.
-- Catalog validation for 36 Summons, 10 tiers, four skills, one Alliance, and 2/4/6 thresholds.
+- Catalog validation for 36 Summons, 10 tiers, one Alliance, six Alliances total, and 2/4/6 thresholds.
+- Content-version pinning for in-flight Campaign and Raid sessions.
 
 ## Product change protocol
 

@@ -3,8 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   workers: 1,
-  use: { baseURL: 'http://127.0.0.1:5174', trace: 'on-first-retry' },
-  webServer: { command: 'npm run dev', url: 'http://127.0.0.1:5174', reuseExistingServer: true },
+  use: { baseURL: 'http://127.0.0.1:5173', trace: 'on-first-retry' },
+  webServer: { command: 'npm run dev', url: 'http://127.0.0.1:5173', reuseExistingServer: !process.env.CI },
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], browserName: 'chromium', viewport: { width: 1280, height: 720 } } },
     { name: 'mobile-landscape', use: { ...devices['iPhone 14'], browserName: 'chromium', viewport: { width: 844, height: 390 }, isMobile: true } },

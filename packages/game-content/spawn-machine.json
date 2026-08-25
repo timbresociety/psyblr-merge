@@ -1,25 +1,25 @@
 {
   "dailyBallCap": 100,
   "binProbabilities": [
-    30,
+    10,
     15,
-    5,
-    5,
+    25,
+    25,
     15,
-    30
+    10
   ],
   "blobTargets": [
     {
-      "id": "shield",
-      "enabled": false
+      "id": "shield_left",
+      "enabled": true
     },
     {
-      "id": "tier_bonus",
-      "enabled": false
+      "id": "shield_right",
+      "enabled": true
     }
   ],
   "tutorial": {
-    "targetCampOccupancy": 36,
-    "guaranteeCopiesOfPrimary": 8
+    "targetCampOccupancy": 8,
+    "guaranteeCopiesOfPrimary": 2
   }
 }

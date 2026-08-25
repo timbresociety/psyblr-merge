@@ -9,7 +9,7 @@ import {
 } from './index';
 
 describe('starter content references', () => {
-  it('resolves every starter origin, function, basic attack, and Skill 1', () => {
+  it('resolves current legacy synergy references and every starter ability', () => {
     for (const summon of summonDefinitions) {
       expect(getOriginDefinition(summon.originId).name).toBeTruthy();
       expect(getCombatFunctionDefinition(summon.combatFunctionId).name).toBeTruthy();
@@ -27,9 +27,11 @@ describe('starter content references', () => {
 });
 
 describe('spawn machine content', () => {
-  it('has the locked six-bin tutorial configuration', () => {
-    expect(spawnMachineDefinition.binProbabilities).toEqual([30, 15, 5, 5, 15, 30]);
+  it('uses the locked six-bin all-F progression probability shape', () => {
+    expect(spawnMachineDefinition.binProbabilities).toEqual([10, 15, 25, 25, 15, 10]);
     expect(spawnMachineDefinition.binProbabilities.reduce((total, value) => total + value, 0)).toBe(100);
-    expect(spawnMachineDefinition.blobTargets.map((target) => target.enabled)).toEqual([false, false]);
+    expect(spawnMachineDefinition.blobTargets.map((target) => target.enabled)).toEqual([true, true]);
+    expect(spawnMachineDefinition.blobTargets.map((target) => target.id)).toEqual(['shield_left', 'shield_right']);
+    expect(spawnMachineDefinition.tutorial).toEqual({ targetCampOccupancy: 8, guaranteeCopiesOfPrimary: 2 });
   });
 });

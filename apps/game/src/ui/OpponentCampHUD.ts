@@ -5,6 +5,7 @@ import {
   Asset,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { OpponentSummonEntry } from '../world/OpponentCampWorld';
 import { getSummonDefinition } from '@psyblr/game-content';
@@ -12,16 +13,20 @@ import { getSummonDefinition } from '@psyblr/game-content';
 export class OpponentCampHUD {
   public root: Entity;
   public isOpen: boolean = false;
+  public selectedEntry: OpponentSummonEntry | null = null;
 
   private topBar: Entity;
   private titleText: Entity;
   private statusText: Entity;
   private selectedText: Entity;
+  private inspectButton: Entity;
+  private inspectBtnText: Entity;
   private stealButton: Entity;
   private stealBtnText: Entity;
   private closeButton: Entity;
 
   public onClaimSteal?: () => void;
+  public onInspectSummon?: (entry: OpponentSummonEntry) => void;
   public onClose?: () => void;
 
   constructor(
@@ -38,121 +43,212 @@ export class OpponentCampHUD {
     this.root.setLocalPosition(0, 0, 0);
     screenEntity.addChild(this.root);
 
-    // 1. Top Title Header
+    // 1. Top Header Bar (Height 80px)
     this.topBar = new Entity('OppCampTopBar');
-    this.topBar.setLocalPosition(0, -32, 0);
     this.topBar.addComponent('element', {
       type: 'group',
       anchor: [0, 1, 1, 1],
-      pivot: [0.5, 1],
-      height: 72,
+      pivot: [0, 1],
+      height: 80,
       ...layerOpt,
     });
     this.root.addChild(this.topBar);
+    this.topBar.setLocalPosition(0, 0, 0);
 
     this.titleText = new Entity('OppCampTitle');
-    this.titleText.setLocalPosition(32, 8, 0);
     this.titleText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 20,
       text: 'OPPONENT CAMP • RAID VICTORY SPOILS',
-      color: new Color(0.96, 0.62, 0.04), // Gold
-      anchor: [0, 0.5, 0, 0.5],
-      pivot: [0, 0.5],
+      color: colorFromHex('#fbbf24'), // Anime Gold
+      anchor: [0, 1, 0, 1],
+      pivot: [0, 1],
       ...layerOpt,
     });
     this.topBar.addChild(this.titleText);
+    this.titleText.setLocalPosition(32, -24, 0);
 
     this.statusText = new Entity('OppCampStatus');
-    this.statusText.setLocalPosition(32, -18, 0);
     this.statusText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
-      fontSize: 12,
+      fontSize: 13,
       text: 'Illuminati Row 0 is protected. Tap any exposed Summon in Rows 1-5 to steal into your Camp.',
-      color: new Color(0.75, 0.85, 0.95),
-      anchor: [0, 0.5, 0, 0.5],
-      pivot: [0, 0.5],
+      color: colorFromHex('#94a3b8'), // Slate Gray
+      anchor: [0, 1, 0, 1],
+      pivot: [0, 1],
       ...layerOpt,
     });
     this.topBar.addChild(this.statusText);
+    this.statusText.setLocalPosition(32, -54, 0);
 
     // [RETURN TO BASE] Button Top-Right
     this.closeButton = new Entity('OppCampBackButton');
-    this.closeButton.setLocalPosition(-110, 0, 0);
     this.closeButton.addComponent('element', {
       type: 'image',
-      anchor: [1, 0.5, 1, 0.5],
-      pivot: [0.5, 0.5],
+      anchor: [1, 1, 1, 1],
+      pivot: [1, 1],
       width: 180,
       height: 38,
-      color: new Color(0.12, 0.18, 0.32),
+      color: colorFromHex('#0f172a'),
       useInput: true,
       ...layerOpt,
     });
     this.topBar.addChild(this.closeButton);
+    this.closeButton.setLocalPosition(-32, -24, 0);
+
+    const closeTrim = new Entity('OppBackTrim');
+    closeTrim.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 176,
+      height: 2,
+      color: colorFromHex('#38bdf8'),
+      ...layerOpt,
+    });
+    this.closeButton.addChild(closeTrim);
+    closeTrim.setLocalPosition(0, 18, 0);
 
     const closeText = new Entity('OppCloseText');
-    closeText.setLocalPosition(0, 0, 0);
     closeText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 12,
       text: '← RETURN TO BASE',
-      color: new Color(0.85, 0.9, 0.98),
+      color: colorFromHex('#f8fafc'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 180,
+      height: 38,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
     });
     this.closeButton.addChild(closeText);
+    closeText.setLocalPosition(0, 0, 0);
 
     this.closeButton.element?.on('click', () => this.close());
     this.closeButton.element?.on('touchend', () => this.close());
 
-    // Selected Target Banner on Left
+    // Selected Target Banner (Sub-header)
     this.selectedText = new Entity('OppSelectedText');
-    this.selectedText.setLocalPosition(32, -92, 0);
     this.selectedText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 14,
-      text: 'SELECT AN EXPOSED SUMMON TO CLAIM',
-      color: new Color(0.2, 0.9, 0.5), // Emerald
+      text: 'TAP ANY EXPOSED SUMMON IN ROWS 1-5 TO SELECT FOR STEAL',
+      color: colorFromHex('#64748b'),
       anchor: [0, 1, 0, 1],
       pivot: [0, 1],
       ...layerOpt,
     });
-    this.root.addChild(this.selectedText);
+    this.topBar.addChild(this.selectedText);
+    this.selectedText.setLocalPosition(32, -84, 0);
 
-    // 2. [CLAIM & STEAL] Action Button Bottom-Right
+    // 2. [INSPECT SUMMON] Button Bottom-Right
+    this.inspectButton = new Entity('InspectSummonButton');
+    this.inspectButton.addComponent('element', {
+      type: 'image',
+      anchor: [1, 0, 1, 0],
+      pivot: [1, 0],
+      width: 200,
+      height: 52,
+      color: colorFromHex('#0f172a'),
+      useInput: false,
+      ...layerOpt,
+    });
+    this.root.addChild(this.inspectButton);
+    this.inspectButton.setLocalPosition(-300, 48, 0);
+
+    const inspectTrim = new Entity('InspectBtnTrim');
+    inspectTrim.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 196,
+      height: 2,
+      color: colorFromHex('#38bdf8'),
+      ...layerOpt,
+    });
+    this.inspectButton.addChild(inspectTrim);
+    inspectTrim.setLocalPosition(0, 25, 0);
+
+    this.inspectBtnText = new Entity('InspectBtnText');
+    this.inspectBtnText.addComponent('element', {
+      type: 'text',
+      fontAsset: this.fontAsset,
+      fontSize: 13,
+      text: '🔍 INSPECT STATS',
+      color: colorFromHex('#64748b'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 200,
+      height: 52,
+      alignment: [0.5, 0.5],
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      ...layerOpt,
+    });
+    this.inspectButton.addChild(this.inspectBtnText);
+    this.inspectBtnText.setLocalPosition(0, 0, 0);
+
+    const onInspect = () => {
+      if (this.selectedEntry) {
+        this.onInspectSummon?.(this.selectedEntry);
+      }
+    };
+    this.inspectButton.element?.on('click', onInspect);
+    this.inspectButton.element?.on('touchend', onInspect);
+
+    // 3. [CLAIM & STEAL] Action Button Bottom-Right
     this.stealButton = new Entity('ClaimStealButton');
-    this.stealButton.setLocalPosition(-48, 48, 0);
     this.stealButton.addComponent('element', {
       type: 'image',
       anchor: [1, 0, 1, 0],
       pivot: [1, 0],
-      width: 260,
+      width: 240,
       height: 52,
-      color: new Color(0.15, 0.2, 0.3),
+      color: colorFromHex('#1e293b'),
       useInput: false,
       ...layerOpt,
     });
     this.root.addChild(this.stealButton);
+    this.stealButton.setLocalPosition(-48, 48, 0);
+
+    const stealTrim = new Entity('ClaimStealTrim');
+    stealTrim.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 236,
+      height: 2,
+      color: colorFromHex('#f59e0b'),
+      ...layerOpt,
+    });
+    this.stealButton.addChild(stealTrim);
+    stealTrim.setLocalPosition(0, 25, 0);
 
     this.stealBtnText = new Entity('StealBtnText');
-    this.stealBtnText.setLocalPosition(0, 0, 0);
     this.stealBtnText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
-      fontSize: 14,
-      text: 'CLAIM & STEAL SUMMON 🏆',
-      color: new Color(0.5, 0.6, 0.7),
+      fontSize: 13,
+      text: 'CLAIM & STEAL 🏆',
+      color: colorFromHex('#64748b'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 240,
+      height: 52,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
     });
     this.stealButton.addChild(this.stealBtnText);
+    this.stealBtnText.setLocalPosition(0, 0, 0);
 
     const onClaim = () => this.onClaimSteal?.();
     this.stealButton.element?.on('click', onClaim);
@@ -166,29 +262,65 @@ export class OpponentCampHUD {
     });
   }
 
+  showProtectedNotice(entry: OpponentSummonEntry): void {
+    this.selectedEntry = entry;
+    const def = getSummonDefinition(entry.instance.definitionId);
+
+    if (this.selectedText.element) {
+      this.selectedText.element.text = `⚠️ ILLUMINATI PROTECTED: ${def.displayName.toUpperCase()} [${entry.instance.tier}] IS SHIELDED (ROW 0)`;
+      this.selectedText.element.color = colorFromHex('#f59e0b');
+    }
+
+    if (this.inspectButton.element && this.inspectBtnText.element) {
+      this.inspectButton.element.color = colorFromHex('#0f172a');
+      this.inspectButton.element.useInput = true;
+      this.inspectBtnText.element.color = colorFromHex('#38bdf8');
+    }
+
+    if (this.stealButton.element && this.stealBtnText.element) {
+      this.stealButton.element.color = colorFromHex('#1e293b');
+      this.stealButton.element.useInput = false;
+      this.stealBtnText.element.color = colorFromHex('#64748b');
+    }
+  }
+
   setSelectedSummon(entry: OpponentSummonEntry | null): void {
+    this.selectedEntry = entry;
+
     if (!entry) {
       if (this.selectedText.element) {
-        this.selectedText.element.text = 'SELECT AN EXPOSED SUMMON TO CLAIM';
-        this.selectedText.element.color = new Color(0.6, 0.7, 0.85);
+        this.selectedText.element.text = 'TAP ANY EXPOSED SUMMON IN ROWS 1-5 TO SELECT FOR STEAL';
+        this.selectedText.element.color = colorFromHex('#64748b');
+      }
+      if (this.inspectButton.element && this.inspectBtnText.element) {
+        this.inspectButton.element.color = colorFromHex('#1e293b');
+        this.inspectButton.element.useInput = false;
+        this.inspectBtnText.element.color = colorFromHex('#64748b');
       }
       if (this.stealButton.element && this.stealBtnText.element) {
-        this.stealButton.element.color = new Color(0.15, 0.2, 0.3);
+        this.stealButton.element.color = colorFromHex('#1e293b');
         this.stealButton.element.useInput = false;
-        this.stealBtnText.element.color = new Color(0.5, 0.6, 0.7);
+        this.stealBtnText.element.color = colorFromHex('#64748b');
       }
       return;
     }
 
     const def = getSummonDefinition(entry.instance.definitionId);
     if (this.selectedText.element) {
-      this.selectedText.element.text = `TARGET SELECTED: ${def.displayName.toUpperCase()} [${entry.instance.tier}]`;
-      this.selectedText.element.color = new Color(0.2, 0.9, 0.5);
+      this.selectedText.element.text = `TARGET SELECTED: ${def.displayName.toUpperCase()} [${entry.instance.tier}] • READY TO STEAL`;
+      this.selectedText.element.color = colorFromHex('#34d399');
     }
+
+    if (this.inspectButton.element && this.inspectBtnText.element) {
+      this.inspectButton.element.color = colorFromHex('#0f172a');
+      this.inspectButton.element.useInput = true;
+      this.inspectBtnText.element.color = colorFromHex('#38bdf8');
+    }
+
     if (this.stealButton.element && this.stealBtnText.element) {
-      this.stealButton.element.color = new Color(0.96, 0.62, 0.04);
+      this.stealButton.element.color = colorFromHex('#fbbf24');
       this.stealButton.element.useInput = true;
-      this.stealBtnText.element.color = new Color(0.05, 0.08, 0.16);
+      this.stealBtnText.element.color = colorFromHex('#050a17');
     }
   }
 
@@ -200,12 +332,14 @@ export class OpponentCampHUD {
     this.audio.playInspectorOpen();
   }
 
-  close(): void {
-    if (!this.isOpen) return;
+  close(suppressCallback: boolean = false): void {
+    if (!this.isOpen && !this.root.enabled) return;
     this.isOpen = false;
     this.root.enabled = false;
     this.audio.playInspectorClose();
-    this.onClose?.();
+    if (!suppressCallback) {
+      this.onClose?.();
+    }
   }
 
   destroy(): void {

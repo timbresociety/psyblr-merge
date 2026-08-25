@@ -5,6 +5,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { VFXDirector } from '../presentation/VFXDirector';
@@ -33,6 +34,7 @@ export class CampaignWorld {
 
   private combatState: CombatState | null = null;
   private isCombatRunning: boolean = false;
+  private stepInterval: any = null;
   private materials: StandardMaterial[] = [];
   private creepPresenter: CreepPresenter;
 
@@ -52,20 +54,7 @@ export class CampaignWorld {
     this.root.enabled = false;
     this.app.root.addChild(this.root);
 
-    // 1. Campaign Arena Floor (Dark Celestial Navy)
-    const floorMat = this.createMat({
-      diffuse: '#070f26',
-      emissive: '#0c1b3d',
-      emissiveIntensity: 0.35,
-      gloss: 0,
-    });
-    this.arenaFloor = new Entity('CampaignArenaFloor');
-    this.arenaFloor.setLocalPosition(0, 0.02, 0);
-    this.arenaFloor.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.4, 0.04, CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.4);
-    this.arenaFloor.addComponent('render', { type: 'box', material: floorMat, castShadows: false, ...layerOpt });
-    this.root.addChild(this.arenaFloor);
-
-    // Arena Gold/Cyan Rim
+    // 1. Arena Base Rim (Outer Trim)
     const rimMat = this.createMat({
       diffuse: '#0369a1',
       emissive: '#38bdf8',
@@ -73,12 +62,51 @@ export class CampaignWorld {
       gloss: 0,
     });
     const rim = new Entity('CampaignArenaRim');
-    rim.setLocalPosition(0, 0.03, 0);
-    rim.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.48, 0.02, CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.48);
+    rim.setLocalPosition(0, 0.02, 0);
+    rim.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.48, 0.04, CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.48);
     rim.addComponent('render', { type: 'box', material: rimMat, castShadows: false, ...layerOpt });
     this.root.addChild(rim);
 
-    // Midline Dividing Player & Enemy
+    // 2. Campaign Arena Floor Base Slab (Dark Celestial Navy)
+    const floorMat = this.createMat({
+      diffuse: '#070f26',
+      emissive: '#0c1b3d',
+      emissiveIntensity: 0.35,
+      gloss: 0,
+    });
+    this.arenaFloor = new Entity('CampaignArenaFloor');
+    this.arenaFloor.setLocalPosition(0, 0.025, 0);
+    this.arenaFloor.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.36, 0.04, CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE + 0.36);
+    this.arenaFloor.addComponent('render', { type: 'box', material: floorMat, castShadows: false, ...layerOpt });
+    this.root.addChild(this.arenaFloor);
+
+    // 3. Enemy Half Surface (z < 0, z from -4 to 0)
+    const enemyZoneMat = this.createMat({
+      diffuse: '#070f26',
+      emissive: '#0c1b3d',
+      emissiveIntensity: 0.25,
+      gloss: 0,
+    });
+    const enemyZone = new Entity('CampaignEnemyZone');
+    enemyZone.setLocalPosition(0, 0.045, -2.0);
+    enemyZone.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE, 0.005, 4.0);
+    enemyZone.addComponent('render', { type: 'box', material: enemyZoneMat, castShadows: false, ...layerOpt });
+    this.root.addChild(enemyZone);
+
+    // 4. Player Deployment Half Surface (z >= 0, z from 0 to +4)
+    const playerZoneMat = this.createMat({
+      diffuse: '#0a162e',
+      emissive: '#0e244d',
+      emissiveIntensity: 0.25,
+      gloss: 0,
+    });
+    const playerZone = new Entity('CampaignPlayerZone');
+    playerZone.setLocalPosition(0, 0.045, 2.0);
+    playerZone.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE, 0.005, 4.0);
+    playerZone.addComponent('render', { type: 'box', material: playerZoneMat, castShadows: false, ...layerOpt });
+    this.root.addChild(playerZone);
+
+    // 5. Midline Dividing Player & Enemy
     const lineMat = this.createMat({
       diffuse: '#0284c7',
       emissive: '#38bdf8',
@@ -86,12 +114,12 @@ export class CampaignWorld {
       gloss: 0,
     });
     const midLine = new Entity('CampaignMidLine');
-    midLine.setLocalPosition(0, 0.045, 0);
-    midLine.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE, 0.015, 0.06);
+    midLine.setLocalPosition(0, 0.052, 0);
+    midLine.setLocalScale(CAMPAIGN_SIZE * CAMPAIGN_CELL_SIZE, 0.008, 0.06);
     midLine.addComponent('render', { type: 'box', material: lineMat, castShadows: false, ...layerOpt });
     this.root.addChild(midLine);
 
-    // Grid Cell Dots
+    // 6. Grid Cell Dots
     const cellDotMat = this.createMat({
       diffuse: '#38bdf8',
       emissive: '#0284c7',
@@ -100,15 +128,22 @@ export class CampaignWorld {
     });
     for (let x = 0; x < CAMPAIGN_SIZE; x++) {
       for (let z = 0; z < CAMPAIGN_SIZE; z++) {
-        const dot = new Entity(`CampDot_${x}_${z}`);
-        const lx = (x - (CAMPAIGN_SIZE - 1) / 2) * CAMPAIGN_CELL_SIZE;
-        const lz = (z - (CAMPAIGN_SIZE - 1) / 2) * CAMPAIGN_CELL_SIZE;
-        dot.setLocalPosition(lx, 0.045, lz);
-        dot.setLocalScale(0.04, 0.01, 0.04);
-        dot.addComponent('render', { type: 'box', material: cellDotMat, castShadows: false, ...layerOpt });
+        const dot = new Entity(`CampaignCellDot_${x}_${z}`);
+        const pos = this.cellToLocal(x, z);
+        dot.setLocalPosition(pos[0], 0.052, pos[2]);
+        dot.setLocalScale(0.04, 0.008, 0.04);
+        dot.addComponent('render', { type: 'sphere', material: cellDotMat, castShadows: false, ...layerOpt });
         this.root.addChild(dot);
       }
     }
+  }
+
+  stopCombat(): void {
+    if (this.stepInterval) {
+      clearInterval(this.stepInterval);
+      this.stepInterval = null;
+    }
+    this.isCombatRunning = false;
   }
 
   show(): void {
@@ -116,6 +151,7 @@ export class CampaignWorld {
   }
 
   hide(): void {
+    this.stopCombat();
     this.root.enabled = false;
     this.clearUnits();
   }
@@ -127,10 +163,10 @@ export class CampaignWorld {
     gloss?: number;
   }): StandardMaterial {
     const mat = new StandardMaterial();
-    mat.diffuse = new Color().fromString(options.diffuse);
+    mat.diffuse = colorFromHex(options.diffuse);
     mat.specular = new Color(0, 0, 0);
     if (options.emissive) {
-      mat.emissive = new Color().fromString(options.emissive);
+      mat.emissive = colorFromHex(options.emissive);
       mat.emissiveIntensity = options.emissiveIntensity ?? 0.5;
     }
     if (options.gloss !== undefined) mat.gloss = options.gloss;
@@ -143,10 +179,21 @@ export class CampaignWorld {
     const halfSpan = (CAMPAIGN_SIZE - 1) / 2;
     return [
       (gridX - halfSpan) * CAMPAIGN_CELL_SIZE,
-      0.05,
+      0.055,
       (gridZ - halfSpan) * CAMPAIGN_CELL_SIZE,
     ];
   }
+
+  cellToWorld(gridX: number, gridZ: number): [number, number, number] {
+    const lpos = this.cellToLocal(gridX, gridZ);
+    return [
+      lpos[0] + CAMPAIGN_ORIGIN[0],
+      lpos[1] + CAMPAIGN_ORIGIN[1],
+      lpos[2] + CAMPAIGN_ORIGIN[2],
+    ];
+  }
+
+  public playerUnits: Map<string, { summonId: string; cell: { x: number; z: number }; entity: Entity }> = new Map();
 
   loadBattleUnits(snapshot: CombatSnapshot): void {
     this.clearUnits();
@@ -162,6 +209,15 @@ export class CampaignWorld {
       this.root.addChild(unitRoot);
 
       if (isPlayer) {
+        // Extract summon ID from player:summonId:index format
+        const parts = unit.id.split(':');
+        const summonId = parts[1] ?? unit.id;
+        this.playerUnits.set(summonId, {
+          summonId,
+          cell: { x: unit.spawnCell.x, z: unit.spawnCell.z },
+          entity: unitRoot,
+        });
+
         const presenter = new SummonPresenter(this.worldLayer);
         presenter.createVisuals(unit.definitionId, unitRoot);
         this.unitPresenters.set(unit.id, presenter);
@@ -183,6 +239,58 @@ export class CampaignWorld {
       // Floating Health Bar
       this.createFloatingHealthBar(unit.id, unitRoot, unit.hp, isPlayer);
     }
+  }
+
+  getPlayerUnitAtCell(x: number, z: number): { summonId: string; cell: { x: number; z: number }; entity: Entity } | undefined {
+    for (const [, unit] of this.playerUnits) {
+      if (unit.cell.x === x && unit.cell.z === z) {
+        return unit;
+      }
+    }
+    return undefined;
+  }
+
+  setPlayerUnitPosition(summonId: string, cell: { x: number; z: number }, animated: boolean = true): void {
+    const unit = this.playerUnits.get(summonId);
+    if (!unit) return;
+
+    unit.cell = { ...cell };
+    const lpos = this.cellToLocal(cell.x, cell.z);
+
+    if (animated && this.motion) {
+      const curPos = unit.entity.getLocalPosition().clone();
+      this.motion.tween({
+        id: `camp_place_${summonId}`,
+        from: 0,
+        to: 1,
+        duration: 0.15,
+        easing: EASING.SNAP,
+        onUpdate: (t) => {
+          unit.entity.setLocalPosition(
+            curPos.x + (lpos[0] - curPos.x) * t,
+            0.05 + Math.sin(t * Math.PI) * 0.4,
+            curPos.z + (lpos[2] - curPos.z) * t
+          );
+        },
+        onComplete: () => {
+          unit.entity.setLocalPosition(lpos[0], lpos[1], lpos[2]);
+        },
+      });
+    } else {
+      unit.entity.setLocalPosition(lpos[0], lpos[1], lpos[2]);
+    }
+  }
+
+  swapPlayerUnits(summonId1: string, summonId2: string): void {
+    const unit1 = this.playerUnits.get(summonId1);
+    const unit2 = this.playerUnits.get(summonId2);
+    if (!unit1 || !unit2) return;
+
+    const cell1 = { ...unit1.cell };
+    const cell2 = { ...unit2.cell };
+
+    this.setPlayerUnitPosition(summonId1, cell2, true);
+    this.setPlayerUnitPosition(summonId2, cell1, true);
   }
 
   private createFloatingHealthBar(unitId: string, parent: Entity, maxHp: number, isPlayer: boolean): void {
@@ -218,10 +326,9 @@ export class CampaignWorld {
 
     this.combatState = createCombatState(snapshot, Math.floor(Math.random() * 10000));
 
-    const stepInterval = setInterval(() => {
+    this.stepInterval = setInterval(() => {
       if (!this.combatState || this.combatState.ended) {
-        clearInterval(stepInterval);
-        this.isCombatRunning = false;
+        this.stopCombat();
         const winner = this.combatState?.winner ?? 'player';
         this.audio.playInspectorOpen();
         onBattleEnded?.(winner);
@@ -299,6 +406,7 @@ export class CampaignWorld {
   }
 
   destroy(): void {
+    this.stopCombat();
     this.clearUnits();
     this.creepPresenter.destroy();
     for (const mat of this.materials) {

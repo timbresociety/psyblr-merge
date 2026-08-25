@@ -4,6 +4,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 
 export type SummonVisuals = {
   bodyRoot: Entity;
@@ -26,10 +27,10 @@ export class SummonPresenter {
     blendType?: number;
   }): StandardMaterial {
     const mat = new StandardMaterial();
-    mat.diffuse = new Color().fromString(options.diffuse);
+    mat.diffuse = colorFromHex(options.diffuse);
     mat.specular = new Color(0, 0, 0);
     if (options.emissive) {
-      mat.emissive = new Color().fromString(options.emissive);
+      mat.emissive = colorFromHex(options.emissive);
       mat.emissiveIntensity = options.emissiveIntensity ?? 0.5;
     }
     if (options.gloss !== undefined) mat.gloss = options.gloss;
@@ -54,7 +55,7 @@ export class SummonPresenter {
 
     // 1. Ground Contact Shadow
     const shadowRoot = new Entity('ContactShadow');
-    shadowRoot.setPosition(0, 0.025, 0);
+    shadowRoot.setLocalPosition(0, 0.025, 0);
     shadowRoot.setLocalScale(0.72, 0.005, 0.72);
     const shadowMat = this.createMat({
       diffuse: '#000000',
@@ -70,7 +71,7 @@ export class SummonPresenter {
 
     // 2. Base Energy Ring
     const baseRing = new Entity('BaseEnergyRing');
-    baseRing.setPosition(0, 0.04, 0);
+    baseRing.setLocalPosition(0, 0.04, 0);
     baseRing.setLocalScale(0.68, 0.02, 0.68);
     const ringMaterial = this.createMat({
       diffuse: ringColor,
@@ -87,7 +88,7 @@ export class SummonPresenter {
 
     // 3. Body Root
     const bodyRoot = new Entity('BodyRoot');
-    bodyRoot.setPosition(0, 0, 0);
+    bodyRoot.setLocalPosition(0, 0, 0);
     parent.addChild(bodyRoot);
 
     return { shadowRoot, baseRing, ringMaterial, bodyRoot };
@@ -127,110 +128,110 @@ export class SummonPresenter {
 
     // 1. Legs & Heavy Combat Boots
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.22, 0);
+    legs.setLocalPosition(0, 0.22, 0);
     legs.setLocalScale(0.32, 0.36, 0.26);
     legs.addComponent('render', { type: 'box', material: giOrange, ...layerOpt });
     bodyRoot.addChild(legs);
 
     const bootsL = new Entity('BootL');
-    bootsL.setPosition(-0.09, 0.08, 0.02);
+    bootsL.setLocalPosition(-0.09, 0.08, 0.02);
     bootsL.setLocalScale(0.13, 0.16, 0.19);
     bootsL.addComponent('render', { type: 'box', material: blueSash, ...layerOpt });
     bodyRoot.addChild(bootsL);
 
     const bootsR = new Entity('BootR');
-    bootsR.setPosition(0.09, 0.08, 0.02);
+    bootsR.setLocalPosition(0.09, 0.08, 0.02);
     bootsR.setLocalScale(0.13, 0.16, 0.19);
     bootsR.addComponent('render', { type: 'box', material: blueSash, ...layerOpt });
     bodyRoot.addChild(bootsR);
 
     // Red boot lace trims
     const trimL = new Entity('BootTrimL');
-    trimL.setPosition(-0.09, 0.08, 0.11);
+    trimL.setLocalPosition(-0.09, 0.08, 0.11);
     trimL.setLocalScale(0.06, 0.12, 0.02);
     trimL.addComponent('render', { type: 'box', material: bootTrim, ...layerOpt });
     bodyRoot.addChild(trimL);
 
     const trimR = new Entity('BootTrimR');
-    trimR.setPosition(0.09, 0.08, 0.11);
+    trimR.setLocalPosition(0.09, 0.08, 0.11);
     trimR.setLocalScale(0.06, 0.12, 0.02);
     trimR.addComponent('render', { type: 'box', material: bootTrim, ...layerOpt });
     bodyRoot.addChild(trimR);
 
     // 2. Torso, Blue Undershirt & Sash Belt
     const belt = new Entity('BeltSash');
-    belt.setPosition(0, 0.42, 0);
+    belt.setLocalPosition(0, 0.42, 0);
     belt.setLocalScale(0.36, 0.08, 0.28);
     belt.addComponent('render', { type: 'box', material: blueSash, ...layerOpt });
     bodyRoot.addChild(belt);
 
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.60, 0);
+    torso.setLocalPosition(0, 0.60, 0);
     torso.setLocalScale(0.40, 0.32, 0.26);
     torso.addComponent('render', { type: 'box', material: giOrange, ...layerOpt });
     bodyRoot.addChild(torso);
 
     const undershirt = new Entity('Undershirt');
-    undershirt.setPosition(0, 0.64, 0.02);
+    undershirt.setLocalPosition(0, 0.64, 0.02);
     undershirt.setLocalScale(0.22, 0.24, 0.24);
     undershirt.addComponent('render', { type: 'box', material: blueSash, ...layerOpt });
     bodyRoot.addChild(undershirt);
 
     // Arms & Wristbands
     const armL = new Entity('ArmL');
-    armL.setPosition(-0.25, 0.56, 0);
+    armL.setLocalPosition(-0.25, 0.56, 0);
     armL.setLocalScale(0.12, 0.30, 0.14);
     armL.addComponent('render', { type: 'cylinder', material: skinMat, ...layerOpt });
     bodyRoot.addChild(armL);
 
     const wristL = new Entity('WristL');
-    wristL.setPosition(-0.25, 0.46, 0);
+    wristL.setLocalPosition(-0.25, 0.46, 0);
     wristL.setLocalScale(0.14, 0.08, 0.16);
     wristL.addComponent('render', { type: 'cylinder', material: blueSash, ...layerOpt });
     bodyRoot.addChild(wristL);
 
     const armR = new Entity('ArmR');
-    armR.setPosition(0.25, 0.56, 0);
+    armR.setLocalPosition(0.25, 0.56, 0);
     armR.setLocalScale(0.12, 0.30, 0.14);
     armR.addComponent('render', { type: 'cylinder', material: skinMat, ...layerOpt });
     bodyRoot.addChild(armR);
 
     const wristR = new Entity('WristR');
-    wristR.setPosition(0.25, 0.46, 0);
+    wristR.setLocalPosition(0.25, 0.46, 0);
     wristR.setLocalScale(0.14, 0.08, 0.16);
     wristR.addComponent('render', { type: 'cylinder', material: blueSash, ...layerOpt });
     bodyRoot.addChild(wristR);
 
     // 3. Head & Multi-Spike Super Saiyan Hair Silhouette
     const head = new Entity('Head');
-    head.setPosition(0, 0.86, 0);
+    head.setLocalPosition(0, 0.86, 0);
     head.setLocalScale(0.24, 0.24, 0.24);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const hairCrown = new Entity('HairCrown');
-    hairCrown.setPosition(0, 1.00, -0.02);
+    hairCrown.setLocalPosition(0, 1.00, -0.02);
     hairCrown.setLocalScale(0.34, 0.22, 0.30);
     hairCrown.addComponent('render', { type: 'box', material: hairGold, ...layerOpt });
     bodyRoot.addChild(hairCrown);
 
     // Super Saiyan Spikes (Angled Cones)
     const spikeTop = new Entity('SpikeTop');
-    spikeTop.setPosition(0, 1.18, -0.04);
+    spikeTop.setLocalPosition(0, 1.18, -0.04);
     spikeTop.setEulerAngles(-12, 0, 0);
     spikeTop.setLocalScale(0.20, 0.32, 0.20);
     spikeTop.addComponent('render', { type: 'cone', material: hairGold, ...layerOpt });
     bodyRoot.addChild(spikeTop);
 
     const spikeL = new Entity('SpikeL');
-    spikeL.setPosition(-0.14, 1.12, 0);
+    spikeL.setLocalPosition(-0.14, 1.12, 0);
     spikeL.setEulerAngles(-8, 0, 28);
     spikeL.setLocalScale(0.16, 0.28, 0.16);
     spikeL.addComponent('render', { type: 'cone', material: hairGold, ...layerOpt });
     bodyRoot.addChild(spikeL);
 
     const spikeR = new Entity('SpikeR');
-    spikeR.setPosition(0.14, 1.12, 0);
+    spikeR.setLocalPosition(0.14, 1.12, 0);
     spikeR.setEulerAngles(-8, 0, -28);
     spikeR.setLocalScale(0.16, 0.28, 0.16);
     spikeR.addComponent('render', { type: 'cone', material: hairGold, ...layerOpt });
@@ -256,57 +257,57 @@ export class SummonPresenter {
 
     // Legs & Holster Bandage
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.22, 0);
+    legs.setLocalPosition(0, 0.22, 0);
     legs.setLocalScale(0.30, 0.36, 0.24);
     legs.addComponent('render', { type: 'box', material: suitOrange, ...layerOpt });
     bodyRoot.addChild(legs);
 
     const bandage = new Entity('BandageHolster');
-    bandage.setPosition(0.10, 0.24, 0.01);
+    bandage.setLocalPosition(0.10, 0.24, 0.01);
     bandage.setLocalScale(0.13, 0.12, 0.25);
     bandage.addComponent('render', { type: 'box', material: whiteBandage, ...layerOpt });
     bodyRoot.addChild(bandage);
 
     // Torso, Shoulder Yoke & High Collar
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.58, 0);
+    torso.setLocalPosition(0, 0.58, 0);
     torso.setLocalScale(0.38, 0.34, 0.26);
     torso.addComponent('render', { type: 'box', material: suitOrange, ...layerOpt });
     bodyRoot.addChild(torso);
 
     const yoke = new Entity('Yoke');
-    yoke.setPosition(0, 0.70, 0);
+    yoke.setLocalPosition(0, 0.70, 0);
     yoke.setLocalScale(0.40, 0.12, 0.28);
     yoke.addComponent('render', { type: 'box', material: blueAccents, ...layerOpt });
     bodyRoot.addChild(yoke);
 
     const collar = new Entity('HighCollar');
-    collar.setPosition(0, 0.78, 0);
+    collar.setLocalPosition(0, 0.78, 0);
     collar.setLocalScale(0.30, 0.08, 0.26);
     collar.addComponent('render', { type: 'cylinder', material: whiteBandage, ...layerOpt });
     bodyRoot.addChild(collar);
 
     // Head, Headband & Spiky Hair
     const head = new Entity('Head');
-    head.setPosition(0, 0.88, 0);
+    head.setLocalPosition(0, 0.88, 0);
     head.setLocalScale(0.24, 0.24, 0.24);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const headband = new Entity('Headband');
-    headband.setPosition(0, 0.92, 0.02);
+    headband.setLocalPosition(0, 0.92, 0.02);
     headband.setLocalScale(0.26, 0.08, 0.26);
     headband.addComponent('render', { type: 'cylinder', material: blueAccents, ...layerOpt });
     bodyRoot.addChild(headband);
 
     const plate = new Entity('Plate');
-    plate.setPosition(0, 0.92, 0.14);
+    plate.setLocalPosition(0, 0.92, 0.14);
     plate.setLocalScale(0.14, 0.06, 0.02);
     plate.addComponent('render', { type: 'box', material: metalPlate, ...layerOpt });
     bodyRoot.addChild(plate);
 
     const hairMain = new Entity('HairMain');
-    hairMain.setPosition(0, 1.02, 0);
+    hairMain.setLocalPosition(0, 1.02, 0);
     hairMain.setLocalScale(0.28, 0.18, 0.28);
     hairMain.addComponent('render', { type: 'cone', material: hairBlond, ...layerOpt });
     bodyRoot.addChild(hairMain);
@@ -331,51 +332,51 @@ export class SummonPresenter {
 
     // Denim Shorts & Legs
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.22, 0);
+    legs.setLocalPosition(0, 0.22, 0);
     legs.setLocalScale(0.28, 0.36, 0.22);
     legs.addComponent('render', { type: 'box', material: shortsBlue, ...layerOpt });
     bodyRoot.addChild(legs);
 
     // Open Red Vest & Exposed Chest
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.58, 0);
+    torso.setLocalPosition(0, 0.58, 0);
     torso.setLocalScale(0.36, 0.34, 0.24);
     torso.addComponent('render', { type: 'box', material: vestRed, ...layerOpt });
     bodyRoot.addChild(torso);
 
     const chest = new Entity('ExposedChest');
-    chest.setPosition(0, 0.60, 0.08);
+    chest.setLocalPosition(0, 0.60, 0.08);
     chest.setLocalScale(0.18, 0.28, 0.12);
     chest.addComponent('render', { type: 'box', material: skinMat, ...layerOpt });
     bodyRoot.addChild(chest);
 
     // Head, Messy Hair & Iconic Straw Hat
     const head = new Entity('Head');
-    head.setPosition(0, 0.86, 0);
+    head.setLocalPosition(0, 0.86, 0);
     head.setLocalScale(0.23, 0.23, 0.23);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const hair = new Entity('Hair');
-    hair.setPosition(0, 0.94, -0.02);
+    hair.setLocalPosition(0, 0.94, -0.02);
     hair.setLocalScale(0.26, 0.14, 0.26);
     hair.addComponent('render', { type: 'sphere', material: hairBlack, ...layerOpt });
     bodyRoot.addChild(hair);
 
     const brim = new Entity('HatBrim');
-    brim.setPosition(0, 0.98, 0);
+    brim.setLocalPosition(0, 0.98, 0);
     brim.setLocalScale(0.52, 0.03, 0.52);
     brim.addComponent('render', { type: 'cylinder', material: strawYellow, ...layerOpt });
     bodyRoot.addChild(brim);
 
     const dome = new Entity('HatDome');
-    dome.setPosition(0, 1.05, 0);
+    dome.setLocalPosition(0, 1.05, 0);
     dome.setLocalScale(0.28, 0.12, 0.28);
     dome.addComponent('render', { type: 'cylinder', material: strawYellow, ...layerOpt });
     bodyRoot.addChild(dome);
 
     const hatBand = new Entity('HatBand');
-    hatBand.setPosition(0, 1.01, 0);
+    hatBand.setLocalPosition(0, 1.01, 0);
     hatBand.setLocalScale(0.30, 0.03, 0.30);
     hatBand.addComponent('render', { type: 'cylinder', material: hatBandRed, ...layerOpt });
     bodyRoot.addChild(hatBand);
@@ -400,32 +401,32 @@ export class SummonPresenter {
 
     // White Trousers & High Boots
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.22, 0);
+    legs.setLocalPosition(0, 0.22, 0);
     legs.setLocalScale(0.30, 0.36, 0.24);
     legs.addComponent('render', { type: 'box', material: pantsWhite, ...layerOpt });
     bodyRoot.addChild(legs);
 
     const bootL = new Entity('BootL');
-    bootL.setPosition(-0.08, 0.12, 0);
+    bootL.setLocalPosition(-0.08, 0.12, 0);
     bootL.setLocalScale(0.12, 0.24, 0.22);
     bootL.addComponent('render', { type: 'box', material: bootsBrown, ...layerOpt });
     bodyRoot.addChild(bootL);
 
     const bootR = new Entity('BootR');
-    bootR.setPosition(0.08, 0.12, 0);
+    bootR.setLocalPosition(0.08, 0.12, 0);
     bootR.setLocalScale(0.12, 0.24, 0.22);
     bootR.addComponent('render', { type: 'box', material: bootsBrown, ...layerOpt });
     bodyRoot.addChild(bootR);
 
     // Scout Jacket & Flowing Green Cape
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.60, 0);
+    torso.setLocalPosition(0, 0.60, 0);
     torso.setLocalScale(0.36, 0.34, 0.24);
     torso.addComponent('render', { type: 'box', material: jacketBrown, ...layerOpt });
     bodyRoot.addChild(torso);
 
     const cape = new Entity('Cape');
-    cape.setPosition(0, 0.56, -0.14);
+    cape.setLocalPosition(0, 0.56, -0.14);
     cape.setEulerAngles(14, 0, 0);
     cape.setLocalScale(0.44, 0.50, 0.08);
     cape.addComponent('render', { type: 'box', material: capeGreen, ...layerOpt });
@@ -433,13 +434,13 @@ export class SummonPresenter {
 
     // Head & Hair
     const head = new Entity('Head');
-    head.setPosition(0, 0.88, 0);
+    head.setLocalPosition(0, 0.88, 0);
     head.setLocalScale(0.24, 0.24, 0.24);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const hair = new Entity('Hair');
-    hair.setPosition(0, 0.98, -0.02);
+    hair.setLocalPosition(0, 0.98, -0.02);
     hair.setLocalScale(0.28, 0.16, 0.26);
     hair.addComponent('render', { type: 'sphere', material: hairBrown, ...layerOpt });
     bodyRoot.addChild(hair);
@@ -462,14 +463,14 @@ export class SummonPresenter {
 
     // Baggy Jeans
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.20, 0);
+    legs.setLocalPosition(0, 0.20, 0);
     legs.setLocalScale(0.30, 0.36, 0.26);
     legs.addComponent('render', { type: 'box', material: jeansBlue, ...layerOpt });
     bodyRoot.addChild(legs);
 
     // Slouched White Shirt
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.56, 0.04);
+    torso.setLocalPosition(0, 0.56, 0.04);
     torso.setEulerAngles(10, 0, 0);
     torso.setLocalScale(0.40, 0.38, 0.30);
     torso.addComponent('render', { type: 'box', material: shirtWhite, ...layerOpt });
@@ -477,13 +478,13 @@ export class SummonPresenter {
 
     // Pale Head & Wild Shaggy Hair
     const head = new Entity('Head');
-    head.setPosition(0, 0.84, 0.08);
+    head.setLocalPosition(0, 0.84, 0.08);
     head.setLocalScale(0.23, 0.23, 0.23);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const hair = new Entity('Hair');
-    hair.setPosition(0, 0.94, 0.06);
+    hair.setLocalPosition(0, 0.94, 0.06);
     hair.setLocalScale(0.32, 0.20, 0.30);
     hair.addComponent('render', { type: 'sphere', material: hairBlack, ...layerOpt });
     bodyRoot.addChild(hair);
@@ -507,27 +508,27 @@ export class SummonPresenter {
 
     // Slim Imperial Trousers
     const legs = new Entity('Legs');
-    legs.setPosition(0, 0.22, 0);
+    legs.setLocalPosition(0, 0.22, 0);
     legs.setLocalScale(0.28, 0.38, 0.24);
     legs.addComponent('render', { type: 'box', material: cloakBlack, ...layerOpt });
     bodyRoot.addChild(legs);
 
     // Black Royal Tunic with Gold Trim
     const torso = new Entity('Torso');
-    torso.setPosition(0, 0.60, 0);
+    torso.setLocalPosition(0, 0.60, 0);
     torso.setLocalScale(0.36, 0.34, 0.26);
     torso.addComponent('render', { type: 'box', material: cloakBlack, ...layerOpt });
     bodyRoot.addChild(torso);
 
     const goldAccent = new Entity('GoldTrim');
-    goldAccent.setPosition(0, 0.62, 0.14);
+    goldAccent.setLocalPosition(0, 0.62, 0.14);
     goldAccent.setLocalScale(0.14, 0.28, 0.02);
     goldAccent.addComponent('render', { type: 'box', material: goldTrim, ...layerOpt });
     bodyRoot.addChild(goldAccent);
 
     // High Flared Zero Collar (Purple Velvet & Gold Rim)
     const collar = new Entity('HighCollar');
-    collar.setPosition(0, 0.82, -0.06);
+    collar.setLocalPosition(0, 0.82, -0.06);
     collar.setEulerAngles(-18, 0, 0);
     collar.setLocalScale(0.44, 0.28, 0.08);
     collar.addComponent('render', { type: 'box', material: purpleTrim, ...layerOpt });
@@ -535,13 +536,13 @@ export class SummonPresenter {
 
     // Head & Dark Hair
     const head = new Entity('Head');
-    head.setPosition(0, 0.88, 0);
+    head.setLocalPosition(0, 0.88, 0);
     head.setLocalScale(0.23, 0.23, 0.23);
     head.addComponent('render', { type: 'sphere', material: skinMat, ...layerOpt });
     bodyRoot.addChild(head);
 
     const hair = new Entity('Hair');
-    hair.setPosition(0, 0.98, -0.02);
+    hair.setLocalPosition(0, 0.98, -0.02);
     hair.setLocalScale(0.28, 0.16, 0.26);
     hair.addComponent('render', { type: 'sphere', material: hairDark, ...layerOpt });
     bodyRoot.addChild(hair);

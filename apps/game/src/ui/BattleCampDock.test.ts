@@ -67,4 +67,30 @@ describe('BattleCampDock and Multi-Summon Placements', () => {
     expect(gokuPos).toEqual({ x: 3, y: 3 });
     expect(narutoPos).toEqual({ x: 2, y: 3 });
   });
+
+  it('rejects moving directly onto an occupied cell with moveCampSummon', () => {
+    const placements: CampPlacement[] = [
+      { summonInstanceId: 'starter:goku:001', cell: { x: 2, y: 3 } },
+      { summonInstanceId: 'starter:naruto:002', cell: { x: 3, y: 3 } },
+    ];
+
+    expect(canPlaceCampSummon('starter:goku:001', { x: 3, y: 3 }, placements)).toBe(false);
+    const result = moveCampSummon('starter:goku:001', { x: 3, y: 3 }, placements);
+    expect(result).toEqual(placements);
+  });
+
+  it('ensures every summon in placements occupies a distinct unique cell', () => {
+    const placements: CampPlacement[] = [
+      { summonInstanceId: 's1', cell: { x: 0, y: 1 } },
+      { summonInstanceId: 's2', cell: { x: 1, y: 1 } },
+      { summonInstanceId: 's3', cell: { x: 2, y: 1 } },
+      { summonInstanceId: 's4', cell: { x: 3, y: 1 } },
+      { summonInstanceId: 's5', cell: { x: 4, y: 1 } },
+      { summonInstanceId: 's6', cell: { x: 5, y: 1 } },
+    ];
+
+    const cellKeys = new Set(placements.map((p) => `${p.cell.x},${p.cell.y}`));
+    expect(cellKeys.size).toBe(placements.length);
+  });
 });
+

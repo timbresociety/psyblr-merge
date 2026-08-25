@@ -34,7 +34,7 @@ export class InteractionFeedback {
 
     // 1. Hovered Cell Base Tile Highlight
     this.targetTile = new Entity('TargetTileHighlight');
-    this.targetTile.setPosition(0, 0.02, 0);
+    this.targetTile.setLocalPosition(0, 0.01, 0);
     this.targetTile.setLocalScale(CAMP_CELL_SIZE * 0.94, 0.01, CAMP_CELL_SIZE * 0.94);
 
     this.tileMaterial = new StandardMaterial();
@@ -54,7 +54,7 @@ export class InteractionFeedback {
 
     // 2. Rune Ghost Landing Ring
     this.ringIndicator = new Entity('GhostLandingRing');
-    this.ringIndicator.setPosition(0, 0.025, 0);
+    this.ringIndicator.setLocalPosition(0, 0.015, 0);
     this.ringIndicator.setLocalScale(0.85, 0.015, 0.85);
 
     this.ringMaterial = new StandardMaterial();
@@ -74,9 +74,37 @@ export class InteractionFeedback {
   }
 
   showTarget(cell: CampCell): void {
-    const isNew = !this.currentTarget || this.currentTarget.x !== cell.x || this.currentTarget.y !== cell.y;
-    this.currentTarget = { ...cell };
     const worldPos = campCellToWorld(cell);
+    this.showTacticalTarget(worldPos, 'valid', cell);
+  }
+
+  showTacticalTarget(
+    worldPos: [number, number, number],
+    mode: 'valid' | 'swap' | 'invalid' = 'valid',
+    cellKey?: any
+  ): void {
+    const isNew =
+      !this.currentTarget ||
+      this.currentTarget.x !== worldPos[0] ||
+      this.currentTarget.y !== worldPos[2];
+    this.currentTarget = { x: worldPos[0], y: worldPos[2] };
+
+    // Update colors based on mode
+    if (mode === 'swap') {
+      this.tileMaterial.diffuse = new Color(0.8, 0.5, 0.1);
+      this.tileMaterial.emissive = new Color(1.0, 0.75, 0.2);
+      this.ringMaterial.emissive = new Color(1.0, 0.85, 0.3);
+    } else if (mode === 'invalid') {
+      this.tileMaterial.diffuse = new Color(0.8, 0.1, 0.1);
+      this.tileMaterial.emissive = new Color(0.95, 0.2, 0.2);
+      this.ringMaterial.emissive = new Color(1.0, 0.3, 0.3);
+    } else {
+      this.tileMaterial.diffuse = new Color(0.1, 0.4, 0.8);
+      this.tileMaterial.emissive = new Color(0.22, 0.65, 1.0);
+      this.ringMaterial.emissive = new Color(0.35, 0.8, 1.0);
+    }
+    this.tileMaterial.update();
+    this.ringMaterial.update();
 
     if (!this.isVisible) {
       this.isVisible = true;

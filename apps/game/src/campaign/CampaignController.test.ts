@@ -22,7 +22,7 @@ describe('CampaignController', () => {
     expect(arc3.title).toBe('Zero Requiem');
   });
 
-  it('identifies mini-boss and main boss levels correctly', () => {
+  it('identifies mini-boss and main boss levels correctly and triggers auto-progress pause', () => {
     const controller = new CampaignController();
 
     expect(controller.isMiniBossLevel(10)).toBe(true);
@@ -32,6 +32,10 @@ describe('CampaignController', () => {
     expect(controller.isMainBossLevel(100)).toBe(true);
     expect(controller.isMainBossLevel(200)).toBe(true);
     expect(controller.isMainBossLevel(10)).toBe(false);
+
+    expect(controller.shouldAutoProgressPause(10)).toBe(true);
+    expect(controller.shouldAutoProgressPause(100)).toBe(true);
+    expect(controller.shouldAutoProgressPause(5)).toBe(false);
   });
 
   it('builds valid CombatSnapshot for 6v6 campaign battles', () => {
@@ -55,14 +59,27 @@ describe('CampaignController', () => {
     expect(enemyUnits.length).toBe(6);
   });
 
-  it('advances levels and grants balls on victory', () => {
+  it('advances levels and grants medals on 10-level milestones', () => {
     const controller = new CampaignController();
     expect(controller.currentLevel).toBe(1);
 
+    // Normal level 1 victory: 0 medals
     const v1 = controller.onVictory();
     expect(v1.levelCleared).toBe(1);
     expect(v1.nextLevel).toBe(2);
-    expect(v1.ballsReward).toBe(2);
+    expect(v1.medalsReward).toBe(0);
     expect(controller.currentLevel).toBe(2);
+
+    // Mini-boss level 10 victory: 10 medals
+    controller.currentLevel = 10;
+    const v10 = controller.onVictory();
+    expect(v10.levelCleared).toBe(10);
+    expect(v10.medalsReward).toBe(10);
+
+    // Arc boss level 100 victory: 25 medals
+    controller.currentLevel = 100;
+    const v100 = controller.onVictory();
+    expect(v100.levelCleared).toBe(100);
+    expect(v100.medalsReward).toBe(25);
   });
 });

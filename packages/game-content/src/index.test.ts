@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getCombatFunctionDefinition,
-  getOriginDefinition,
+  allianceDefinitions,
+  getAllianceDefinition,
   getSkillDefinition,
   creepDefinitions,
   summonDefinitions,
@@ -9,15 +9,37 @@ import {
 } from './index';
 
 describe('starter content references', () => {
-  it('resolves every starter origin, function, basic attack, and Skill 1', () => {
+  it('resolves every starter alliance, quote, description, and full combat kit', () => {
     for (const summon of summonDefinitions) {
-      expect(getOriginDefinition(summon.originId).name).toBeTruthy();
-      expect(getCombatFunctionDefinition(summon.combatFunctionId).name).toBeTruthy();
+      expect(getAllianceDefinition(summon.allianceId).name).toBeTruthy();
+      expect(summon.description).toBeTruthy();
+      expect(summon.quote).toBeTruthy();
       expect(getSkillDefinition(summon.skills.basic).type).toBe('basic');
-      const skill = getSkillDefinition(summon.skills.skill1);
-      expect(skill.type).toBe('active');
-      expect(skill.mechanics?.cooldownMs).toBeGreaterThan(0);
-      expect(skill.mechanics?.initialDelayMs).toBeGreaterThanOrEqual(0);
+      const skill1 = getSkillDefinition(summon.skills.skill1);
+      expect(skill1.type).toBe('active');
+      expect(skill1.mechanics?.cooldownMs).toBeGreaterThan(0);
+      expect(skill1.mechanics?.initialDelayMs).toBeGreaterThanOrEqual(0);
+
+      if (summon.skills.skill2) {
+        const skill2 = getSkillDefinition(summon.skills.skill2);
+        expect(skill2.type).toBe('active');
+      }
+      if (summon.skills.ultimate) {
+        const ult = getSkillDefinition(summon.skills.ultimate);
+        expect(ult.type).toBe('ultimate');
+      }
+      if (summon.passiveId) {
+        const passive = getSkillDefinition(summon.passiveId);
+        expect(passive.type).toBe('passive');
+      }
+    }
+  });
+
+  it('validates exactly 6 Alliances with thresholds 2, 4, 6', () => {
+    expect(allianceDefinitions).toHaveLength(6);
+    for (const alliance of allianceDefinitions) {
+      const counts = alliance.thresholds.map((t) => t.count);
+      expect(counts).toEqual([2, 4, 6]);
     }
   });
 
@@ -27,9 +49,8 @@ describe('starter content references', () => {
 });
 
 describe('spawn machine content', () => {
-  it('has the locked six-bin tutorial configuration', () => {
-    expect(spawnMachineDefinition.binProbabilities).toEqual([30, 15, 5, 5, 15, 30]);
+  it('has the canonical 10/15/25/25/15/10 pool probabilities', () => {
+    expect(spawnMachineDefinition.binProbabilities).toEqual([10, 15, 25, 25, 15, 10]);
     expect(spawnMachineDefinition.binProbabilities.reduce((total, value) => total + value, 0)).toBe(100);
-    expect(spawnMachineDefinition.blobTargets.map((target) => target.enabled)).toEqual([false, false]);
   });
 });

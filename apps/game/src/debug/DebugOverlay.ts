@@ -7,6 +7,7 @@ import {
   SCALEMODE_BLEND,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import type { DragController } from '../interaction/DragController';
 import type { SceneManager } from '../app/SceneManager';
 
@@ -62,9 +63,9 @@ export class DebugOverlay {
     });
     this.screenEntity.addChild(this.statsTextEntity);
 
-    // Cheats Panel on Top-Right / Center-Right
+    // Cheats Panel on Top-Right / Center-Right (Cleanly positioned below header)
     const cheatsPanel = new Entity('DebugCheatsPanel');
-    cheatsPanel.setLocalPosition(-24, -80, 0);
+    cheatsPanel.setLocalPosition(-24, -100, 0);
     cheatsPanel.addComponent('element', {
       type: 'group',
       anchor: [1, 1, 1, 1],
@@ -124,7 +125,7 @@ export class DebugOverlay {
       pivot: [1, 1],
       width,
       height,
-      color: new Color().fromString(bgHex),
+      color: colorFromHex(bgHex),
       useInput: true,
       ...layerOpt,
     });
@@ -136,7 +137,7 @@ export class DebugOverlay {
       fontAsset: this.fontAsset,
       fontSize: 11,
       text: label,
-      color: new Color().fromString(textHex),
+      color: colorFromHex(textHex),
       anchor: [1, 1, 1, 1],
       pivot: [0.5, 0.5],
       ...layerOpt,
@@ -164,7 +165,7 @@ export class DebugOverlay {
     });
 
     const characters =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;!?-+/()[]{}#~_%$ <>|=';
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:;!?-+/()[]{}#~_%$ <>|=←→↑↓✓✔✕✖●○▲▼◀▶🔄';
     this.font.createTextures(characters);
 
     this.fontAsset = new Asset('DebugCanvasFont', 'font', { url: '' });
@@ -174,7 +175,7 @@ export class DebugOverlay {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
-    if (e.key === '`' || e.key === '~' || e.key.toLowerCase() === 'd') {
+    if (e.key === '`' || e.key === '~') {
       // Don't trigger if typing in an input
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       this.toggle();

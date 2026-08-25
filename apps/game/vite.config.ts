@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
   root: '.',
   server: {
-    port: 5174,
+    port: 5173,
     host: true,
   },
   resolve: {

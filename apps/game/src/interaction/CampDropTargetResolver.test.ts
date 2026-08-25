@@ -86,4 +86,85 @@ describe('CampDropTargetResolver', () => {
 
     expect(target).toEqual(currentCell);
   });
+
+  describe('resolveTacticalDropTarget', () => {
+    const units = [
+      { summonId: 'goku_1', cell: { x: 2, z: 5 } },
+      { summonId: 'luffy_1', cell: { x: 4, z: 6 } },
+    ];
+
+    it('resolves valid player territory placement in Campaign mode', () => {
+      // Campaign origin is [0, 0, -40]. Cell (3, 5): worldX = 3 - 3.5 = -0.5, worldZ = -40 + (5 - 3.5) = -38.5
+      const res = resolver.resolveTacticalDropTarget(
+        { x: -0.5, z: -38.5 },
+        'campaign',
+        units,
+        'naruto_1'
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.isValidPlayerZone).toBe(true);
+      expect(res?.cell).toEqual({ x: 3, z: 5 });
+      expect(res?.isSwap).toBe(false);
+      expect(res?.isRecall).toBe(false);
+    });
+
+    it('detects unit swap when hovering over another occupied unit cell', () => {
+      // Cell (2, 5): worldX = 2 - 3.5 = -1.5, worldZ = -40 + (5 - 3.5) = -38.5
+      const res = resolver.resolveTacticalDropTarget(
+        { x: -1.5, z: -38.5 },
+        'campaign',
+        units,
+        'naruto_1'
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.isValidPlayerZone).toBe(true);
+      expect(res?.cell).toEqual({ x: 2, z: 5 });
+      expect(res?.isSwap).toBe(true);
+      expect(res?.occupantId).toBe('goku_1');
+    });
+
+    it('rejects enemy territory placements (z < 4)', () => {
+      // Cell (2, 2): worldX = 2 - 3.5 = -1.5, worldZ = -40 + (2 - 3.5) = -41.5
+      const res = resolver.resolveTacticalDropTarget(
+        { x: -1.5, z: -41.5 },
+        'campaign',
+        units,
+        'naruto_1'
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.isValidPlayerZone).toBe(false);
+      expect(res?.isSwap).toBe(false);
+    });
+
+    it('detects bench recall when dragging towards bottom of the screen (localZ > 4.6)', () => {
+      // Dragged down into tray area: worldZ = -40 + 5.0 = -35.0
+      const res = resolver.resolveTacticalDropTarget(
+        { x: 0, z: -35.0 },
+        'campaign',
+        units,
+        'goku_1'
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.isRecall).toBe(true);
+    });
+
+    it('resolves valid player territory placement in Raid mode', () => {
+      // Raid origin is [-40, 0, 0]. Cell (3, 5): worldX = -40 + (3 - 3.5) = -40.5, worldZ = 5 - 3.5 = 1.5
+      const res = resolver.resolveTacticalDropTarget(
+        { x: -40.5, z: 1.5 },
+        'raid',
+        units,
+        'naruto_1'
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.isValidPlayerZone).toBe(true);
+      expect(res?.cell).toEqual({ x: 3, z: 5 });
+      expect(res?.isSwap).toBe(false);
+    });
+  });
 });

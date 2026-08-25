@@ -6,6 +6,7 @@ import {
   Vec3,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import { DURATION, EASING } from '../presentation/PresentationTokens';
 
@@ -16,9 +17,9 @@ export type CameraPreset = {
 };
 
 export const BASE_CAMERA_PRESET: CameraPreset = {
-  position: [0, 10.8, 12.5],
-  rotation: [-42, 0, 0],
-  fov: 42,
+  position: [0, 13.2, 9.2],
+  rotation: [-55, 0, 0],
+  fov: 40,
 };
 
 export const DEALER_CAMERA_PRESET: CameraPreset = {
@@ -28,9 +29,9 @@ export const DEALER_CAMERA_PRESET: CameraPreset = {
 };
 
 export const PACHINKO_CAMERA_PRESET: CameraPreset = {
-  position: [6.4, 3.8, 4.6],
-  rotation: [-22, 0, 0],
-  fov: 38,
+  position: [6.4, 1.95, 6.2],
+  rotation: [-8, 0, 0],
+  fov: 52,
 };
 
 export const DEFENSE_CAMERA_PRESET: CameraPreset = {
@@ -40,20 +41,20 @@ export const DEFENSE_CAMERA_PRESET: CameraPreset = {
 };
 
 export const CAMPAIGN_CAMERA_PRESET: CameraPreset = {
-  position: [0, 10.2, -28.5],
-  rotation: [-40, 0, 0],
+  position: [0, 12.0, -25.5],
+  rotation: [-52, 0, 0],
   fov: 42,
 };
 
 export const RAID_CAMERA_PRESET: CameraPreset = {
-  position: [-40, 10.2, 11.5],
-  rotation: [-40, 0, 0],
+  position: [-40, 12.0, 13.5],
+  rotation: [-52, 0, 0],
   fov: 42,
 };
 
 export const OPPONENT_CAMP_CAMERA_PRESET: CameraPreset = {
-  position: [40, 10.2, 11.5],
-  rotation: [-40, 0, 0],
+  position: [40, 12.0, 13.5],
+  rotation: [-52, 0, 0],
   fov: 42,
 };
 
@@ -83,7 +84,7 @@ export class CameraDirector {
     const layerIds = layers && layers.length > 0 ? layers.map((l) => l.id) : undefined;
 
     this.cameraComponent = this.cameraEntity.addComponent('camera', {
-      clearColor: new Color().fromString('#0b1020'),
+      clearColor: colorFromHex('#0b1020'),
       fov: this.currentBaseFov,
       nearClip: 0.1,
       farClip: 150,

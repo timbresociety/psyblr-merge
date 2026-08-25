@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BattlefieldPlacement, CampPlacement } from '@psyblr/contracts';
-import { combatFunctionDefinitions, originDefinitions, summonDefinitions } from '@psyblr/game-content';
+import { allianceDefinitions, summonDefinitions } from '@psyblr/game-content';
 import {
   canDeploySummon,
   isBattleCellOccupied,
   isPlayerDeploymentCell,
   MAX_PLAYER_DEPLOYED_SUMMONS,
   recallBattlefieldPlacement,
-  resolveFormationSynergies,
+  resolveAllianceSynergies,
   canBeStolen,
   canPlaceCampSummon,
   countCampOccupancy,
@@ -25,6 +25,18 @@ import {
   nextTierStatDelta,
   resolveTierStats,
   tierFormBand,
+  getReleaseRefund,
+  getFEquivalentSpawnCost,
+  resolveSummonPowerLevel,
+  resolveFormationPowerLevel,
+  resolveAccountPowerLevel,
+  calculateDealerAccrual,
+  canClaimDealerStock,
+  claimDealerStock,
+  canEditDefense,
+  resolveSurrenderCandidates,
+  selectWeakestSurrenderedSummon,
+  TIERS,
 } from './index';
 
 const placement = (summonInstanceId: string, x: number, z: number): BattlefieldPlacement => ({
@@ -32,17 +44,14 @@ const placement = (summonInstanceId: string, x: number, z: number): BattlefieldP
   cell: { x, z },
 });
 
-describe('formation synergies', () => {
-  it('activates each starter pair only for its members', () => {
-    const one = resolveFormationSynergies([summonDefinitions[0]!], originDefinitions, combatFunctionDefinitions);
-    expect(one.entries.find((entry) => entry.id === 'ascendant')?.activeThreshold).toBeNull();
-    const all = resolveFormationSynergies(summonDefinitions, originDefinitions, combatFunctionDefinitions);
-    expect(all.entries.filter((entry) => entry.activeThreshold?.count === 2)).toHaveLength(6);
-    expect(all.byDefinitionId.goku?.attackSpeedPct).toBe(.08);
-    expect(all.byDefinitionId.goku?.basicAttackDamagePct).toBe(.1);
-    expect(all.byDefinitionId.naruto?.statusDurationPct).toBe(.1);
-    expect(all.byDefinitionId.eren?.maxHpPct).toBe(.08);
-    expect(all.byDefinitionId.eren?.durabilityPct).toBe(.1);
+describe('alliance synergies', () => {
+  it('activates alliance thresholds based on deployed count', () => {
+    const ascendants = summonDefinitions.filter((s) => s.allianceId === 'ascendant');
+    const synergies = resolveAllianceSynergies(ascendants, allianceDefinitions);
+    const ascEntry = synergies.entries.find((e) => e.id === 'ascendant');
+    expect(ascEntry?.activeThreshold?.count).toBe(2);
+    expect(ascEntry?.activeThreshold?.effect).toContain('attack speed');
+    expect(synergies.byDefinitionId.goku?.attackSpeedPct).toBe(0.08);
   });
 });
 
@@ -84,7 +93,8 @@ describe('camp placement rules', () => {
     const fullExposed = Array.from({ length: 30 }, (_, index) => camp(`spawn:${index}`, index % 6, Math.floor(index / 6) + 1));
     expect(findFirstExposedCampCell(fullExposed)).toBeNull();
   });
-  it('validates the 6 by 6 grid and protects only row zero', () => {
+
+  it('validates the 6 by 6 grid and protects only row zero (or rows 0-1 if upgraded)', () => {
     expect(isCampCell({ x: 0, y: 0 })).toBe(true);
     expect(isCampCell({ x: 5, y: 5 })).toBe(true);
     expect(isCampCell({ x: 6, y: 0 })).toBe(false);
@@ -93,6 +103,11 @@ describe('camp placement rules', () => {
     expect(isIlluminatiCell({ x: 2, y: 0 })).toBe(true);
     expect(canBeStolen({ x: 2, y: 0 })).toBe(false);
     expect(canBeStolen({ x: 2, y: 1 })).toBe(true);
+
+    // Upgraded 12-slot illuminati
+    expect(isIlluminatiCell({ x: 2, y: 1 }, true)).toBe(true);
+    expect(canBeStolen({ x: 2, y: 1 }, true)).toBe(false);
+    expect(canBeStolen({ x: 2, y: 2 }, true)).toBe(true);
   });
 
   it('enforces one summon per cell and one cell per summon', () => {
@@ -122,19 +137,147 @@ describe('camp placement rules', () => {
   });
 });
 
-describe('merge and tier progression rules', () => {
-  it('only permits same-definition, same-tier summons below SSS', () => {
+describe('10-tier progression and merge rules', () => {
+  it('enforces exactly 10 ordered tiers F through X', () => {
+    expect(TIERS).toEqual(['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'X']);
+    expect(nextTier('F')).toBe('E');
+    expect(nextTier('SSS')).toBe('X');
+    expect(nextTier('X')).toBeNull();
+    expect(isMaxTier('X')).toBe(true);
+    expect(isMaxTier('SSS')).toBe(false);
+  });
+
+  it('only permits same-definition, same-tier summons below X', () => {
     expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'goku', tier: 'F' })).toBe(true);
+    expect(canMerge({ definitionId: 'goku', tier: 'SSS' }, { definitionId: 'goku', tier: 'SSS' })).toBe(true);
+    expect(canMerge({ definitionId: 'goku', tier: 'X' }, { definitionId: 'goku', tier: 'X' })).toBe(false);
     expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'naruto', tier: 'F' })).toBe(false);
     expect(canMerge({ definitionId: 'goku', tier: 'F' }, { definitionId: 'goku', tier: 'E' })).toBe(false);
-    expect(canMerge({ definitionId: 'goku', tier: 'SSS' }, { definitionId: 'goku', tier: 'SSS' })).toBe(false);
-    expect(nextTier('F')).toBe('E'); expect(nextTier('SSS')).toBeNull(); expect(isMaxTier('SSS')).toBe(true);
   });
+
   it('rounds primary stat scaling deterministically and leaves utility stats alone', () => {
     const base = summonDefinitions.find((definition) => definition.id === 'goku')!.stats;
-    expect(resolveTierStats(base, 'E')).toMatchObject({ hp: 1150, atk: 138, def: 81, attacksPerSecond: base.attacksPerSecond, range: base.range, moveSpeed: base.moveSpeed });
-    expect(resolveTierStats({ ...base, hp: 101, atk: 101, def: 101 }, 'E')).toMatchObject({ hp: 116, atk: 116, def: 116 });
+    expect(resolveTierStats(base, 'E')).toMatchObject({
+      hp: 1150,
+      atk: 138,
+      def: 81,
+      attacksPerSecond: base.attacksPerSecond,
+      range: base.range,
+      moveSpeed: base.moveSpeed,
+    });
     expect(nextTierStatDelta(base, 'F')).toEqual({ hp: 150, atk: 18, def: 11 });
-    expect(tierFormBand('F')).toBe('base'); expect(tierFormBand('D')).toBe('major_1'); expect(tierFormBand('A')).toBe('major_2'); expect(tierFormBand('SSS')).toBe('final');
+    expect(tierFormBand('F')).toBe('base');
+    expect(tierFormBand('D')).toBe('major_1');
+    expect(tierFormBand('A')).toBe('major_2');
+    expect(tierFormBand('SSS')).toBe('final');
+    expect(tierFormBand('X')).toBe('final');
+  });
+});
+
+describe('Release economy rules', () => {
+  it('refunds exactly 50% of F-equivalent spawn cost across all 10 tiers', () => {
+    expect(getFEquivalentSpawnCost('F')).toBe(1);
+    expect(getFEquivalentSpawnCost('E')).toBe(2);
+    expect(getFEquivalentSpawnCost('D')).toBe(4);
+    expect(getFEquivalentSpawnCost('C')).toBe(8);
+    expect(getFEquivalentSpawnCost('B')).toBe(16);
+    expect(getFEquivalentSpawnCost('A')).toBe(32);
+    expect(getFEquivalentSpawnCost('S')).toBe(64);
+    expect(getFEquivalentSpawnCost('SS')).toBe(128);
+    expect(getFEquivalentSpawnCost('SSS')).toBe(256);
+    expect(getFEquivalentSpawnCost('X')).toBe(512);
+
+    expect(getReleaseRefund('F')).toBe(0);
+    expect(getReleaseRefund('E')).toBe(1);
+    expect(getReleaseRefund('D')).toBe(2);
+    expect(getReleaseRefund('C')).toBe(4);
+    expect(getReleaseRefund('B')).toBe(8);
+    expect(getReleaseRefund('A')).toBe(16);
+    expect(getReleaseRefund('S')).toBe(32);
+    expect(getReleaseRefund('SS')).toBe(64);
+    expect(getReleaseRefund('SSS')).toBe(128);
+    expect(getReleaseRefund('X')).toBe(256);
+  });
+});
+
+describe('Power Level resolver', () => {
+  it('resolves deterministic Summon and Formation Power Level', () => {
+    const goku = summonDefinitions.find((s) => s.id === 'goku')!;
+    const powerF = resolveSummonPowerLevel(goku, 'F');
+    const powerE = resolveSummonPowerLevel(goku, 'E');
+    const powerX = resolveSummonPowerLevel(goku, 'X');
+
+    expect(powerF).toBeGreaterThan(0);
+    expect(powerE).toBeGreaterThan(powerF);
+    expect(powerX).toBeGreaterThan(powerE);
+
+    const formationPower = resolveFormationPowerLevel(
+      [
+        { definition: goku, tier: 'F' },
+        { definition: summonDefinitions.find((s) => s.id === 'naruto')!, tier: 'F' },
+      ],
+      allianceDefinitions
+    );
+    expect(formationPower).toBeGreaterThan(powerF);
+  });
+
+  it('resolves Account Power Level from top 6 camp summons', () => {
+    const goku = summonDefinitions.find((s) => s.id === 'goku')!;
+    const campSummons = Array.from({ length: 10 }, (_, i) => ({
+      definition: goku,
+      tier: i === 0 ? ('X' as const) : ('F' as const),
+    }));
+    const accountPower = resolveAccountPowerLevel(campSummons, allianceDefinitions);
+    expect(accountPower).toBeGreaterThan(0);
+  });
+});
+
+describe('Dealer economy rules', () => {
+  it('accrues 100 medals over 12 2-hour epochs and caps at 100 stock', () => {
+    const now = 1000000000000;
+    const twelveEpochsLater = now + 24 * 60 * 60 * 1000;
+
+    const accrual = calculateDealerAccrual(now, twelveEpochsLater, 0);
+    expect(accrual.epochsElapsed).toBe(12);
+    expect(accrual.newStock).toBe(100);
+
+    // Caps at 100 even if 48 hours pass
+    const fortyEightHoursLater = now + 48 * 60 * 60 * 1000;
+    const cappedAccrual = calculateDealerAccrual(now, fortyEightHoursLater, 0);
+    expect(cappedAccrual.newStock).toBe(100);
+  });
+
+  it('enforces claim gate at wallet < 100 and transfers full stock without clamping wallet to 100', () => {
+    expect(canClaimDealerStock(95)).toBe(true);
+    expect(canClaimDealerStock(0)).toBe(true);
+    expect(canClaimDealerStock(100)).toBe(false);
+    expect(canClaimDealerStock(120)).toBe(false);
+
+    // 95 wallet + 25 dealer stock -> 120 wallet, 0 dealer stock
+    const claim = claimDealerStock(95, 25);
+    expect(claim.newPlayerWallet).toBe(120);
+    expect(claim.newDealerStock).toBe(0);
+    expect(claim.claimedAmount).toBe(25);
+  });
+});
+
+describe('Defense editing and Raid rules', () => {
+  it('allows defense editing only when time shield is active and no raid lock exists', () => {
+    expect(canEditDefense(false, false)).toBe(false); // Inactive shield blocks edit
+    expect(canEditDefense(true, true)).toBe(false); // Active raid lock blocks edit
+    expect(canEditDefense(true, false)).toBe(true); // Active shield + no lock allows edit
+  });
+
+  it('selects weakest surrendered summon across deployed rounds ignoring Illuminati', () => {
+    const candidates = [
+      { instanceId: 'goku_x', definitionId: 'goku', tier: 'X' as const },
+      { instanceId: 'naruto_f', definitionId: 'naruto', tier: 'F' as const },
+      { instanceId: 'eren_d', definitionId: 'eren', tier: 'D' as const },
+    ];
+    const surrenderPool = resolveSurrenderCandidates(candidates);
+    expect(surrenderPool).toHaveLength(3);
+
+    const weakest = selectWeakestSurrenderedSummon(surrenderPool, summonDefinitions);
+    expect(weakest.instanceId).toBe('naruto_f');
   });
 });

@@ -4,13 +4,22 @@ import { BaseWorld } from '../world/BaseWorld';
 import { PachinkoWorld } from '../world/PachinkoWorld';
 import { RaidWorld } from '../world/RaidWorld';
 import { CampaignWorld } from '../world/CampaignWorld';
+import { DefenseWorld } from '../world/DefenseWorld';
 import { OpponentCampWorld } from '../world/OpponentCampWorld';
 import { SummonEntity } from '../summons/SummonEntity';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { VFXDirector } from '../presentation/VFXDirector';
 import type { PresentationEventEmitter } from '../presentation/PresentationEvents';
-import { canMerge, moveCampSummon, nextTier } from '@psyblr/game-rules';
+import {
+  canMerge,
+  moveCampSummon,
+  nextTier,
+  isCampCellOccupied,
+  findFirstExposedCampCell,
+  canPlaceCampSummon,
+  CAMP_CAPACITY,
+} from '@psyblr/game-rules';
 import { campCellToWorld } from '../world/CampCoordinateMapper';
 import { DURATION, EASING } from '../presentation/PresentationTokens';
 
@@ -19,6 +28,7 @@ export class SceneManager {
   public pachinkoWorld: PachinkoWorld;
   public raidWorld: RaidWorld;
   public campaignWorld: CampaignWorld;
+  public defenseWorld: DefenseWorld;
   public opponentCampWorld: OpponentCampWorld;
 
   public summons: SummonEntity[] = [];
@@ -57,6 +67,14 @@ export class SceneManager {
       this.events,
       this.worldLayer
     );
+    this.defenseWorld = new DefenseWorld(
+      this.app,
+      this.motion,
+      this.audio,
+      this.vfx,
+      this.events,
+      this.worldLayer
+    );
     this.opponentCampWorld = new OpponentCampWorld(
       this.app,
       this.worldLayer
@@ -66,6 +84,14 @@ export class SceneManager {
   }
 
   private initStarterRoster(): void {
+    if (this.loadPersistedState()) {
+      return;
+    }
+    this.createDefaultStarters();
+    this.saveState();
+  }
+
+  private createDefaultStarters(): void {
     // 6 Starters with a mergeable Goku pair for tutorial
     this.roster = [
       { id: 'starter:goku:001', definitionId: 'goku', tier: 'F' },
@@ -98,193 +124,317 @@ export class SceneManager {
         this.worldLayer
       );
       this.summons.push(entity);
-      this.placements.push({
-        summonInstanceId: instance.id,
-        cell: item.cell,
-      });
+      this.placements.push({ summonInstanceId: instance.id, cell: item.cell });
     }
   }
 
-  getPlacements(): readonly CampPlacement[] {
+  public loadPersistedState(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedRoster = localStorage.getItem('psyblr_roster');
+        const savedPlacements = localStorage.getItem('psyblr_placements');
+        if (savedRoster && savedPlacements) {
+          const parsedRoster: SummonInstance[] = JSON.parse(savedRoster);
+          const parsedPlacements: CampPlacement[] = JSON.parse(savedPlacements);
+          if (Array.isArray(parsedRoster) && parsedRoster.length > 0 && Array.isArray(parsedPlacements)) {
+            this.roster = parsedRoster;
+            this.placements = parsedPlacements;
+            for (const placement of this.placements) {
+              const instance = this.roster.find((r) => r.id === placement.summonInstanceId);
+              if (!instance) continue;
+              const entity = new SummonEntity(
+                this.app,
+                this.motion,
+                instance,
+                placement.cell,
+                this.worldLayer
+              );
+              this.summons.push(entity);
+            }
+            return true;
+          }
+        }
+      }
+    } catch {
+      // Fallback to fresh starters
+    }
+    return false;
+  }
+
+  public saveState(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('psyblr_roster', JSON.stringify(this.roster));
+        localStorage.setItem('psyblr_placements', JSON.stringify(this.placements));
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  public resetToStarters(): void {
+    for (const summon of this.summons) {
+      summon.destroy();
+    }
+    this.summons = [];
+    this.roster = [];
+    this.placements = [];
+    this.createDefaultStarters();
+    this.saveState();
+  }
+
+  public getPlacements(): readonly CampPlacement[] {
     return this.placements;
   }
 
-  getSummonById(id: string): SummonEntity | undefined {
+  public getSummonAtCell(cell: CampCell, excludeSummonId?: string): SummonEntity | undefined {
+    const placement = this.placements.find(
+      (p) => (!excludeSummonId || p.summonInstanceId !== excludeSummonId) && p.cell.x === cell.x && p.cell.y === cell.y
+    );
+    if (placement) {
+      return this.getSummonById(placement.summonInstanceId);
+    }
+    return this.summons.find(
+      (s) => (!excludeSummonId || s.instance.id !== excludeSummonId) && s.currentCell.x === cell.x && s.currentCell.y === cell.y
+    );
+  }
+
+  public getSummonById(id: string): SummonEntity | undefined {
     return this.summons.find((s) => s.instance.id === id);
   }
 
-  onSummonPlacementCommitted(
-    summon: SummonEntity,
-    toCell: CampCell,
-    fromCell: CampCell
-  ): void {
-    const existingOccupantPlacement = this.placements.find(
-      (p) => p.summonInstanceId !== summon.instance.id && p.cell.x === toCell.x && p.cell.y === toCell.y
-    );
+  public onSummonPlacementCommitted(summon: SummonEntity | string, toCell: CampCell, fromCell?: CampCell): void {
+    const source = typeof summon === 'string' ? this.getSummonById(summon) : summon;
+    if (!source) return;
 
-    if (existingOccupantPlacement) {
-      const occupantSummon = this.getSummonById(existingOccupantPlacement.summonInstanceId);
+    const sourcePlacement = this.placements.find((p) => p.summonInstanceId === source.instance.id);
+    const originCell: CampCell = fromCell ?? sourcePlacement?.cell ?? { ...source.currentCell };
 
-      if (occupantSummon && canMerge(summon.instance, occupantSummon.instance)) {
-        this.executeMerge(summon, occupantSummon, toCell);
+    // If dropped back on the origin cell, settle cleanly
+    if (originCell.x === toCell.x && originCell.y === toCell.y) {
+      source.onLanding(originCell);
+      return;
+    }
+
+    // Find if another summon is occupying toCell
+    const targetSummon = this.getSummonAtCell(toCell, source.instance.id);
+
+    if (targetSummon) {
+      if (canMerge(source.instance, targetSummon.instance)) {
+        this.handleMerge(source.instance.id, targetSummon.instance.id);
         return;
       }
-
-      if (occupantSummon) {
-        occupantSummon.onLanding(fromCell);
-      }
-
+      // Swap positions if different identity/tier
       this.placements = this.placements.map((p) => {
-        if (p.summonInstanceId === summon.instance.id) {
-          return { ...p, cell: { ...toCell } };
-        }
-        if (p.summonInstanceId === existingOccupantPlacement.summonInstanceId) {
-          return { ...p, cell: { ...fromCell } };
-        }
+        if (p.summonInstanceId === source.instance.id) return { ...p, cell: { ...toCell } };
+        if (p.summonInstanceId === targetSummon.instance.id) return { ...p, cell: { ...originCell } };
         return p;
       });
-    } else {
-      this.placements = moveCampSummon(summon.instance.id, toCell, this.placements);
+      this.saveState();
+      source.onLanding(toCell);
+      targetSummon.onLanding(originCell);
+      return;
+    }
+
+    // Move summon to empty cell
+    const moved = this.moveSummon(source.instance.id, toCell);
+    if (!moved) {
+      source.onLanding(originCell);
     }
   }
 
-  private executeMerge(
-    consumedSummon: SummonEntity,
-    targetSummon: SummonEntity,
-    targetCell: CampCell
-  ): void {
-    const targetWorld = campCellToWorld(targetCell);
+  public moveSummon(summonId: string, targetCell: CampCell): boolean {
+    const summon = this.getSummonById(summonId);
+    if (!summon) return false;
 
-    this.motion.cancel(`summon_landing_${consumedSummon.instance.id}`);
-    this.motion.cancel(`summon_squash_${consumedSummon.instance.id}`);
-    this.motion.cancel(`summon_move_${consumedSummon.instance.id}`);
-    consumedSummon.setInteractionState('MERGING');
+    if (!canPlaceCampSummon(summonId, targetCell, this.placements)) {
+      return false;
+    }
 
-    targetSummon.playMergeAnticipation();
+    const prevCell = { ...summon.currentCell };
+    this.placements = moveCampSummon(summonId, targetCell, this.placements);
+    this.saveState();
+    summon.onLanding(targetCell);
 
-    const startX = consumedSummon.root.getPosition().x;
-    const startZ = consumedSummon.root.getPosition().z;
-
-    this.motion.tween({
-      id: `merge_collapse_${consumedSummon.instance.id}`,
-      from: 0,
-      to: 1,
-      duration: DURATION.QUICK,
-      easing: EASING.SNAP,
-      onUpdate: (t) => {
-        const x = startX + (targetWorld[0] - startX) * t;
-        const z = startZ + (targetWorld[2] - startZ) * t;
-        consumedSummon.root.setPosition(x, 0.2 * (1 - t), z);
-        consumedSummon.root.setLocalScale(1 - 0.8 * t, 1 - 0.8 * t, 1 - 0.8 * t);
-      },
-      onComplete: () => {
-        this.summons = this.summons.filter((s) => s !== consumedSummon);
-        this.placements = this.placements.filter((p) => p.summonInstanceId !== consumedSummon.instance.id);
-        this.roster = this.roster.filter((r) => r.id !== consumedSummon.instance.id);
-        consumedSummon.destroy();
-
-        setTimeout(() => {
-          const next = nextTier(targetSummon.instance.tier);
-          if (next) {
-            targetSummon.upgradeTier(next);
-            this.roster = this.roster.map((r) =>
-              r.id === targetSummon.instance.id ? { ...r, tier: next } : r
-            );
-          }
-
-          targetSummon.playMergeUpgrade();
-          this.audio.playInspectorOpen();
-
-          this.events.emit('mergeCompleted', {
-            sourceId: consumedSummon.instance.id,
-            targetId: targetSummon.instance.id,
-            upgradedTier: next ?? targetSummon.instance.tier,
-            worldPosition: targetWorld,
-          });
-
-          this.events.emit('summonPlaced', {
-            summonId: targetSummon.instance.id,
-            fromCell: targetCell,
-            toCell: targetCell,
-            worldPosition: targetWorld,
-          });
-        }, 60);
-      },
+    this.events.emit('summonPlaced', {
+      summonId,
+      fromCell: prevCell,
+      toCell: targetCell,
+      worldPosition: campCellToWorld(targetCell),
     });
+
+    return true;
   }
 
-  spawnAndTransferSummon(
-    instance: SummonInstance,
-    destinationCell: CampCell,
-    startWorldPos: [number, number, number] = [6.4, 1.8, 0],
-    onLanded?: (summon: SummonEntity) => void
-  ): SummonEntity {
-    if (!this.roster.some((r) => r.id === instance.id)) {
-      this.roster.push(instance);
+  public removeSummon(summonId: string): void {
+    const summon = this.getSummonById(summonId);
+    if (summon) {
+      summon.destroy();
+      this.summons = this.summons.filter((s) => s.instance.id !== summonId);
     }
+    this.roster = this.roster.filter((r) => r.id !== summonId);
+    this.placements = this.placements.filter((p) => p.summonInstanceId !== summonId);
+    this.saveState();
+  }
+
+  public handleMerge(sourceId: string, targetId: string): boolean {
+    const source = this.getSummonById(sourceId);
+    const target = this.getSummonById(targetId);
+
+    if (!source || !target) return false;
+    if (!canMerge(source.instance, target.instance)) return false;
+
+    const next = nextTier(target.instance.tier);
+    if (!next) return false;
+
+    // Execute merge
+    target.upgradeTier(next);
+    target.playMergeUpgrade();
+
+    const rosterIdx = this.roster.findIndex((r) => r.id === targetId);
+    if (rosterIdx >= 0) {
+      this.roster[rosterIdx] = target.instance;
+    }
+
+    // Remove source from board & roster
+    this.removeSummon(sourceId);
+
+    this.events.emit('mergeCompleted', {
+      sourceId,
+      targetId,
+      upgradedTier: next,
+      worldPosition: campCellToWorld(target.currentCell),
+    });
+
+    this.saveState();
+    return true;
+  }
+
+  public addSummonToCamp(instance: SummonInstance, targetCell: CampCell): SummonEntity | null {
+    let finalCell = targetCell;
+    if (isCampCellOccupied(finalCell, this.placements)) {
+      const exposed = findFirstExposedCampCell(this.placements);
+      if (exposed) {
+        finalCell = exposed;
+      } else {
+        for (let y = 0; y < 6; y++) {
+          for (let x = 0; x < 6; x++) {
+            if (!isCampCellOccupied({ x, y }, this.placements)) {
+              finalCell = { x, y };
+              break;
+            }
+          }
+          if (!isCampCellOccupied(finalCell, this.placements)) break;
+        }
+      }
+    }
+
+    if (this.placements.length >= CAMP_CAPACITY || isCampCellOccupied(finalCell, this.placements)) {
+      console.warn('Cannot add summon: Camp is full (36/36) or no cell available');
+      return null;
+    }
+
+    this.roster.push(instance);
+    this.placements.push({ summonInstanceId: instance.id, cell: finalCell });
+    this.saveState();
 
     const entity = new SummonEntity(
       this.app,
       this.motion,
       instance,
-      destinationCell,
+      finalCell,
+      this.worldLayer
+    );
+    const targetWorldPos = campCellToWorld(finalCell);
+    entity.root.setPosition(targetWorldPos[0], targetWorldPos[1], targetWorldPos[2]);
+    this.summons.push(entity);
+    return entity;
+  }
+
+  public spawnAndTransferSummon(
+    instance: SummonInstance,
+    targetCell: CampCell,
+    originPos: [number, number, number],
+    onComplete?: (summon: SummonEntity) => void
+  ): void {
+    // If targetCell is already occupied, find the next available cell
+    let finalCell = targetCell;
+    if (isCampCellOccupied(finalCell, this.placements)) {
+      const exposed = findFirstExposedCampCell(this.placements);
+      if (exposed) {
+        finalCell = exposed;
+      } else {
+        for (let y = 0; y < 6; y++) {
+          for (let x = 0; x < 6; x++) {
+            if (!isCampCellOccupied({ x, y }, this.placements)) {
+              finalCell = { x, y };
+              break;
+            }
+          }
+          if (!isCampCellOccupied(finalCell, this.placements)) break;
+        }
+      }
+    }
+
+    if (this.placements.length >= CAMP_CAPACITY || isCampCellOccupied(finalCell, this.placements)) {
+      console.warn('Cannot spawn summon: Camp is full (36/36) or no cell available');
+      return;
+    }
+
+    this.roster.push(instance);
+    this.placements.push({ summonInstanceId: instance.id, cell: finalCell });
+    this.saveState();
+
+    const entity = new SummonEntity(
+      this.app,
+      this.motion,
+      instance,
+      finalCell,
       this.worldLayer
     );
     this.summons.push(entity);
 
-    const destWorld = campCellToWorld(destinationCell);
-    entity.root.setPosition(startWorldPos[0], startWorldPos[1], startWorldPos[2]);
-    entity.setInteractionState('SPAWNING');
+    // Initial position at arcade machine drop slot
+    entity.root.setPosition(originPos[0], originPos[1], originPos[2]);
+    const targetWorldPos = campCellToWorld(finalCell);
 
+    // Arc jump animation to camp cell
     this.motion.tween({
-      id: `spawn_fly_${instance.id}`,
+      id: `spawn_jump_${instance.id}`,
       from: 0,
       to: 1,
-      duration: DURATION.REWARD,
-      easing: EASING.CINEMATIC,
-      onUpdate: (t) => {
-        const x = startWorldPos[0] + (destWorld[0] - startWorldPos[0]) * t;
-        const z = startWorldPos[2] + (destWorld[2] - startWorldPos[2]) * t;
-        const arcY = startWorldPos[1] + (destWorld[1] - startWorldPos[1]) * t + 1.8 * Math.sin(t * Math.PI);
+      duration: DURATION.STANDARD,
+      easing: EASING.SNAP,
+      onUpdate: (progress) => {
+        const x = originPos[0] + (targetWorldPos[0] - originPos[0]) * progress;
+        const z = originPos[2] + (targetWorldPos[2] - originPos[2]) * progress;
+        const arcY = originPos[1] + (targetWorldPos[1] - originPos[1]) * progress + Math.sin(progress * Math.PI) * 2.5;
         entity.root.setPosition(x, arcY, z);
       },
       onComplete: () => {
-        entity.onLanding(destinationCell);
-        this.placements.push({
-          summonInstanceId: instance.id,
-          cell: { ...destinationCell },
-        });
-
-        this.events.emit('summonPlaced', {
-          summonId: instance.id,
-          fromCell: destinationCell,
-          toCell: destinationCell,
-          worldPosition: destWorld,
-        });
-
-        onLanded?.(entity);
+        entity.root.setPosition(targetWorldPos[0], targetWorldPos[1], targetWorldPos[2]);
+        if (onComplete) onComplete(entity);
       },
     });
-
-    return entity;
   }
 
-  update(dt: number): void {
-    this.baseWorld.update(dt);
+  public setBaseVisible(visible: boolean): void {
+    this.baseWorld.setVisible(visible);
+    this.pachinkoWorld.root.enabled = visible;
+    for (const summon of this.summons) {
+      summon.root.enabled = visible;
+    }
+  }
+
+  public update(dt: number): void {
     for (const summon of this.summons) {
       summon.update(dt);
     }
   }
 
-  destroy(): void {
+  public destroy(): void {
     for (const summon of this.summons) {
       summon.destroy();
     }
-    this.summons.length = 0;
-    this.opponentCampWorld.destroy();
-    this.campaignWorld.destroy();
-    this.raidWorld.destroy();
-    this.pachinkoWorld.destroy();
-    this.baseWorld.destroy();
   }
 }

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "ascendant",
+    "name": "Ascendant",
+    "description": "Masters of relentless speed and swift movement.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% attack speed",
+        "mechanics": [{ "stat": "attack_speed_pct", "value": 0.08 }]
+      },
+      {
+        "count": 4,
+        "effect": "+16% attack speed, +10% move speed",
+        "mechanics": [{ "stat": "attack_speed_pct", "value": 0.16 }]
+      },
+      {
+        "count": 6,
+        "effect": "+25% attack speed, +20% move speed",
+        "mechanics": [{ "stat": "attack_speed_pct", "value": 0.25 }]
+      }
+    ]
+  },
+  {
+    "id": "rebel",
+    "name": "Rebel",
+    "description": "Brawlers who fight through damage with sheer vitality and sustain.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% max HP",
+        "mechanics": [{ "stat": "max_hp_pct", "value": 0.08 }]
+      },
+      {
+        "count": 4,
+        "effect": "+16% max HP, +5% drain",
+        "mechanics": [{ "stat": "max_hp_pct", "value": 0.16 }, { "stat": "drain_pct", "value": 0.05 }]
+      },
+      {
+        "count": 6,
+        "effect": "+25% max HP, +12% drain",
+        "mechanics": [{ "stat": "max_hp_pct", "value": 0.25 }, { "stat": "drain_pct", "value": 0.12 }]
+      }
+    ]
+  },
+  {
+    "id": "mastermind",
+    "name": "Mastermind",
+    "description": "Tacticians who accelerate skill cooldowns and amplify ability power.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+8% skill power",
+        "mechanics": [{ "stat": "skill_power_pct", "value": 0.08 }]
+      },
+      {
+        "count": 4,
+        "effect": "+16% skill power, +10% cooldown reduction",
+        "mechanics": [{ "stat": "skill_power_pct", "value": 0.16 }, { "stat": "cooldown_reduction_pct", "value": 0.10 }]
+      },
+      {
+        "count": 6,
+        "effect": "+25% skill power, +20% cooldown reduction",
+        "mechanics": [{ "stat": "skill_power_pct", "value": 0.25 }, { "stat": "cooldown_reduction_pct", "value": 0.20 }]
+      }
+    ]
+  },
+  {
+    "id": "vanguard",
+    "name": "Vanguard",
+    "description": "Stalwart defenders who absorb devastating blows.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+10% DEF",
+        "mechanics": [{ "stat": "def_pct", "value": 0.10 }]
+      },
+      {
+        "count": 4,
+        "effect": "+20% DEF, +15% block",
+        "mechanics": [{ "stat": "def_pct", "value": 0.20 }, { "stat": "block_pct", "value": 0.15 }]
+      },
+      {
+        "count": 6,
+        "effect": "+35% DEF, +30% block",
+        "mechanics": [{ "stat": "def_pct", "value": 0.35 }, { "stat": "block_pct", "value": 0.30 }]
+      }
+    ]
+  },
+  {
+    "id": "celestial",
+    "name": "Celestial",
+    "description": "Radiant warriors who strike with overwhelming raw force and critical hits.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+10% ATK",
+        "mechanics": [{ "stat": "atk_pct", "value": 0.10 }]
+      },
+      {
+        "count": 4,
+        "effect": "+20% ATK, +15% critical chance",
+        "mechanics": [{ "stat": "atk_pct", "value": 0.20 }, { "stat": "crit_chance_pct", "value": 0.15 }]
+      },
+      {
+        "count": 6,
+        "effect": "+35% ATK, +30% critical chance",
+        "mechanics": [{ "stat": "atk_pct", "value": 0.35 }, { "stat": "crit_chance_pct", "value": 0.30 }]
+      }
+    ]
+  },
+  {
+    "id": "shadow",
+    "name": "Shadow",
+    "description": "Elusive assassins who evade attacks and deal lethal critical strikes.",
+    "thresholds": [
+      {
+        "count": 2,
+        "effect": "+15% critical damage",
+        "mechanics": [{ "stat": "crit_damage_pct", "value": 0.15 }]
+      },
+      {
+        "count": 4,
+        "effect": "+30% critical damage, +12% dodge",
+        "mechanics": [{ "stat": "crit_damage_pct", "value": 0.30 }, { "stat": "dodge_pct", "value": 0.12 }]
+      },
+      {
+        "count": 6,
+        "effect": "+50% critical damage, +25% dodge",
+        "mechanics": [{ "stat": "crit_damage_pct", "value": 0.50 }, { "stat": "dodge_pct", "value": 0.25 }]
+      }
+    ]
+  }
+]

@@ -32,6 +32,8 @@ describe('DragController', () => {
     return {
       showTarget: vi.fn(),
       hide: vi.fn(),
+      showTacticalTarget: vi.fn(),
+      hideTacticalTarget: vi.fn(),
       update: vi.fn(),
     } as any;
   }
@@ -115,7 +117,7 @@ describe('DragController', () => {
 
     expect(success).toBe(true);
     expect(controller.isDragging).toBe(false);
-    expect(summon.onLanding).toHaveBeenCalledWith(targetCell);
+    expect(commitCallback).toHaveBeenCalledWith(summon, targetCell, { x: 2, y: 3 });
     expect(feedback.hide).toHaveBeenCalled();
     expect(placedSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -123,7 +125,6 @@ describe('DragController', () => {
         toCell: { x: 1, y: 1 },
       })
     );
-    expect(commitCallback).toHaveBeenCalledWith(summon, targetCell, { x: 2, y: 3 });
   });
 
   it('triggers return to origin on pointer up over an invalid area', () => {
@@ -154,4 +155,323 @@ describe('DragController', () => {
       })
     );
   });
+
+  describe('Tactical Mode (Campaign & Raid)', () => {
+    it('handles tactical unit move to legal cell', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [ -1.5, 0.05, -38.5 ] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1]);
+
+      const onMoveSpy = vi.fn();
+      controller.onTacticalMove = onMoveSpy;
+
+      // Pointer down near unit1
+      const hit = controller.onPointerDown({ x: -1.5, z: -38.5 });
+      expect(hit).toBe(true);
+      expect(controller.isDragging).toBe(true);
+
+      // Drag to cell (3, 6): worldX = 3 - 3.5 = -0.5, worldZ = -40 + (6 - 3.5) = -37.5
+      controller.onPointerMove({ x: -0.5, z: -37.5 }, []);
+
+      // Pointer up commits move
+      controller.onPointerUp();
+      expect(onMoveSpy).toHaveBeenCalledWith('goku_1', { x: 3, z: 6 }, { x: 2, z: 5 });
+    });
+
+    it('handles tactical unit swap when dropped onto another unit', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [ -1.5, 0.05, -38.5 ] as [number, number, number],
+      };
+      const unit2 = {
+        summonId: 'luffy_1',
+        definitionId: 'luffy',
+        tier: 'F',
+        cell: { x: 4, z: 6 },
+        worldPos: [ 0.5, 0.05, -37.5 ] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1, unit2]);
+
+      const onSwapSpy = vi.fn();
+      controller.onTacticalSwap = onSwapSpy;
+
+      // Grab unit1
+      controller.onPointerDown({ x: -1.5, z: -38.5 }, []);
+
+      // Move over unit2's cell (4, 6)
+      controller.onPointerMove({ x: 0.5, z: -37.5 }, []);
+
+      // Drop on unit2
+      controller.onPointerUp();
+      expect(onSwapSpy).toHaveBeenCalledWith('goku_1', 'luffy_1');
+    });
+
+    it('handles tactical unit bench recall when dragged towards tray', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [ -1.5, 0.05, -38.5 ] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1]);
+
+      const onRecallSpy = vi.fn();
+      controller.onTacticalRecall = onRecallSpy;
+
+      // Grab unit1
+      controller.onPointerDown({ x: -1.5, z: -38.5 }, []);
+
+      // Drag towards tray (worldZ = -35.0)
+      controller.onPointerMove({ x: 0, z: -35.0 }, []);
+
+      // Drop
+      controller.onPointerUp();
+      expect(onRecallSpy).toHaveBeenCalledWith('goku_1');
+    });
+
+    it('handles card drag from tray and deploys onto valid tactical cell', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      controller.setTacticalUnits([]);
+
+      const onDeploySpy = vi.fn();
+      controller.onTacticalDeploy = onDeploySpy;
+
+      const summon: SummonInstance = { id: 'starter:goku:001', definitionId: 'goku', tier: 'F' };
+
+      // Start drag from UI card
+      controller.startCardDrag(summon);
+      expect(controller.isDragging).toBe(true);
+      expect(controller.cardDraggedSummon).toBe(summon);
+
+      // Move over player tactical cell (x: 3, z: 5) -> localX = 3 - 3.5 = -0.5, localZ = 5 - 3.5 = 1.5 -> worldZ = -40 + 1.5 = -38.5
+      controller.onPointerMove({ x: -0.5, z: -38.5 }, []);
+      expect(controller.tacticalHoveredTarget?.cell).toEqual({ x: 3, z: 5 });
+      expect(controller.tacticalHoveredTarget?.isValidPlayerZone).toBe(true);
+
+      // Drop onto cell
+      const committed = controller.onPointerUp();
+      expect(committed).toBe(true);
+      expect(onDeploySpy).toHaveBeenCalledWith(summon, { x: 3, z: 5 });
+    });
+
+    it('rejects card drag drop on invalid zone (enemy half)', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      controller.setTacticalUnits([]);
+
+      const onDeploySpy = vi.fn();
+      controller.onTacticalDeploy = onDeploySpy;
+
+      const summon: SummonInstance = { id: 'starter:goku:001', definitionId: 'goku', tier: 'F' };
+
+      controller.startCardDrag(summon);
+
+      // Move over enemy zone (z: 1 < 4) -> worldZ = -40 + (1 - 3.5) = -42.5
+      controller.onPointerMove({ x: 0, z: -42.5 }, []);
+      expect(controller.tacticalHoveredTarget?.isValidPlayerZone).toBe(false);
+
+      const committed = controller.onPointerUp();
+      expect(committed).toBe(false);
+      expect(onDeploySpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Opponent Camp Mode', () => {
+    it('detects tap on exposed opponent summon and fires onOpponentSummonTapped', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('opponentCamp');
+
+      const mockOpponent: any = {
+        instance: { id: 'opp:naruto:03', definitionId: 'naruto', tier: 'E' },
+        cell: { x: 1, y: 2 },
+        isProtected: false,
+      };
+
+      controller.setOpponentSummons([mockOpponent]);
+
+      const onTappedSpy = vi.fn();
+      controller.onOpponentSummonTapped = onTappedSpy;
+
+      // cell (1, 2): worldX = 40 + (1 - 2.5) * 1.0 = 38.5, worldZ = 0 + (2 - 2.5) * 1.0 = -0.5
+      const hit = controller.onPointerDown({ x: 38.5, z: -0.5 }, []);
+      expect(hit).toBe(true);
+
+      const handled = controller.onPointerUp();
+      expect(handled).toBe(true);
+      expect(onTappedSpy).toHaveBeenCalledWith(mockOpponent);
+    });
+
+    it('detects tap on protected opponent summon (Row 0 Illuminati)', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('opponentCamp');
+
+      const mockProtectedOpponent: any = {
+        instance: { id: 'opp:goku:01', definitionId: 'goku', tier: 'D' },
+        cell: { x: 2, y: 0 },
+        isProtected: true,
+      };
+
+      controller.setOpponentSummons([mockProtectedOpponent]);
+
+      const onTappedSpy = vi.fn();
+      controller.onOpponentSummonTapped = onTappedSpy;
+
+      // cell (2, 0): worldX = 40 + (2 - 2.5) * 1.0 = 39.5, worldZ = 0 + (0 - 2.5) * 1.0 = -2.5
+      const hit = controller.onPointerDown({ x: 39.5, z: -2.5 }, []);
+      expect(hit).toBe(true);
+
+      const handled = controller.onPointerUp();
+      expect(handled).toBe(true);
+      expect(onTappedSpy).toHaveBeenCalledWith(mockProtectedOpponent);
+    });
+  });
+
+  describe('Combat Lock (isCombatActive)', () => {
+    it('cancels active drag when setCombatActive(true) is invoked', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [-1.5, 0.05, -38.5] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1]);
+
+      const hit = controller.onPointerDown({ x: -1.5, z: -38.5 });
+      expect(hit).toBe(true);
+      expect(controller.isDragging).toBe(true);
+
+      // Battle begins mid-drag
+      controller.setCombatActive(true);
+      expect(controller.isDragging).toBe(false);
+      expect(controller.isCombatActive).toBe(true);
+      expect(feedback.hide).toHaveBeenCalled();
+    });
+
+    it('rejects onPointerDown on board units when combat is active', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [-1.5, 0.05, -38.5] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1]);
+      controller.setCombatActive(true);
+
+      const hit = controller.onPointerDown({ x: -1.5, z: -38.5 });
+      expect(hit).toBe(false);
+      expect(controller.isDragging).toBe(false);
+    });
+
+    it('rejects startCardDrag from bottom tray when combat is active', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      controller.setCombatActive(true);
+
+      const summon: SummonInstance = { id: 'starter:goku:001', definitionId: 'goku', tier: 'F' };
+      controller.startCardDrag(summon);
+
+      expect(controller.isDragging).toBe(false);
+      expect(controller.cardDraggedSummon).toBeNull();
+    });
+
+    it('prevents any tactical callbacks when combat is active', () => {
+      const resolver = new CampDropTargetResolver();
+      const feedback = createMockFeedback();
+      const events = new PresentationEventEmitter();
+      const controller = new DragController(resolver, feedback, events);
+
+      controller.setMode('campaign');
+      const unit1 = {
+        summonId: 'goku_1',
+        definitionId: 'goku',
+        tier: 'F',
+        cell: { x: 2, z: 5 },
+        worldPos: [-1.5, 0.05, -38.5] as [number, number, number],
+      };
+      controller.setTacticalUnits([unit1]);
+
+      const onMoveSpy = vi.fn();
+      const onSwapSpy = vi.fn();
+      const onRecallSpy = vi.fn();
+      const onDeploySpy = vi.fn();
+      controller.onTacticalMove = onMoveSpy;
+      controller.onTacticalSwap = onSwapSpy;
+      controller.onTacticalRecall = onRecallSpy;
+      controller.onTacticalDeploy = onDeploySpy;
+
+      controller.setCombatActive(true);
+
+      controller.onPointerMove({ x: -0.5, z: -37.5 }, []);
+      const handled = controller.onPointerUp();
+
+      expect(handled).toBe(false);
+      expect(onMoveSpy).not.toHaveBeenCalled();
+      expect(onSwapSpy).not.toHaveBeenCalled();
+      expect(onRecallSpy).not.toHaveBeenCalled();
+      expect(onDeploySpy).not.toHaveBeenCalled();
+    });
+  });
 });
+

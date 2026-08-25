@@ -5,6 +5,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import { CAMP_CELL_SIZE } from './CampCoordinateMapper';
 import { CAMP_SIZE } from '@psyblr/game-rules';
 import type { CampCell, SummonInstance } from '@psyblr/contracts';
@@ -46,27 +47,27 @@ export class OpponentCampWorld {
     const campWidth = CAMP_SIZE * CAMP_CELL_SIZE;
     const campDepth = CAMP_SIZE * CAMP_CELL_SIZE;
 
-    // 1. Camp Slab
+    // 1. Camp Base Slab
     const slabMat = this.createMat({ diffuse: '#0f172a', emissive: '#090d16', emissiveIntensity: 0.2, gloss: 0 });
     this.arenaFloor = new Entity('OpponentCampSlab');
-    this.arenaFloor.setLocalPosition(0, -0.02, 0);
-    this.arenaFloor.setLocalScale(campWidth + 0.4, 0.08, campDepth + 0.4);
+    this.arenaFloor.setLocalPosition(0, 0.015, 0);
+    this.arenaFloor.setLocalScale(campWidth + 0.4, 0.03, campDepth + 0.4);
     this.arenaFloor.addComponent('render', { type: 'box', material: slabMat, castShadows: false, ...layerOpt });
     this.root.addChild(this.arenaFloor);
 
-    // Inner Surface
+    // 2. Inner Surface
     const arenaMat = this.createMat({ diffuse: '#1a1016', emissive: '#26101c', emissiveIntensity: 0.3, gloss: 0 });
     const surface = new Entity('OpponentSurface');
-    surface.setLocalPosition(0, 0.01, 0);
-    surface.setLocalScale(campWidth, 0.02, campDepth);
+    surface.setLocalPosition(0, 0.035, 0);
+    surface.setLocalScale(campWidth, 0.01, campDepth);
     surface.addComponent('render', { type: 'box', material: arenaMat, castShadows: false, ...layerOpt });
     this.root.addChild(surface);
 
-    // Illuminati Dais (Row 0)
+    // 3. Illuminati Dais (Row 0)
     const illumMat = this.createMat({ diffuse: '#451a03', emissive: '#f59e0b', emissiveIntensity: 0.5, gloss: 0 });
     const illumRow = new Entity('OpponentIlluminatiRow');
-    illumRow.setLocalPosition(0, 0.018, (0 - 2.5) * CAMP_CELL_SIZE);
-    illumRow.setLocalScale(campWidth - 0.06, 0.015, CAMP_CELL_SIZE - 0.06);
+    illumRow.setLocalPosition(0, 0.045, (0 - 2.5) * CAMP_CELL_SIZE);
+    illumRow.setLocalScale(campWidth - 0.06, 0.01, CAMP_CELL_SIZE - 0.06);
     illumRow.addComponent('render', { type: 'box', material: illumMat, castShadows: false, ...layerOpt });
     this.root.addChild(illumRow);
 
@@ -79,7 +80,7 @@ export class OpponentCampWorld {
       blendType: 2, // BLEND_ADDITIVE
     });
     this.illuminatiBarrier = new Entity('IlluminatiForcefield');
-    this.illuminatiBarrier.setLocalPosition(0, 0.6, (0 - 2.5) * CAMP_CELL_SIZE);
+    this.illuminatiBarrier.setLocalPosition(0, 0.65, (0 - 2.5) * CAMP_CELL_SIZE);
     this.illuminatiBarrier.setLocalScale(campWidth - 0.02, 1.2, CAMP_CELL_SIZE - 0.02);
     this.illuminatiBarrier.addComponent('render', { type: 'box', material: barrierMat, castShadows: false, ...layerOpt });
     this.root.addChild(this.illuminatiBarrier);
@@ -105,7 +106,7 @@ export class OpponentCampWorld {
         const lx = (x - CAMP_SIZE / 2) * CAMP_CELL_SIZE;
         const lz = (y - CAMP_SIZE / 2) * CAMP_CELL_SIZE;
         const dot = new Entity(`OppDot_${x}_${y}`);
-        dot.setLocalPosition(lx, 0.024, lz);
+        dot.setLocalPosition(lx, y === 0 ? 0.055 : 0.045, lz);
         dot.setLocalScale(0.035, 0.008, 0.035);
         dot.addComponent('render', { type: 'box', material: dotMat, castShadows: false, ...layerOpt });
         this.root.addChild(dot);
@@ -122,10 +123,10 @@ export class OpponentCampWorld {
     blendType?: number;
   }): StandardMaterial {
     const mat = new StandardMaterial();
-    mat.diffuse = new Color().fromString(options.diffuse);
+    mat.diffuse = colorFromHex(options.diffuse);
     mat.specular = new Color(0, 0, 0);
     if (options.emissive) {
-      mat.emissive = new Color().fromString(options.emissive);
+      mat.emissive = colorFromHex(options.emissive);
       mat.emissiveIntensity = options.emissiveIntensity ?? 0.5;
     }
     if (options.gloss !== undefined) mat.gloss = options.gloss;
@@ -140,7 +141,7 @@ export class OpponentCampWorld {
     const halfSpan = (CAMP_SIZE - 1) / 2;
     return [
       (cell.x - halfSpan) * CAMP_CELL_SIZE,
-      0.04,
+      0.05,
       (cell.y - halfSpan) * CAMP_CELL_SIZE,
     ];
   }
@@ -179,6 +180,34 @@ export class OpponentCampWorld {
 
       this.opponentSummons.push(entry);
     }
+  }
+
+  getOpponentSummon(id: string): OpponentSummonEntry | null {
+    return this.opponentSummons.find((s) => s.instance.id === id) ?? null;
+  }
+
+  findSummonAtWorldPoint(
+    point: { x: number; z: number },
+    pickRadius: number = 1.25
+  ): OpponentSummonEntry | null {
+    let closest: OpponentSummonEntry | null = null;
+    let closestDist = pickRadius;
+
+    for (const entry of this.opponentSummons) {
+      const lpos = this.cellToLocal(entry.cell);
+      const worldX = OPPONENT_CAMP_ORIGIN[0] + lpos[0];
+      const worldZ = OPPONENT_CAMP_ORIGIN[2] + lpos[2];
+      const dx = point.x - worldX;
+      const dz = point.z - worldZ;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = entry;
+      }
+    }
+
+    return closest;
   }
 
   selectSummon(id: string): OpponentSummonEntry | null {

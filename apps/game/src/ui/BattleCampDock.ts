@@ -30,6 +30,7 @@ export class BattleCampDock {
 
     // Root Dock Group anchored at Bottom-Center
     this.root = new Entity('BattleCampDock_Root');
+    this.root.enabled = false;
     this.root.setLocalPosition(0, 18, 0);
     this.root.addComponent('element', {
       type: 'group',
@@ -146,6 +147,11 @@ export class BattleCampDock {
         fontSize: 13,
         text: `${def.displayName.toUpperCase()} [${summon.tier}]`,
         color: new Color(1.0, 0.82, 0.2), // Bright Gold
+        autoWidth: false,
+        autoHeight: false,
+        width: cardWidth,
+        height: 24,
+        alignment: [0.5, 0.5],
         anchor: [0.5, 0.5, 0.5, 0.5],
         pivot: [0.5, 0.5],
         ...layerOpt,
@@ -161,6 +167,11 @@ export class BattleCampDock {
         fontSize: 11,
         text: isDeployed ? `CAMP (${placement.cell.x},${placement.cell.y})` : 'READY',
         color: isDeployed ? new Color(0.75, 0.90, 1.0) : new Color(0.35, 0.98, 0.6),
+        autoWidth: false,
+        autoHeight: false,
+        width: cardWidth,
+        height: 20,
+        alignment: [0.5, 0.5],
         anchor: [0.5, 0.5, 0.5, 0.5],
         pivot: [0.5, 0.5],
         ...layerOpt,

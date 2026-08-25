@@ -2,132 +2,276 @@
   {
     "id": "goku",
     "displayName": "Goku",
+    "description": "A fast Ascendant striker who closes distance and pressures the frontline with explosive ki.",
     "summary": "A fast Ascendant striker who closes distance and pressures the frontline.",
+    "quote": "I am the hope of the universe. I am the answer to all living things that cry out for peace.",
+    "allianceId": "ascendant",
     "originId": "ascendant",
     "combatFunctionId": "striker",
+    "passiveId": "goku_passive",
     "stats": {
       "hp": 1000,
       "atk": 120,
       "def": 70,
       "attacksPerSecond": 1.1,
       "range": 2.5,
-      "moveSpeed": 4.6
+      "moveSpeed": 4.6,
+      "critChance": 0.1,
+      "critDamage": 1.6,
+      "blockChance": 0.05,
+      "dodgeChance": 0.08,
+      "skillPower": 100,
+      "cooldownReduction": 0.0,
+      "healingPower": 100,
+      "drain": 0.0
     },
     "skills": {
       "basic": "goku_basic",
       "skill1": "goku_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "goku_skill_2",
+      "ultimate": "goku_ultimate"
+    },
+    "formsByTier": {
+      "F": "Base Martial Artist",
+      "E": "Kaio-ken",
+      "D": "Super Saiyan",
+      "C": "Super Saiyan 2",
+      "B": "Super Saiyan 3",
+      "A": "Super Saiyan God",
+      "S": "Super Saiyan Blue",
+      "SS": "Ultra Instinct Omen",
+      "SSS": "Mastered Ultra Instinct",
+      "X": "Transcendent Saiyan Primordial"
     },
     "assetManifest": "/assets/summons/goku/manifest.json"
   },
   {
     "id": "naruto",
     "displayName": "Naruto",
+    "description": "An agile Ascendant controller who disrupts targets with shadow clones and chakra bursts.",
     "summary": "An agile Ascendant controller who disrupts targets from a safe range.",
+    "quote": "I never go back on my word. That's my ninja way!",
+    "allianceId": "ascendant",
     "originId": "ascendant",
     "combatFunctionId": "controller",
+    "passiveId": "naruto_passive",
     "stats": {
       "hp": 950,
       "atk": 100,
       "def": 65,
       "attacksPerSecond": 1.15,
       "range": 3.0,
-      "moveSpeed": 4.8
+      "moveSpeed": 4.8,
+      "critChance": 0.08,
+      "critDamage": 1.5,
+      "blockChance": 0.04,
+      "dodgeChance": 0.12,
+      "skillPower": 105,
+      "cooldownReduction": 0.05,
+      "healingPower": 110,
+      "drain": 0.0
     },
     "skills": {
       "basic": "naruto_basic",
       "skill1": "naruto_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "naruto_skill_2",
+      "ultimate": "naruto_ultimate"
+    },
+    "formsByTier": {
+      "F": "Genin",
+      "E": "Chunin",
+      "D": "One-Tail Cloak",
+      "C": "Sage Mode",
+      "B": "Nine-Tails Chakra Mode",
+      "A": "Kurama Link",
+      "S": "Six Paths Sage Mode",
+      "SS": "Baryon Mode",
+      "SSS": "Seventh Hokage Sage of Six Paths",
+      "X": "Asura Incarnate Shinobi Avatar"
     },
     "assetManifest": "/assets/summons/naruto/manifest.json"
   },
   {
     "id": "luffy",
     "displayName": "Luffy",
+    "description": "A resilient Rebel striker built to brawl at close range with rubber stretching strikes.",
     "summary": "A resilient Rebel striker built to brawl at close range.",
+    "quote": "If you don't take risks, you can't create a future!",
+    "allianceId": "rebel",
     "originId": "rebel",
     "combatFunctionId": "striker",
+    "passiveId": "luffy_passive",
     "stats": {
       "hp": 1150,
       "atk": 110,
       "def": 80,
       "attacksPerSecond": 1.05,
       "range": 1.5,
-      "moveSpeed": 5.0
+      "moveSpeed": 5.0,
+      "critChance": 0.06,
+      "critDamage": 1.5,
+      "blockChance": 0.08,
+      "dodgeChance": 0.10,
+      "skillPower": 100,
+      "cooldownReduction": 0.0,
+      "healingPower": 100,
+      "drain": 0.05
     },
     "skills": {
       "basic": "luffy_basic",
       "skill1": "luffy_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "luffy_skill_2",
+      "ultimate": "luffy_ultimate"
+    },
+    "formsByTier": {
+      "F": "Straw Hat Rookie",
+      "E": "Gear Second",
+      "D": "Gear Third",
+      "C": "Gear Fourth: Boundman",
+      "B": "Gear Fourth: Snakeman",
+      "A": "Ryou Infused",
+      "S": "Conqueror Coating",
+      "SS": "Sun God Nika Gear Fifth",
+      "SSS": "Emperor of the Sea Nika",
+      "X": "Liberation Deity Warrior of Freedom"
     },
     "assetManifest": "/assets/summons/luffy/manifest.json"
   },
   {
     "id": "eren",
     "displayName": "Eren",
+    "description": "A durable Rebel disruptor who holds the frontline, draws aggro, and breaks enemy focus.",
     "summary": "A durable Rebel disruptor who holds the frontline and breaks enemy focus.",
+    "quote": "If we don't fight, we can't win. Fight! Fight!",
+    "allianceId": "rebel",
     "originId": "rebel",
     "combatFunctionId": "disruptor",
+    "passiveId": "eren_passive",
     "stats": {
       "hp": 1400,
       "atk": 105,
       "def": 100,
       "attacksPerSecond": 0.85,
       "range": 1.25,
-      "moveSpeed": 4.0
+      "moveSpeed": 4.0,
+      "critChance": 0.05,
+      "critDamage": 1.5,
+      "blockChance": 0.15,
+      "dodgeChance": 0.02,
+      "skillPower": 95,
+      "cooldownReduction": 0.0,
+      "healingPower": 100,
+      "drain": 0.04
     },
     "skills": {
       "basic": "eren_basic",
       "skill1": "eren_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "eren_skill_2",
+      "ultimate": "eren_ultimate"
+    },
+    "formsByTier": {
+      "F": "Cadet Corp",
+      "E": "Scout Regiment",
+      "D": "Attack Titan",
+      "C": "Hardened Attack Titan",
+      "B": "War Hammer Titan Hybrid",
+      "A": "Paths Traveler",
+      "S": "Doomsday Titan",
+      "SS": "Founding Titan Colossus",
+      "SSS": "Harbinger of the Rumbling",
+      "X": "Eternal Sovereign of Freedom"
     },
     "assetManifest": "/assets/summons/eren/manifest.json"
   },
   {
     "id": "l",
     "displayName": "L",
+    "description": "A long-range Mastermind controller who sets up precise battlefield control and vulnerabilities.",
     "summary": "A long-range Mastermind controller who sets up precise battlefield control.",
+    "quote": "There is no justice without truth, and truth is deduced.",
+    "allianceId": "mastermind",
     "originId": "mastermind",
     "combatFunctionId": "controller",
+    "passiveId": "l_passive",
     "stats": {
       "hp": 800,
       "atk": 80,
       "def": 55,
       "attacksPerSecond": 1.0,
       "range": 4.5,
-      "moveSpeed": 4.2
+      "moveSpeed": 4.2,
+      "critChance": 0.15,
+      "critDamage": 1.7,
+      "blockChance": 0.02,
+      "dodgeChance": 0.06,
+      "skillPower": 115,
+      "cooldownReduction": 0.10,
+      "healingPower": 100,
+      "drain": 0.0
     },
     "skills": {
       "basic": "l_basic",
       "skill1": "l_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "l_skill_2",
+      "ultimate": "l_ultimate"
+    },
+    "formsByTier": {
+      "F": "Consultant",
+      "E": "Great Detective",
+      "D": "Wammy's Prodigy",
+      "C": "Global Task Force Lead",
+      "B": "Master Profiler",
+      "A": "Supreme Deductionist",
+      "S": "Zero Probability Strategist",
+      "SS": "Grandmaster of the Mind",
+      "SSS": "Omniscient Arbiter",
+      "X": "Transcendent Mind of Truth"
     },
     "assetManifest": "/assets/summons/l/manifest.json"
   },
   {
     "id": "lelouch",
     "displayName": "Lelouch",
+    "description": "A ranged Mastermind disruptor who commands the battlefield, weakening and incapacitating priority targets.",
     "summary": "A ranged Mastermind disruptor who weakens priority targets from afar.",
+    "quote": "The only ones who should kill are those who are prepared to be killed!",
+    "allianceId": "mastermind",
     "originId": "mastermind",
     "combatFunctionId": "disruptor",
+    "passiveId": "lelouch_passive",
     "stats": {
       "hp": 820,
       "atk": 85,
       "def": 60,
       "attacksPerSecond": 0.95,
       "range": 4.0,
-      "moveSpeed": 4.2
+      "moveSpeed": 4.2,
+      "critChance": 0.12,
+      "critDamage": 1.6,
+      "blockChance": 0.03,
+      "dodgeChance": 0.05,
+      "skillPower": 120,
+      "cooldownReduction": 0.12,
+      "healingPower": 100,
+      "drain": 0.0
     },
     "skills": {
       "basic": "lelouch_basic",
       "skill1": "lelouch_skill_1",
-      "skill2": null,
-      "ultimate": null
+      "skill2": "lelouch_skill_2",
+      "ultimate": "lelouch_ultimate"
+    },
+    "formsByTier": {
+      "F": "Exiled Prince",
+      "E": "Ashford Strategist",
+      "D": "Zero of the Black Knights",
+      "C": "Miracle Worker",
+      "B": "Leader of the United Federation",
+      "A": "Dual Geass Master",
+      "S": "Emperor of Britannia",
+      "SS": "Demon Emperor Zero",
+      "SSS": "Resurrection Tactician",
+      "X": "Absolute Sovereign of Geass"
     },
     "assetManifest": "/assets/summons/lelouch/manifest.json"
   }

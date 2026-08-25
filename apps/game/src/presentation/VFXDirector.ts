@@ -5,6 +5,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from './ColorUtils';
 import type { PresentationEventEmitter } from './PresentationEvents';
 import type { MotionDirector } from './MotionDirector';
 import { DURATION, EASING } from './PresentationTokens';
@@ -49,7 +50,7 @@ export class VFXDirector {
     burstRoot.setPosition(position[0], position[1], position[2]);
     this.rootEntity.addChild(burstRoot);
 
-    const baseColor = new Color().fromString(colorHex);
+    const baseColor = colorFromHex(colorHex);
     const layerOpt = this.getLayerOption();
 
     // 1. Expanding Ground Shockwave Ring
@@ -142,7 +143,7 @@ export class VFXDirector {
     pickupRoot.setPosition(position[0], position[1] + 0.05, position[2]);
     this.rootEntity.addChild(pickupRoot);
 
-    const baseColor = new Color().fromString(colorHex);
+    const baseColor = colorFromHex(colorHex);
     const layerOpt = this.getLayerOption();
 
     const aura = new Entity('PickupAura');

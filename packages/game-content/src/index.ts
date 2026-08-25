@@ -1,9 +1,11 @@
 import {
+  AllianceDefinitionSchema,
   CombatFunctionDefinitionSchema,
   CreepDefinitionSchema,
   OriginDefinitionSchema,
   SkillDefinitionSchema,
   SummonDefinitionSchema,
+  type AllianceDefinition,
   type CombatFunctionDefinition,
   type CreepDefinition,
   type OriginDefinition,
@@ -17,6 +19,7 @@ import {
   SpawnMachineDefinitionSchema,
   type SpawnMachineDefinition,
 } from '@psyblr/contracts';
+import alliancesJson from '../alliances.json';
 import combatFunctionsJson from '../combat-functions.json';
 import originsJson from '../origins.json';
 import skillsJson from '../skills.json';
@@ -27,8 +30,9 @@ import baseLayoutJson from '../base-layout.json';
 import spawnMachineJson from '../spawn-machine.json';
 
 /** Increment only when static content contracts used by simulation change. */
-export const GAME_CONTENT_VERSION = 'alpha-content-v1';
+export const GAME_CONTENT_VERSION = '2026.09.14-content-1';
 
+export const allianceDefinitions: AllianceDefinition[] = AllianceDefinitionSchema.array().parse(alliancesJson);
 export const summonDefinitions = SummonDefinitionSchema.array().parse(summonsJson);
 export const originDefinitions = OriginDefinitionSchema.array().parse(originsJson);
 export const combatFunctionDefinitions = CombatFunctionDefinitionSchema.array().parse(combatFunctionsJson);
@@ -42,6 +46,10 @@ function getById<T extends { id: string }>(collection: readonly T[], id: string,
   const definition = collection.find((entry) => entry.id === id);
   if (!definition) throw new Error(`Unknown ${label} id: ${id}`);
   return definition;
+}
+
+export function getAllianceDefinition(id: string): AllianceDefinition {
+  return getById(allianceDefinitions, id, 'alliance definition');
 }
 
 export function getSummonDefinition(id: string): SummonDefinition {

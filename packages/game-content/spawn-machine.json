@@ -1,17 +1,18 @@
 {
+  "dailyMedalBudget": 100,
   "dailyBallCap": 100,
   "binProbabilities": [
-    30,
+    10,
     15,
-    5,
-    5,
+    25,
+    25,
     15,
-    30
+    10
   ],
   "blobTargets": [
     {
       "id": "shield",
-      "enabled": false
+      "enabled": true
     },
     {
       "id": "tier_bonus",

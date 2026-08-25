@@ -5,16 +5,32 @@ import {
   Asset,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
+
+export interface TutorialStepOptions {
+  stepNumber: number;
+  totalSteps: number;
+  phaseName: string;
+  title: string;
+  body: string;
+  objective?: string;
+  actionLabel?: string;
+  accentColor?: string;
+  showActionButton?: boolean;
+}
 
 export class TutorialHUD {
   public root: Entity;
-  private cardBg: Entity;
+  public onActionClick?: () => void;
+
+  private bannerEntity: Entity;
+  private borderTrim: Entity;
+  private badgeText: Entity;
   private titleText: Entity;
-  private bodyText: Entity;
+  private messageText: Entity;
+  private objectiveText: Entity;
   private actionButton: Entity;
   private actionBtnText: Entity;
-
-  public onActionClick?: () => void;
 
   constructor(
     private app: Application,
@@ -25,120 +41,216 @@ export class TutorialHUD {
     const layerOpt = this.hudLayer ? { layers: [this.hudLayer.id] } : {};
 
     this.root = new Entity('TutorialHUD_Root');
-    this.root.setLocalPosition(0, 0, 0);
+    this.root.enabled = false;
     screenEntity.addChild(this.root);
 
-    // Tutorial Card Backdrop anchored at Top-Left (x: 24, y: -76)
-    this.cardBg = new Entity('TutorialCardBackdrop');
-    this.cardBg.setLocalPosition(24, -76, 0);
-    this.cardBg.addComponent('element', {
+    // Sleek Floating Quest Banner at Bottom-Center (Y: 56px from bottom, Width: 800, Height: 104)
+    this.bannerEntity = new Entity('TutorialQuestBanner');
+    this.bannerEntity.setLocalPosition(0, 56, 0);
+    this.bannerEntity.addComponent('element', {
       type: 'image',
-      anchor: [0, 1, 0, 1],
-      pivot: [0, 1],
-      width: 440,
-      height: 96,
-      color: new Color(0.04, 0.07, 0.16),
-      opacity: 0.94,
-      useInput: true,
+      anchor: [0.5, 0, 0.5, 0],
+      pivot: [0.5, 0.5],
+      width: 800,
+      height: 104,
+      color: colorFromHex('#070d1e'),
+      opacity: 0.98,
       ...layerOpt,
     });
-    this.root.addChild(this.cardBg);
+    this.root.addChild(this.bannerEntity);
 
-    // Gold Left Accent Bar
-    const leftBar = new Entity('CardLeftBar');
-    leftBar.setLocalPosition(-218, 0, 0);
-    leftBar.addComponent('element', {
+    // Neon Accent Border Trim at Top of Card
+    this.borderTrim = new Entity('TutorialBorderTrim');
+    this.borderTrim.setLocalPosition(0, 51, 0);
+    this.borderTrim.addComponent('element', {
       type: 'image',
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
-      width: 4,
-      height: 96,
-      color: new Color(0.96, 0.62, 0.04),
+      width: 796,
+      height: 3,
+      color: colorFromHex('#38bdf8'),
       ...layerOpt,
     });
-    this.cardBg.addChild(leftBar);
+    this.bannerEntity.addChild(this.borderTrim);
 
-    // Title (Y: +26)
-    this.titleText = new Entity('TutorialCardTitle');
-    this.titleText.setLocalPosition(-200, 26, 0);
-    this.titleText.addComponent('element', {
+    // 1. Unified Step Badge & Title Header
+    this.badgeText = new Entity('TutorialBadgeText');
+    this.badgeText.setLocalPosition(-370, 32, 0);
+    this.badgeText.addComponent('element', {
+      type: 'text',
+      fontAsset: this.fontAsset,
+      fontSize: 13,
+      text: '✦ STEP 1/7: CAMPAIGN',
+      color: colorFromHex('#fbbf24'),
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0, 0.5],
+      alignment: [0, 0.5],
+      autoWidth: false,
+      autoHeight: false,
+      width: 530,
+      height: 22,
+      ...layerOpt,
+    });
+    this.bannerEntity.addChild(this.badgeText);
+
+    // Dummy titleText entity retained for compatibility
+    this.titleText = new Entity('TutorialTitleText');
+    this.titleText.enabled = false;
+    this.bannerEntity.addChild(this.titleText);
+
+    // 2. Guidance Message Body (Multi-line wrapped text)
+    this.messageText = new Entity('TutorialMessageText');
+    this.messageText.setLocalPosition(-370, 4, 0);
+    this.messageText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 12,
-      text: '✦ ONBOARDING TUTORIAL',
-      color: new Color(0.96, 0.62, 0.04), // Gold
+      lineHeight: 17,
+      wrapLines: true,
+      text: 'Instructions',
+      color: colorFromHex('#f8fafc'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 530,
+      height: 34,
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0, 0.5],
+      alignment: [0, 0.5],
       ...layerOpt,
     });
-    this.cardBg.addChild(this.titleText);
+    this.bannerEntity.addChild(this.messageText);
 
-    // Body (Y: -10)
-    this.bodyText = new Entity('TutorialCardBody');
-    this.bodyText.setLocalPosition(-200, -10, 0);
-    this.bodyText.addComponent('element', {
+    // 3. Objective Tracker / Progress Note (Bottom row of text)
+    this.objectiveText = new Entity('TutorialObjectiveText');
+    this.objectiveText.setLocalPosition(-370, -28, 0);
+    this.objectiveText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 11,
-      lineHeight: 16,
-      wrapLines: true,
-      width: 400,
-      text: 'Follow the guided steps to master Combat, Camp Protection, Spawning, and Merging.',
-      color: new Color(0.85, 0.9, 0.98),
+      text: '🎯 Objective: Deploy squad and tap START BATTLE',
+      color: colorFromHex('#fbbf24'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 530,
+      height: 20,
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0, 0.5],
+      alignment: [0, 0.5],
       ...layerOpt,
     });
-    this.cardBg.addChild(this.bodyText);
+    this.bannerEntity.addChild(this.objectiveText);
 
-    // Action button inside card (Y: -28)
-    this.actionButton = new Entity('TutorialActionButton');
-    this.actionButton.setLocalPosition(145, -28, 0);
+    // 4. Action Button (Right-aligned, prominent high-contrast cyan/emerald pill)
+    this.actionButton = new Entity('TutorialActionBtn');
+    this.actionButton.setLocalPosition(285, -2, 0);
     this.actionButton.addComponent('element', {
       type: 'image',
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
-      width: 110,
-      height: 24,
-      color: new Color(0.02, 0.52, 0.8),
+      width: 170,
+      height: 48,
+      color: colorFromHex('#0284c7'), // Vibrant Cyan Blue
+      opacity: 1.0,
       useInput: true,
       ...layerOpt,
     });
-    this.cardBg.addChild(this.actionButton);
+    this.bannerEntity.addChild(this.actionButton);
 
-    this.actionBtnText = new Entity('ActionBtnText');
+    const btnBorder = new Entity('TutorialBtnBorder');
+    btnBorder.setLocalPosition(0, 0, 0);
+    btnBorder.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 166,
+      height: 44,
+      color: colorFromHex('#0369a1'),
+      ...layerOpt,
+    });
+    this.actionButton.addChild(btnBorder);
+
+    this.actionBtnText = new Entity('TutorialBtnText');
     this.actionBtnText.setLocalPosition(0, 0, 0);
     this.actionBtnText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
-      fontSize: 10,
+      fontSize: 13,
       text: 'CONTINUE →',
-      color: new Color(1, 1, 1),
+      color: colorFromHex('#ffffff'),
+      autoWidth: false,
+      autoHeight: false,
+      width: 160,
+      height: 40,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
     });
     this.actionButton.addChild(this.actionBtnText);
 
-    this.actionButton.element?.on('click', () => this.onActionClick?.());
-    this.actionButton.element?.on('touchend', () => this.onActionClick?.());
+    const triggerAction = () => {
+      this.onActionClick?.();
+    };
+    this.actionButton.element?.on('click', triggerAction);
+    this.actionButton.element?.on('touchend', triggerAction);
+    this.actionButton.element?.on('mousedown', triggerAction);
   }
 
-  showStep(title: string, body: string, actionLabel?: string): void {
+  showStepDetails(options: TutorialStepOptions): void {
     this.root.enabled = true;
-    if (this.titleText.element) {
-      this.titleText.element.text = `✦ ${title.toUpperCase()}`;
+
+    const accent = options.accentColor ?? '#38bdf8';
+    if (this.borderTrim.element) {
+      this.borderTrim.element.color = colorFromHex(accent);
     }
-    if (this.bodyText.element) {
-      this.bodyText.element.text = body;
+
+    if (this.badgeText.element) {
+      const cleanTitle = options.title.replace(/^\d+\.\s*/, '');
+      this.badgeText.element.text = `✦ STEP ${options.stepNumber}/${options.totalSteps}: ${options.phaseName.toUpperCase()} — ${cleanTitle}`;
+      this.badgeText.element.color = colorFromHex('#fbbf24');
     }
-    if (actionLabel) {
-      this.actionButton.enabled = true;
-      if (this.actionBtnText.element) {
-        this.actionBtnText.element.text = actionLabel;
-      }
-    } else {
-      this.actionButton.enabled = false;
+
+    if (this.messageText.element) {
+      this.messageText.element.text = options.body;
+    }
+
+    if (this.objectiveText.element) {
+      this.objectiveText.element.text = options.objective ?? '';
+      this.objectiveText.element.color = options.objective ? colorFromHex('#fbbf24') : colorFromHex('#94a3b8');
+    }
+
+    const showBtn = options.showActionButton !== false;
+    this.actionButton.enabled = showBtn;
+    if (showBtn && this.actionBtnText.element && this.actionButton.element) {
+      this.actionBtnText.element.text = options.actionLabel ?? 'CONTINUE →';
+      this.actionButton.element.color = colorFromHex('#0284c7');
+    }
+  }
+
+  /**
+   * Compatibility method for simple step triggers.
+   */
+  showStep(title: string, body: string, actionLabel: string = 'CONTINUE →'): void {
+    let stepNum = 1;
+    const match = title.match(/^(\d+)\./);
+    if (match) {
+      stepNum = parseInt(match[1]!, 10);
+    }
+
+    this.showStepDetails({
+      stepNumber: stepNum,
+      totalSteps: 7,
+      phaseName: title.replace(/^\d+\.\s*/, ''),
+      title: title,
+      body: body,
+      actionLabel: actionLabel,
+    });
+  }
+
+  updateObjective(objective: string, highlight: boolean = true): void {
+    if (this.objectiveText.element) {
+      this.objectiveText.element.text = objective;
+      this.objectiveText.element.color = highlight ? colorFromHex('#fbbf24') : colorFromHex('#94a3b8');
     }
   }
 

@@ -5,6 +5,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import type { MotionDirector } from '../presentation/MotionDirector';
 import type { AudioDirector } from '../presentation/AudioDirector';
 import type { VFXDirector } from '../presentation/VFXDirector';
@@ -32,6 +33,7 @@ export class RaidWorld {
 
   private combatState: CombatState | null = null;
   private isCombatRunning: boolean = false;
+  private stepInterval: any = null;
   private materials: StandardMaterial[] = [];
 
   constructor(
@@ -49,20 +51,7 @@ export class RaidWorld {
     this.root.enabled = false;
     this.app.root.addChild(this.root);
 
-    // 1. 8x8 Tactical Raid Arena Floor (Dark Crimson Slate)
-    const floorMat = this.createMat({
-      diffuse: '#180a0a',
-      emissive: '#2b0c0c',
-      emissiveIntensity: 0.35,
-      gloss: 0,
-    });
-    this.arenaFloor = new Entity('RaidArenaFloor');
-    this.arenaFloor.setLocalPosition(0, 0.02, 0);
-    this.arenaFloor.setLocalScale(RAID_SIZE * RAID_CELL_SIZE + 0.4, 0.04, RAID_SIZE * RAID_CELL_SIZE + 0.4);
-    this.arenaFloor.addComponent('render', { type: 'box', material: floorMat, castShadows: false, ...layerOpt });
-    this.root.addChild(this.arenaFloor);
-
-    // Arena Gold/Crimson Rim
+    // 1. Arena Base Rim (Outer Trim)
     const rimMat = this.createMat({
       diffuse: '#991b1b',
       emissive: '#ef4444',
@@ -70,12 +59,51 @@ export class RaidWorld {
       gloss: 0,
     });
     const rim = new Entity('RaidArenaRim');
-    rim.setLocalPosition(0, 0.03, 0);
-    rim.setLocalScale(RAID_SIZE * RAID_CELL_SIZE + 0.48, 0.02, RAID_SIZE * RAID_CELL_SIZE + 0.48);
+    rim.setLocalPosition(0, 0.02, 0);
+    rim.setLocalScale(RAID_SIZE * RAID_CELL_SIZE + 0.48, 0.04, RAID_SIZE * RAID_CELL_SIZE + 0.48);
     rim.addComponent('render', { type: 'box', material: rimMat, castShadows: false, ...layerOpt });
     this.root.addChild(rim);
 
-    // Zone Dividing Line (Player z>=4 vs Enemy z<4)
+    // 2. 8x8 Tactical Raid Arena Floor Base Slab (Dark Crimson Slate)
+    const floorMat = this.createMat({
+      diffuse: '#180a0a',
+      emissive: '#2b0c0c',
+      emissiveIntensity: 0.35,
+      gloss: 0,
+    });
+    this.arenaFloor = new Entity('RaidArenaFloor');
+    this.arenaFloor.setLocalPosition(0, 0.025, 0);
+    this.arenaFloor.setLocalScale(RAID_SIZE * RAID_CELL_SIZE + 0.36, 0.04, RAID_SIZE * RAID_CELL_SIZE + 0.36);
+    this.arenaFloor.addComponent('render', { type: 'box', material: floorMat, castShadows: false, ...layerOpt });
+    this.root.addChild(this.arenaFloor);
+
+    // 3. Enemy Half Surface (z < 0, z from -4 to 0)
+    const enemyZoneMat = this.createMat({
+      diffuse: '#180a0a',
+      emissive: '#2b0c0c',
+      emissiveIntensity: 0.25,
+      gloss: 0,
+    });
+    const enemyZone = new Entity('RaidEnemyZone');
+    enemyZone.setLocalPosition(0, 0.045, -2.0);
+    enemyZone.setLocalScale(RAID_SIZE * RAID_CELL_SIZE, 0.005, 4.0);
+    enemyZone.addComponent('render', { type: 'box', material: enemyZoneMat, castShadows: false, ...layerOpt });
+    this.root.addChild(enemyZone);
+
+    // 4. Player Deployment Half Surface (z >= 0, z from 0 to +4)
+    const playerZoneMat = this.createMat({
+      diffuse: '#220e0e',
+      emissive: '#331212',
+      emissiveIntensity: 0.25,
+      gloss: 0,
+    });
+    const playerZone = new Entity('RaidPlayerZone');
+    playerZone.setLocalPosition(0, 0.045, 2.0);
+    playerZone.setLocalScale(RAID_SIZE * RAID_CELL_SIZE, 0.005, 4.0);
+    playerZone.addComponent('render', { type: 'box', material: playerZoneMat, castShadows: false, ...layerOpt });
+    this.root.addChild(playerZone);
+
+    // 5. Zone Dividing Midline (Player z>=4 vs Enemy z<4)
     const lineMat = this.createMat({
       diffuse: '#ef4444',
       emissive: '#f87171',
@@ -83,12 +111,12 @@ export class RaidWorld {
       gloss: 0,
     });
     const midLine = new Entity('RaidMidLine');
-    midLine.setLocalPosition(0, 0.045, 0);
-    midLine.setLocalScale(RAID_SIZE * RAID_CELL_SIZE, 0.015, 0.06);
+    midLine.setLocalPosition(0, 0.052, 0);
+    midLine.setLocalScale(RAID_SIZE * RAID_CELL_SIZE, 0.008, 0.06);
     midLine.addComponent('render', { type: 'box', material: lineMat, castShadows: false, ...layerOpt });
     this.root.addChild(midLine);
 
-    // Grid Cell Dots
+    // 6. Grid Cell Dots
     const cellDotMat = this.createMat({
       diffuse: '#f87171',
       emissive: '#ef4444',
@@ -100,12 +128,20 @@ export class RaidWorld {
         const dot = new Entity(`RaidDot_${x}_${z}`);
         const lx = (x - (RAID_SIZE - 1) / 2) * RAID_CELL_SIZE;
         const lz = (z - (RAID_SIZE - 1) / 2) * RAID_CELL_SIZE;
-        dot.setLocalPosition(lx, 0.045, lz);
-        dot.setLocalScale(0.04, 0.01, 0.04);
+        dot.setLocalPosition(lx, 0.052, lz);
+        dot.setLocalScale(0.04, 0.008, 0.04);
         dot.addComponent('render', { type: 'box', material: cellDotMat, castShadows: false, ...layerOpt });
         this.root.addChild(dot);
       }
     }
+  }
+
+  stopCombat(): void {
+    if (this.stepInterval) {
+      clearInterval(this.stepInterval);
+      this.stepInterval = null;
+    }
+    this.isCombatRunning = false;
   }
 
   show(): void {
@@ -113,6 +149,7 @@ export class RaidWorld {
   }
 
   hide(): void {
+    this.stopCombat();
     this.root.enabled = false;
     this.clearUnits();
   }
@@ -124,10 +161,10 @@ export class RaidWorld {
     gloss?: number;
   }): StandardMaterial {
     const mat = new StandardMaterial();
-    mat.diffuse = new Color().fromString(options.diffuse);
+    mat.diffuse = colorFromHex(options.diffuse);
     mat.specular = new Color(0, 0, 0);
     if (options.emissive) {
-      mat.emissive = new Color().fromString(options.emissive);
+      mat.emissive = colorFromHex(options.emissive);
       mat.emissiveIntensity = options.emissiveIntensity ?? 0.5;
     }
     if (options.gloss !== undefined) mat.gloss = options.gloss;
@@ -140,10 +177,21 @@ export class RaidWorld {
     const halfSpan = (RAID_SIZE - 1) / 2;
     return [
       (gridX - halfSpan) * RAID_CELL_SIZE,
-      0.05,
+      0.055,
       (gridZ - halfSpan) * RAID_CELL_SIZE,
     ];
   }
+
+  cellToWorld(gridX: number, gridZ: number): [number, number, number] {
+    const lpos = this.cellToLocal(gridX, gridZ);
+    return [
+      lpos[0] + RAID_ORIGIN[0],
+      lpos[1] + RAID_ORIGIN[1],
+      lpos[2] + RAID_ORIGIN[2],
+    ];
+  }
+
+  public playerUnits: Map<string, { summonId: string; cell: { x: number; z: number }; entity: Entity }> = new Map();
 
   loadRoundUnits(snapshot: CombatSnapshot): void {
     this.clearUnits();
@@ -158,6 +206,16 @@ export class RaidWorld {
       }
       this.root.addChild(unitRoot);
 
+      if (isPlayer) {
+        const parts = unit.id.split(':');
+        const summonId = parts[1] ?? unit.id;
+        this.playerUnits.set(summonId, {
+          summonId,
+          cell: { x: unit.spawnCell.x, z: unit.spawnCell.z },
+          entity: unitRoot,
+        });
+      }
+
       const presenter = new SummonPresenter(this.worldLayer);
       presenter.createVisuals(unit.definitionId, unitRoot);
       this.unitPresenters.set(unit.id, presenter);
@@ -166,6 +224,58 @@ export class RaidWorld {
       // Floating Health Bar
       this.createFloatingHealthBar(unit.id, unitRoot, unit.hp, isPlayer);
     }
+  }
+
+  getPlayerUnitAtCell(x: number, z: number): { summonId: string; cell: { x: number; z: number }; entity: Entity } | undefined {
+    for (const [, unit] of this.playerUnits) {
+      if (unit.cell.x === x && unit.cell.z === z) {
+        return unit;
+      }
+    }
+    return undefined;
+  }
+
+  setPlayerUnitPosition(summonId: string, cell: { x: number; z: number }, animated: boolean = true): void {
+    const unit = this.playerUnits.get(summonId);
+    if (!unit) return;
+
+    unit.cell = { ...cell };
+    const lpos = this.cellToLocal(cell.x, cell.z);
+
+    if (animated && this.motion) {
+      const curPos = unit.entity.getLocalPosition().clone();
+      this.motion.tween({
+        id: `raid_place_${summonId}`,
+        from: 0,
+        to: 1,
+        duration: 0.15,
+        easing: EASING.SNAP,
+        onUpdate: (t) => {
+          unit.entity.setLocalPosition(
+            curPos.x + (lpos[0] - curPos.x) * t,
+            0.05 + Math.sin(t * Math.PI) * 0.4,
+            curPos.z + (lpos[2] - curPos.z) * t
+          );
+        },
+        onComplete: () => {
+          unit.entity.setLocalPosition(lpos[0], lpos[1], lpos[2]);
+        },
+      });
+    } else {
+      unit.entity.setLocalPosition(lpos[0], lpos[1], lpos[2]);
+    }
+  }
+
+  swapPlayerUnits(summonId1: string, summonId2: string): void {
+    const unit1 = this.playerUnits.get(summonId1);
+    const unit2 = this.playerUnits.get(summonId2);
+    if (!unit1 || !unit2) return;
+
+    const cell1 = { ...unit1.cell };
+    const cell2 = { ...unit2.cell };
+
+    this.setPlayerUnitPosition(summonId1, cell2, true);
+    this.setPlayerUnitPosition(summonId2, cell1, true);
   }
 
   private createFloatingHealthBar(unitId: string, parent: Entity, maxHp: number, isPlayer: boolean): void {
@@ -201,10 +311,9 @@ export class RaidWorld {
 
     this.combatState = createCombatState(snapshot, Math.floor(Math.random() * 10000));
 
-    const stepInterval = setInterval(() => {
+    this.stepInterval = setInterval(() => {
       if (!this.combatState || this.combatState.ended) {
-        clearInterval(stepInterval);
-        this.isCombatRunning = false;
+        this.stopCombat();
         const winner = this.combatState?.winner ?? 'player';
         this.audio.playInspectorOpen();
         onRoundEnded?.(winner);
@@ -279,6 +388,7 @@ export class RaidWorld {
   }
 
   destroy(): void {
+    this.stopCombat();
     this.clearUnits();
     for (const mat of this.materials) {
       mat.destroy();

@@ -251,6 +251,11 @@ export class DefenseHUD {
       fontSize: 13,
       text: 'LOCK & SAVE DEFENSE',
       color: new Color(1, 1, 1),
+      autoWidth: false,
+      autoHeight: false,
+      width: 250,
+      height: 44,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
@@ -292,6 +297,11 @@ export class DefenseHUD {
       fontSize: 12,
       text: '← RETURN TO BASE',
       color: new Color(0.85, 0.9, 0.98),
+      autoWidth: false,
+      autoHeight: false,
+      width: 210,
+      height: 44,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
@@ -516,12 +526,14 @@ export class DefenseHUD {
     this.audio.playInspectorOpen();
   }
 
-  close(): void {
-    if (!this.isOpen) return;
+  close(suppressCallback: boolean = false): void {
+    if (!this.isOpen && !this.root.enabled) return;
     this.isOpen = false;
     this.root.enabled = false;
     this.audio.playInspectorClose();
-    this.onClose?.();
+    if (!suppressCallback) {
+      this.onClose?.();
+    }
   }
 
   destroy(): void {

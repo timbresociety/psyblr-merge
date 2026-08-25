@@ -98,55 +98,53 @@ export class DealerHUD {
     });
     this.closeXBtn.setLocalPosition(280, 150, 0);
 
-    const xText = new Entity('DealerXText');
-    this.closeXBtn.addChild(xText);
-    xText.addComponent('element', {
+    const closeXText = new Entity('CloseXText');
+    this.closeXBtn.addChild(closeXText);
+    closeXText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 16,
       text: 'X',
-      color: new Color(0.9, 1, 0.95),
+      color: new Color(0.8, 0.9, 0.85),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
     });
-    xText.setLocalPosition(0, 0, 0);
-
+    closeXText.setLocalPosition(0, 0, 0);
     this.closeXBtn.element?.on('click', () => this.close());
-    this.closeXBtn.element?.on('touchend', () => this.close());
 
-    // Header Title (Y: +140)
-    this.headerText = new Entity('DealerTitle');
+    // 3. Header Title (Top-Left: Y: 135)
+    this.headerText = new Entity('DealerHeaderTitle');
     this.panelBg.addChild(this.headerText);
     this.headerText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
-      fontSize: 18,
-      text: "DEALER'S PLINKO SUPPLIES",
-      color: new Color(0.2, 0.9, 0.5),
+      fontSize: 22,
+      text: 'UNDERGROUND MEDAL DEALER',
+      color: new Color(0.1, 0.85, 0.45),
       anchor: [0.5, 0.5, 0.5, 0.5],
-      pivot: [0.5, 0.5],
+      pivot: [0, 0.5],
       ...layerOpt,
     });
-    this.headerText.setLocalPosition(0, 140, 0);
+    this.headerText.setLocalPosition(-280, 135, 0);
 
-    // Subtitle (Y: +110)
-    this.subText = new Entity('DealerSub');
+    // Subtitle (Y: 105)
+    this.subText = new Entity('DealerSubText');
     this.panelBg.addChild(this.subText);
     this.subText.addComponent('element', {
       type: 'text',
       fontAsset: this.fontAsset,
-      fontSize: 11,
-      text: 'Daily Supply Drop • Generates 100 Plinko balls every 24 hours',
-      color: new Color(0.7, 0.85, 0.8),
+      fontSize: 12,
+      text: '24-HOUR GENERATION: 100 MEDALS OVER 12 TWO-HOUR EPOCHS',
+      color: new Color(0.5, 0.65, 0.8),
       anchor: [0.5, 0.5, 0.5, 0.5],
-      pivot: [0.5, 0.5],
+      pivot: [0, 0.5],
       ...layerOpt,
     });
-    this.subText.setLocalPosition(0, 110, 0);
+    this.subText.setLocalPosition(-280, 105, 0);
 
-    // Body text (Y: +25)
-    this.bodyText = new Entity('DealerBody');
+    // 4. Body Content Box (Y: 10)
+    this.bodyText = new Entity('DealerBodyText');
     this.panelBg.addChild(this.bodyText);
     this.bodyText.addComponent('element', {
       type: 'text',
@@ -154,16 +152,21 @@ export class DealerHUD {
       fontSize: 13,
       lineHeight: 22,
       wrapLines: true,
-      width: 540,
+      width: 560,
       text:
-        'Greetings, Summoner!\n\nI deliver 100 free Plinko balls every 24 hours to fuel your Spawn Machine.\nUse them to summon new fighters, hit side bumpers to charge 1-hour Shields, and safeguard your Battle Camp from raiders!',
-      color: new Color(0.95, 0.98, 1.0),
+        'The Dealer produces 100 Medals continuously every 24 hours across 12 epochs.\n\n' +
+        '• Generation Rate: Deterministic 2-hour accrual schedule.\n' +
+        '• Stock Cap: 100 Medals stored maximum.\n' +
+        '• Eligibility: Collection is enabled only when your wallet is below 100 Medals.\n' +
+        '• Unclamped Transfer: Entire accumulated stock transfers into your wallet without clamp.',
+      color: new Color(0.85, 0.9, 0.95),
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
     });
-    this.bodyText.setLocalPosition(0, 25, 0);
+    this.bodyText.setLocalPosition(0, 15, 0);
 
+    // 5. Action Buttons (Bottom row)
     // Claim Button (Y: -90)
     this.claimButton = new Entity('DealerClaimButton');
     this.panelBg.addChild(this.claimButton);
@@ -185,8 +188,13 @@ export class DealerHUD {
       type: 'text',
       fontAsset: this.fontAsset,
       fontSize: 13,
-      text: 'CLAIM 100 PLINKO BALLS',
+      text: 'COLLECT DEALER MEDALS',
       color: new Color(1, 1, 1),
+      autoWidth: false,
+      autoHeight: false,
+      width: 320,
+      height: 44,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
@@ -220,6 +228,11 @@ export class DealerHUD {
       fontSize: 12,
       text: '← RETURN',
       color: new Color(1, 1, 1),
+      autoWidth: false,
+      autoHeight: false,
+      width: 170,
+      height: 44,
+      alignment: [0.5, 0.5],
       anchor: [0.5, 0.5, 0.5, 0.5],
       pivot: [0.5, 0.5],
       ...layerOpt,
@@ -229,6 +242,54 @@ export class DealerHUD {
     this.returnBtn.element?.on('click', () => this.close());
     this.returnBtn.element?.on('touchend', () => this.close());
 
+    // 6. Floating Success Celebration Toast
+    this.successToastEntity = new Entity('DealerSuccessToast');
+    this.panelBg.addChild(this.successToastEntity);
+    this.successToastEntity.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 480,
+      height: 48,
+      color: new Color(0.04, 0.28, 0.16),
+      opacity: 0.98,
+      ...layerOpt,
+    });
+    this.successToastEntity.setLocalPosition(0, -35, 2);
+    this.successToastEntity.enabled = false;
+
+    const toastTrim = new Entity('DealerToastTrim');
+    this.successToastEntity.addChild(toastTrim);
+    toastTrim.addComponent('element', {
+      type: 'image',
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      width: 476,
+      height: 2,
+      color: new Color(0.2, 0.9, 0.5),
+      ...layerOpt,
+    });
+    toastTrim.setLocalPosition(0, 23, 0);
+
+    this.successToastText = new Entity('DealerToastText');
+    this.successToastEntity.addChild(this.successToastText);
+    this.successToastText.addComponent('element', {
+      type: 'text',
+      fontAsset: this.fontAsset,
+      fontSize: 14,
+      text: '✨ +100 MEDALS COLLECTED INTO WALLET!',
+      color: new Color(0.9, 1.0, 0.9),
+      autoWidth: false,
+      autoHeight: false,
+      width: 460,
+      height: 40,
+      alignment: [0.5, 0.5],
+      anchor: [0.5, 0.5, 0.5, 0.5],
+      pivot: [0.5, 0.5],
+      ...layerOpt,
+    });
+    this.successToastText.setLocalPosition(0, 0, 0);
+
     // ESC key listener to exit
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.isOpen) {
@@ -237,39 +298,74 @@ export class DealerHUD {
     });
   }
 
-  setClaimStatus(canClaim: boolean, remainingMs: number = 0): void {
+  private successToastEntity: Entity;
+  private successToastText: Entity;
+  private successTimer?: any;
+
+  showCollectionSuccess(medals: number): void {
+    if (this.successTimer) {
+      clearTimeout(this.successTimer);
+      this.successTimer = undefined;
+    }
+
+    if (this.successToastText.element) {
+      this.successToastText.element.text = `✨ +${medals} MEDALS TRANSFERRED TO WALLET!`;
+    }
+
+    this.successToastEntity.enabled = true;
+    this.successTimer = setTimeout(() => {
+      this.successToastEntity.enabled = false;
+    }, 2800);
+  }
+
+  setStock(stock: number, canClaim: boolean = true, remainingMs: number = 0): void {
     if (this.claimBtnText.element && this.claimButton.element) {
-      if (canClaim) {
-        this.claimBtnText.element.text = 'CLAIM 100 PLINKO BALLS';
+      if (canClaim && stock > 0) {
+        this.claimBtnText.element.text = `COLLECT ${stock} MEDALS 💰`;
         this.claimButton.element.color = new Color(0.1, 0.75, 0.4);
         this.claimButton.element.useInput = true;
+      } else if (!canClaim && stock > 0) {
+        this.claimBtnText.element.text = 'WALLET AT CAP (≥100) • SPEND MEDALS FIRST';
+        this.claimButton.element.color = new Color(0.35, 0.28, 0.15);
+        this.claimButton.element.useInput = false;
       } else {
         const hours = Math.floor(remainingMs / (60 * 60 * 1000));
         const mins = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
-        this.claimBtnText.element.text = `CLAIMED (${hours}h ${mins}m)`;
-        this.claimButton.element.color = new Color(0.28, 0.35, 0.45);
+        const timerStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+        this.claimBtnText.element.text = `STOCK ACCRUING (0 MEDALS) • NEXT: ${timerStr}`;
+        this.claimButton.element.color = new Color(0.2, 0.25, 0.35);
         this.claimButton.element.useInput = false;
       }
     }
   }
 
-  open(canClaim: boolean = true, remainingMs: number = 0): void {
+  setClaimStatus(canClaim: boolean, remainingMs: number = 0): void {
+    // Retained for backward compatibility
+  }
+
+  open(stock: number = 0, canClaim: boolean = true, remainingMs: number = 0): void {
     if (this.isOpen) return;
     this.isOpen = true;
-    this.setClaimStatus(canClaim, remainingMs);
+    this.successToastEntity.enabled = false;
+    this.setStock(stock, canClaim, remainingMs);
     this.root.enabled = true;
     this.audio.playInspectorOpen();
   }
 
-  close(): void {
-    if (!this.isOpen) return;
+  close(suppressCallback: boolean = false): void {
+    if (!this.isOpen && !this.root.enabled) return;
     this.isOpen = false;
+    this.successToastEntity.enabled = false;
+    if (this.successTimer) clearTimeout(this.successTimer);
     this.root.enabled = false;
     this.audio.playInspectorClose();
-    this.onClose?.();
+    if (!suppressCallback) {
+      this.onClose?.();
+    }
   }
 
   destroy(): void {
+    if (this.successTimer) clearTimeout(this.successTimer);
     this.root.destroy();
   }
 }

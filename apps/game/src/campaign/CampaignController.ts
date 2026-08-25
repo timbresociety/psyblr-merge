@@ -17,9 +17,50 @@ export const CAMPAIGN_ARCS: CampaignArc[] = [
   { arcNumber: 4, title: 'Super Saiyan Horizon', description: 'Ascend beyond all mortal limits in the astral crucible.', themeColor: '#f59e0b' },
 ];
 
+export interface CampaignSquadPlacement {
+  summon: SummonInstance;
+  cell: { x: number; z: number };
+}
+
 export class CampaignController {
   public currentLevel: number = 1;
   public highestClearedLevel: number = 0;
+
+  constructor() {
+    this.loadPersistedState();
+  }
+
+  public loadPersistedState(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedLevel = localStorage.getItem('psyblr_campaign_level');
+        const savedHighest = localStorage.getItem('psyblr_campaign_highest');
+        if (savedLevel !== null) this.currentLevel = parseInt(savedLevel, 10) || 1;
+        if (savedHighest !== null) this.highestClearedLevel = parseInt(savedHighest, 10) || 0;
+        return true;
+      }
+    } catch {
+      // Ignore
+    }
+    return false;
+  }
+
+  public saveState(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('psyblr_campaign_level', this.currentLevel.toString());
+        localStorage.setItem('psyblr_campaign_highest', this.highestClearedLevel.toString());
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  public reset(): void {
+    this.currentLevel = 1;
+    this.highestClearedLevel = 0;
+    this.saveState();
+  }
 
   getArcForLevel(level: number = this.currentLevel): CampaignArc {
     const arcIndex = Math.floor((level - 1) / 100);
@@ -34,20 +75,30 @@ export class CampaignController {
     return level % 100 === 0;
   }
 
-  buildCombatSnapshot(playerSummons: readonly SummonInstance[]): CombatSnapshot {
+  shouldAutoProgressPause(level: number = this.currentLevel): boolean {
+    return level % 10 === 0;
+  }
+
+  buildCombatSnapshot(
+    playerSummonsOrPlacements: readonly SummonInstance[] | readonly CampaignSquadPlacement[]
+  ): CombatSnapshot {
     const level = this.currentLevel;
     const isBoss = this.isMainBossLevel(level);
     const isMiniBoss = this.isMiniBossLevel(level);
 
+    const defaultSpawnCells = [
+      { x: 1, z: 5 }, { x: 3, z: 5 }, { x: 5, z: 5 },
+      { x: 2, z: 6 }, { x: 4, z: 6 }, { x: 6, z: 6 },
+    ];
+
     // 1. Build Player Units (z >= 4)
-    const playerUnits: CombatUnitSnapshot[] = playerSummons.slice(0, 6).map((summon, index) => {
+    const playerUnits: CombatUnitSnapshot[] = playerSummonsOrPlacements.slice(0, 6).map((item, index) => {
+      const isPlacement = 'cell' in item;
+      const summon = isPlacement ? (item as CampaignSquadPlacement).summon : (item as SummonInstance);
+      const cell = isPlacement ? (item as CampaignSquadPlacement).cell : (defaultSpawnCells[index] ?? { x: index + 1, z: 5 });
+
       const def = getSummonDefinition(summon.definitionId);
       const stats = resolveTierStats(def.stats, summon.tier);
-      const spawnCells = [
-        { x: 1, z: 5 }, { x: 3, z: 5 }, { x: 5, z: 5 },
-        { x: 2, z: 6 }, { x: 4, z: 6 }, { x: 6, z: 6 },
-      ];
-      const cell = spawnCells[index] ?? { x: index + 1, z: 5 };
 
       return {
         id: `player:${summon.id}:${index}`,
@@ -228,13 +279,15 @@ export class CampaignController {
     };
   }
 
-  onVictory(): { levelCleared: number; nextLevel: number; ballsReward: number } {
+  onVictory(): { levelCleared: number; nextLevel: number; medalsReward: number; ballsReward: number } {
     const cleared = this.currentLevel;
     if (cleared > this.highestClearedLevel) {
       this.highestClearedLevel = cleared;
     }
     this.currentLevel++;
-    const ballsReward = this.isMainBossLevel(cleared) ? 25 : this.isMiniBossLevel(cleared) ? 10 : 2;
-    return { levelCleared: cleared, nextLevel: this.currentLevel, ballsReward };
+    this.saveState();
+    // Medals awarded every 10 levels (10, 20, 30, ...)
+    const medalsReward = this.isMainBossLevel(cleared) ? 25 : this.isMiniBossLevel(cleared) ? 10 : 0;
+    return { levelCleared: cleared, nextLevel: this.currentLevel, medalsReward, ballsReward: medalsReward };
   }
 }

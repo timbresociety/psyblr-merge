@@ -30,6 +30,10 @@ export class InputManager {
     this.camera = camera;
   }
 
+  public screenToGround(clientX: number, clientY: number): WorldPoint | null {
+    return this.pointOnGround(clientX, clientY);
+  }
+
   private pointOnGround(clientX: number, clientY: number): WorldPoint | null {
     if (!this.camera || !this.canvas) return null;
 

@@ -15,45 +15,96 @@ const PORT = process.env.LOCAL_DB_PORT ? parseInt(process.env.LOCAL_DB_PORT, 10)
 // Curated 6 starter summons
 const STARTER_DEFINITIONS = ['goku', 'naruto', 'luffy', 'eren', 'l', 'lelouch'];
 
-function createDefaultState() {
-  const summons = STARTER_DEFINITIONS.map((defId, index) => ({
-    id: `starter:${defId}:${index + 1}`,
-    definitionId: defId,
-    tier: 'F',
-    createdAt: new Date().toISOString(),
-  }));
+const TIER_ORDER = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'X'];
 
-  const placements = summons.map((summon, index) => ({
-    summonInstanceId: summon.id,
-    cell: { x: index, y: 3 },
-  }));
+const F_EQUIVALENT_COST = {
+  F: 1,
+  E: 2,
+  D: 4,
+  C: 8,
+  B: 16,
+  A: 32,
+  S: 64,
+  SS: 128,
+  SSS: 256,
+  X: 512,
+};
+
+const RELEASE_REFUND = {
+  F: 0,
+  E: 1,
+  D: 2,
+  C: 4,
+  B: 8,
+  A: 16,
+  S: 32,
+  SS: 64,
+  SSS: 128,
+  X: 256,
+};
+
+function getNextTier(currentTier) {
+  const idx = TIER_ORDER.indexOf(currentTier);
+  if (idx >= 0 && idx < TIER_ORDER.length - 1) {
+    return TIER_ORDER[idx + 1];
+  }
+  return null;
+}
+
+function createDefaultState() {
+  const summons = [
+    { id: 'starter:goku:001', definitionId: 'goku', tier: 'F', createdAt: new Date().toISOString() },
+    { id: 'starter:goku:002', definitionId: 'goku', tier: 'F', createdAt: new Date().toISOString() },
+    { id: 'starter:naruto:003', definitionId: 'naruto', tier: 'F', createdAt: new Date().toISOString() },
+    { id: 'starter:luffy:004', definitionId: 'luffy', tier: 'F', createdAt: new Date().toISOString() },
+    { id: 'starter:eren:005', definitionId: 'eren', tier: 'F', createdAt: new Date().toISOString() },
+    { id: 'starter:l:006', definitionId: 'l', tier: 'F', createdAt: new Date().toISOString() },
+  ];
+
+  const placements = [
+    { summonInstanceId: 'starter:goku:001', cell: { x: 2, y: 3 } },
+    { summonInstanceId: 'starter:goku:002', cell: { x: 3, y: 3 } },
+    { summonInstanceId: 'starter:naruto:003', cell: { x: 1, y: 2 } },
+    { summonInstanceId: 'starter:luffy:004', cell: { x: 4, y: 2 } },
+    { summonInstanceId: 'starter:eren:005', cell: { x: 2, y: 2 } },
+    { summonInstanceId: 'starter:l:006', cell: { x: 3, y: 2 } },
+  ];
 
   return {
     profile: {
       userId: 'local-player-001',
-      tutorialStep: 'complete',
-      tutorialComplete: true,
-      autoCast: false,
+      tutorialStep: 'campaign_intro',
+      tutorialComplete: false,
+      timeShieldExpiresAt: null,
+      illuminatiUpgraded: false,
+      powerLevel: 750,
       updatedAt: new Date().toISOString(),
     },
     spawnMachine: {
-      balls: 10,
-      maxBalls: 10,
+      medals: 0,
+      balls: 0, // compatibility
       dailyPool: [
-        { slotIndex: 0, summonDefinitionId: 'goku', probability: 0.16 },
-        { slotIndex: 1, summonDefinitionId: 'naruto', probability: 0.16 },
-        { slotIndex: 2, summonDefinitionId: 'luffy', probability: 0.16 },
-        { slotIndex: 3, summonDefinitionId: 'eren', probability: 0.16 },
-        { slotIndex: 4, summonDefinitionId: 'l', probability: 0.18 },
-        { slotIndex: 5, summonDefinitionId: 'lelouch', probability: 0.18 },
+        { slotIndex: 0, summonDefinitionId: 'goku', probability: 0.10, tier: 'F' },
+        { slotIndex: 1, summonDefinitionId: 'naruto', probability: 0.15, tier: 'F' },
+        { slotIndex: 2, summonDefinitionId: 'luffy', probability: 0.25, tier: 'F' },
+        { slotIndex: 3, summonDefinitionId: 'eren', probability: 0.25, tier: 'F' },
+        { slotIndex: 4, summonDefinitionId: 'l', probability: 0.15, tier: 'F' },
+        { slotIndex: 5, summonDefinitionId: 'lelouch', probability: 0.10, tier: 'F' },
       ],
       appliedActionIds: [],
+    },
+    dealer: {
+      generatedStock: 100,
+      lastAccrualTimestamp: Date.now(),
+      stockCap: 100,
     },
     summons,
     campPlacements: placements,
     mergeEvents: [],
     raidMatches: [],
     raidSteals: [],
+    defenseSnapshot: null,
+    defenseRewardFifo: [],
   };
 }
 
@@ -119,15 +170,6 @@ function parseJsonBody(req) {
   });
 }
 
-const TIER_ORDER = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
-function getNextTier(currentTier) {
-  const idx = TIER_ORDER.indexOf(currentTier);
-  if (idx >= 0 && idx < TIER_ORDER.length - 1) {
-    return TIER_ORDER[idx + 1];
-  }
-  return null;
-}
-
 const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
@@ -148,10 +190,11 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/health' || pathname === '/health') {
       sendJson(res, 200, {
         status: 'ok',
-        version: '0.1.0-alpha',
+        version: '0.1.0-v1',
         db: 'local_game.json',
         summonsCount: db.summons.length,
-        balls: db.spawnMachine.balls,
+        medals: db.spawnMachine.medals ?? db.spawnMachine.balls,
+        dealerStock: db.dealer?.generatedStock ?? 0,
       });
       return;
     }
@@ -161,10 +204,13 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         profile: db.profile,
         spawnMachine: db.spawnMachine,
+        dealer: db.dealer,
         summons: db.summons,
         campPlacements: db.campPlacements,
         mergeEvents: db.mergeEvents,
         raidMatches: db.raidMatches,
+        defenseSnapshot: db.defenseSnapshot,
+        defenseRewardFifo: db.defenseRewardFifo,
       });
       return;
     }
@@ -180,13 +226,12 @@ const server = http.createServer(async (req, res) => {
 
     // 4. Seed all tiers for testing merges
     if (pathname === '/api/player/seed-tier-test' && req.method === 'POST') {
-      // Create pairs of summons across tiers F, E, D, C for Goku and Naruto
       const testSummons = [];
       const testPlacements = [];
       let cellX = 0;
       let cellY = 0;
 
-      const tiersToSeed = ['F', 'F', 'E', 'E', 'D', 'D', 'C', 'C'];
+      const tiersToSeed = ['F', 'F', 'E', 'E', 'D', 'D', 'C', 'C', 'B', 'B', 'A', 'A', 'S', 'S', 'SS', 'SS', 'SSS', 'SSS'];
       for (const tier of tiersToSeed) {
         const id = `test:goku:${tier}:${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
         testSummons.push({ id, definitionId: 'goku', tier, createdAt: new Date().toISOString() });
@@ -200,16 +245,17 @@ const server = http.createServer(async (req, res) => {
 
       db.summons = [...testSummons];
       db.campPlacements = [...testPlacements];
-      db.spawnMachine.balls = 10;
+      db.spawnMachine.medals = 100;
+      db.spawnMachine.balls = 100;
       saveState(db);
 
-      console.log('[Local DB] Seeded test summons for merge exploration.');
+      console.log('[Local DB] Seeded test summons for 10-tier merge exploration.');
       sendJson(res, 200, { success: true, state: db });
       return;
     }
 
-    // 5. Authoritative Gacha / Pachinko Release Ball
-    if (pathname === '/api/economy/release-ball' && req.method === 'POST') {
+    // 5. Authoritative Spawn Machine Release (Medal spend)
+    if ((pathname === '/api/economy/release-ball' || pathname === '/api/economy/spawn') && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const actionId = body.clientActionId || `spawn_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
@@ -219,11 +265,18 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (db.spawnMachine.balls <= 0) {
-        db.spawnMachine.balls = 10; // Auto-refill for sandbox exploration
+      const currentMedals = db.spawnMachine.medals ?? db.spawnMachine.balls ?? 0;
+      if (currentMedals <= 0) {
+        sendJson(res, 400, { error: 'Insufficient Medals to spawn' });
+        return;
       }
 
-      // Pick reward slot
+      if (db.campPlacements.length >= 36) {
+        sendJson(res, 400, { error: 'Battle Camp full (36 / 36 capacity)' });
+        return;
+      }
+
+      // Pick reward slot based on probabilities [10, 15, 25, 25, 15, 10]
       const pool = db.spawnMachine.dailyPool;
       const rand = Math.random();
       let cumulative = 0;
@@ -239,7 +292,7 @@ const server = http.createServer(async (req, res) => {
       const newSummon = {
         id: `spawn:${selectedSlot.summonDefinitionId}:${Date.now()}`,
         definitionId: selectedSlot.summonDefinitionId,
-        tier: 'F',
+        tier: 'F', // All normal V1 rewards are F tier
         createdAt: new Date().toISOString(),
       };
 
@@ -271,7 +324,8 @@ const server = http.createServer(async (req, res) => {
         cell: targetCell,
       };
 
-      db.spawnMachine.balls = Math.max(0, db.spawnMachine.balls - 1);
+      db.spawnMachine.medals = Math.max(0, currentMedals - 1);
+      db.spawnMachine.balls = db.spawnMachine.medals;
       db.spawnMachine.appliedActionIds.push(actionId);
       db.summons.push(newSummon);
       db.campPlacements.push(destination);
@@ -282,7 +336,8 @@ const server = http.createServer(async (req, res) => {
         rewardSlot: selectedSlot.slotIndex,
         createdSummon: newSummon,
         destination,
-        ballsRemaining: db.spawnMachine.balls,
+        medalsRemaining: db.spawnMachine.medals,
+        ballsRemaining: db.spawnMachine.medals,
         blobProgress: {},
         replay: {
           replayId: `replay_${actionId}`,
@@ -291,12 +346,12 @@ const server = http.createServer(async (req, res) => {
         },
       };
 
-      console.log(`[Local DB] Released ball -> Summon ${newSummon.definitionId} (F) at (${targetCell.x}, ${targetCell.y})`);
+      console.log(`[Local DB] Spawned Summon ${newSummon.definitionId} (F) at (${targetCell.x}, ${targetCell.y}), Medals: ${db.spawnMachine.medals}`);
       sendJson(res, 200, result);
       return;
     }
 
-    // 6. Authoritative Merge Summons
+    // 6. Authoritative Merge Summons (10 Tiers)
     if (pathname === '/api/economy/merge-summons' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const { sourceSummonInstanceId, targetSummonInstanceId, clientActionId } = body;
@@ -320,7 +375,7 @@ const server = http.createServer(async (req, res) => {
 
       const nextTier = getNextTier(target.tier);
       if (!nextTier) {
-        sendJson(res, 400, { error: 'Summon has already reached max tier (SSS)' });
+        sendJson(res, 400, { error: 'Summon has already reached max tier (X)' });
         return;
       }
 
@@ -363,10 +418,82 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 7. Authoritative Raid Match Simulation
+    // 7. Authoritative Release Summon (50% F-equivalent refund rounded down)
+    if (pathname === '/api/economy/release-summon' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const { summonInstanceId, clientActionId } = body;
+      const actionId = clientActionId || `release_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+      const summon = db.summons.find((s) => s.id === summonInstanceId);
+      if (!summon) {
+        sendJson(res, 400, { error: 'Summon not found in inventory' });
+        return;
+      }
+
+      const refund = RELEASE_REFUND[summon.tier] ?? 0;
+      const placement = db.campPlacements.find((p) => p.summonInstanceId === summon.id);
+      const freedCell = placement?.cell ?? null;
+
+      db.summons = db.summons.filter((s) => s.id !== summon.id);
+      db.campPlacements = db.campPlacements.filter((p) => p.summonInstanceId !== summon.id);
+
+      const currentMedals = db.spawnMachine.medals ?? db.spawnMachine.balls ?? 0;
+      db.spawnMachine.medals = currentMedals + refund;
+      db.spawnMachine.balls = db.spawnMachine.medals;
+      saveState(db);
+
+      console.log(`[Local DB] Released ${summon.definitionId} [${summon.tier}], refunded ${refund} Medals. Wallet: ${db.spawnMachine.medals}`);
+      sendJson(res, 200, {
+        clientActionId: actionId,
+        releasedSummonInstanceId: summon.id,
+        tier: summon.tier,
+        medalsRefunded: refund,
+        newMedalBalance: db.spawnMachine.medals,
+        freedCell,
+      });
+      return;
+    }
+
+    // 8. Authoritative Dealer Collection (Eligible only when wallet < 100)
+    if (pathname === '/api/economy/collect-dealer' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const actionId = body.clientActionId || `dealer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+      const currentMedals = db.spawnMachine.medals ?? db.spawnMachine.balls ?? 0;
+      if (currentMedals >= 100) {
+        sendJson(res, 400, { error: 'Wallet must be below 100 Medals to collect Dealer stock' });
+        return;
+      }
+
+      const stock = db.dealer?.generatedStock ?? 0;
+      if (stock <= 0) {
+        sendJson(res, 400, { error: 'No Dealer stock currently available to collect' });
+        return;
+      }
+
+      db.spawnMachine.medals = currentMedals + stock;
+      db.spawnMachine.balls = db.spawnMachine.medals;
+      db.dealer.generatedStock = 0;
+      db.dealer.lastAccrualTimestamp = Date.now();
+      saveState(db);
+
+      console.log(`[Local DB] Collected ${stock} Dealer Medals. Wallet: ${currentMedals} -> ${db.spawnMachine.medals}`);
+      sendJson(res, 200, {
+        clientActionId: actionId,
+        collectedStock: stock,
+        newMedalBalance: db.spawnMachine.medals,
+        newDealerStock: 0,
+      });
+      return;
+    }
+
+    // 9. Authoritative Raid Match Simulation
     if (pathname === '/api/raid/start-raid' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const raidId = `raid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+      // Starting an outgoing raid breaks attacker's Time Shield
+      db.profile.timeShieldExpiresAt = null;
 
       const match = {
         id: raidId,
@@ -376,12 +503,14 @@ const server = http.createServer(async (req, res) => {
         createdAt: new Date().toISOString(),
         rounds: [
           { round: 1, size: 2, outcome: 'win' },
+          { round: 2, size: 4, outcome: 'win' },
+          { round: 3, size: 6, outcome: 'win' },
         ],
       };
       db.raidMatches.push(match);
       saveState(db);
 
-      console.log(`[Local DB] Started raid match ${raidId}`);
+      console.log(`[Local DB] Started raid match ${raidId} (broke attacker Time Shield)`);
       sendJson(res, 200, { success: true, match });
       return;
     }
@@ -394,11 +523,20 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on('error', (err) => {
+  if (err && 'code' in err && err.code === 'EADDRINUSE') {
+    console.log(`[Local DB] Server already running on port ${PORT}.`);
+    process.exit(0);
+  } else {
+    console.error('[Local DB Server Error]:', err);
+  }
+});
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`=======================================================`);
   console.log(`🎮 PSYBLR Authoritative Local Database Server Running`);
   console.log(`🔗 API URL: http://127.0.0.1:${PORT}`);
   console.log(`📁 Database File: ${DB_FILE}`);
-  console.log(`📦 Summons Loaded: ${db.summons.length} | Balls: ${db.spawnMachine.balls}`);
+  console.log(`📦 Summons Loaded: ${db.summons.length} | Medals: ${db.spawnMachine.medals ?? db.spawnMachine.balls}`);
   console.log(`=======================================================`);
 });

@@ -34,11 +34,16 @@ export type PresentationEventMap = {
     definitionId: string;
     cell: CampCell;
   };
+  campaignWon: Record<string, never>;
+  dealerStockCollected: { medals?: number } | Record<string, never>;
   pachinkoEntered: Record<string, never>;
   raidEntered: Record<string, never>;
   raidWon: Record<string, never>;
   stealCompleted: {
     summonId: string;
+  };
+  tutorialStepChanged: {
+    phase: string;
   };
 };
 

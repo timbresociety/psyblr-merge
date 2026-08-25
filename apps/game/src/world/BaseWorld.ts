@@ -5,6 +5,7 @@ import {
   StandardMaterial,
   type Layer,
 } from 'playcanvas';
+import { colorFromHex } from '../presentation/ColorUtils';
 import { CAMP_CELL_SIZE } from './CampCoordinateMapper';
 import { CAMP_SIZE } from '@psyblr/game-rules';
 
@@ -24,6 +25,7 @@ export class BaseWorld {
   public defensePodiumRoot: Entity | null = null;
   public campaignGateRoot: Entity | null = null;
   public raidGateRoot: Entity | null = null;
+  public dealerBubbleRoot: Entity | null = null;
 
   private materials: StandardMaterial[] = [];
   private floatingObjects: FloatingObject[] = [];
@@ -52,10 +54,10 @@ export class BaseWorld {
     const mat = new StandardMaterial();
     mat.specular = new Color(0, 0, 0);
     if (options.diffuse) {
-      mat.diffuse = typeof options.diffuse === 'string' ? new Color().fromString(options.diffuse) : options.diffuse;
+      mat.diffuse = typeof options.diffuse === 'string' ? colorFromHex(options.diffuse) : options.diffuse;
     }
     if (options.emissive) {
-      mat.emissive = typeof options.emissive === 'string' ? new Color().fromString(options.emissive) : options.emissive;
+      mat.emissive = typeof options.emissive === 'string' ? colorFromHex(options.emissive) : options.emissive;
       mat.emissiveIntensity = options.emissiveIntensity ?? 0.5;
     }
     if (options.gloss !== undefined) mat.gloss = options.gloss;
@@ -72,6 +74,8 @@ export class BaseWorld {
   }
 
   private buildLighting(): void {
+    const layerOpt = this.getLayerOption();
+
     const keyLight = new Entity('KeyLight');
     keyLight.setEulerAngles(55, 30, 0);
     keyLight.addComponent('light', {
@@ -79,6 +83,7 @@ export class BaseWorld {
       color: new Color(1.0, 0.96, 0.90),
       intensity: 1.3,
       castShadows: false,
+      ...layerOpt,
     });
     this.root.addChild(keyLight);
 
@@ -89,6 +94,7 @@ export class BaseWorld {
       color: new Color(0.35, 0.55, 0.90),
       intensity: 0.8,
       castShadows: false,
+      ...layerOpt,
     });
     this.root.addChild(fillLight);
 
@@ -99,6 +105,7 @@ export class BaseWorld {
       color: new Color(0.40, 0.35, 0.60),
       intensity: 0.45,
       castShadows: false,
+      ...layerOpt,
     });
     this.root.addChild(bounceLight);
   }
@@ -307,6 +314,27 @@ export class BaseWorld {
     dealerBeacon.addComponent('render', { type: 'sphere', material: ballOrbMat, ...layerOpt });
     this.dealerRoot.addChild(dealerBeacon);
 
+    // Floating Clash-of-Clans style Harvest / Collect Bubble above Dealer
+    const bubbleMat = this.createMaterial({ diffuse: '#047857', emissive: '#10b981', emissiveIntensity: 1.5, gloss: 0.98 });
+    const bubbleIconMat = this.createMaterial({ diffuse: '#f59e0b', emissive: '#fbbf24', emissiveIntensity: 1.8, gloss: 0.98 });
+    
+    this.dealerBubbleRoot = new Entity('DealerHarvestBubble');
+    this.dealerBubbleRoot.setLocalPosition(0, 3.1, 0);
+    this.dealerRoot.addChild(this.dealerBubbleRoot);
+
+    const bubbleOuter = new Entity('BubbleOuter');
+    bubbleOuter.setLocalPosition(0, 0, 0);
+    bubbleOuter.setLocalScale(0.85, 0.85, 0.85);
+    bubbleOuter.addComponent('render', { type: 'sphere', material: bubbleMat, castShadows: false, ...layerOpt });
+    this.dealerBubbleRoot.addChild(bubbleOuter);
+
+    const bubbleCoin = new Entity('BubbleCoin');
+    bubbleCoin.setLocalPosition(0, 0, 0.08);
+    bubbleCoin.setLocalScale(0.45, 0.45, 0.12);
+    bubbleCoin.addComponent('render', { type: 'cylinder', material: bubbleIconMat, castShadows: false, ...layerOpt });
+    bubbleCoin.setEulerAngles(90, 0, 0);
+    this.dealerBubbleRoot.addChild(bubbleCoin);
+
     this.floatingObjects.push({
       entity: dealerBeacon,
       baseY: 2.3,
@@ -314,6 +342,15 @@ export class BaseWorld {
       bobAmp: 0.14,
       rotSpeedY: 50,
       phase: 0.4,
+    });
+
+    this.floatingObjects.push({
+      entity: this.dealerBubbleRoot,
+      baseY: 3.1,
+      bobSpeed: 3.0,
+      bobAmp: 0.18,
+      rotSpeedY: 35,
+      phase: 0.0,
     });
 
     // 2. SPAWN MACHINE (Plinko Gacha Cabinet at [6.4, 0, 0])
@@ -521,6 +558,12 @@ export class BaseWorld {
       const curPos = obj.entity.getLocalPosition();
       obj.entity.setLocalPosition(curPos.x, obj.baseY + bob, curPos.z);
       obj.entity.rotateLocal(0, obj.rotSpeedY * dt, 0);
+    }
+  }
+
+  setDealerBubbleVisible(visible: boolean): void {
+    if (this.dealerBubbleRoot) {
+      this.dealerBubbleRoot.enabled = visible;
     }
   }
 

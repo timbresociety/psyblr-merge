@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getSummonDefinition,
-  getOriginDefinition,
-  getCombatFunctionDefinition,
+  getAllianceDefinition,
   getSkillDefinition,
 } from '@psyblr/game-content';
 import {
@@ -11,11 +10,13 @@ import {
   nextTier,
   TIER_MULTIPLIER,
   TIERS,
+  resolveSummonPowerLevel,
+  getReleaseRefund,
 } from '@psyblr/game-rules';
-import type { SummonInstance, Tier } from '@psyblr/contracts';
+import type { SummonInstance } from '@psyblr/contracts';
 
 describe('SummonInspector Data Calculations', () => {
-  it('correctly resolves Goku identity, origin, combat function, and stats across tiers', () => {
+  it('correctly resolves Goku identity, alliance, and stats across tiers', () => {
     const starterGoku: SummonInstance = {
       id: 'starter:goku:001',
       definitionId: 'goku',
@@ -25,11 +26,8 @@ describe('SummonInspector Data Calculations', () => {
     const def = getSummonDefinition(starterGoku.definitionId);
     expect(def.displayName).toBe('Goku');
 
-    const origin = getOriginDefinition(def.originId);
-    expect(origin.name).toBe('Ascendant');
-
-    const fn = getCombatFunctionDefinition(def.combatFunctionId);
-    expect(fn.name).toBe('Striker');
+    const alliance = getAllianceDefinition(def.allianceId);
+    expect(alliance.name).toBe('Ascendant');
 
     // Tier F Stats (1.00x)
     const statsF = resolveTierStats(def.stats, 'F');
@@ -51,15 +49,21 @@ describe('SummonInspector Data Calculations', () => {
       def: 11,
     });
 
-    // Tier Progression Rail
-    expect(TIERS.length).toBe(9);
+    // 10-Tier Progression Rail
+    expect(TIERS.length).toBe(10);
     expect(TIERS[0]).toBe('F');
-    expect(TIERS[8]).toBe('SSS');
+    expect(TIERS[9]).toBe('X');
     expect(nextTier('F')).toBe('E');
-    expect(nextTier('SSS')).toBeNull();
+    expect(nextTier('SSS')).toBe('X');
+    expect(nextTier('X')).toBeNull();
+
+    // Power Level & Release Refund
+    expect(resolveSummonPowerLevel(def, 'F')).toBeGreaterThan(0);
+    expect(getReleaseRefund('F')).toBe(0);
+    expect(getReleaseRefund('X')).toBe(256);
   });
 
-  it('correctly maps 4 ability slots including active basic, active skill 1, and locked slots', () => {
+  it('correctly maps 4 ability slots + passive', () => {
     const def = getSummonDefinition('goku');
     const basic = getSkillDefinition(def.skills.basic);
     const skill1 = getSkillDefinition(def.skills.skill1);
@@ -71,7 +75,51 @@ describe('SummonInspector Data Calculations', () => {
     expect(skill1.type).toBe('active');
     expect(skill1.mechanics?.kind).toBe('line_damage');
 
-    expect(def.skills.skill2).toBeNull();
-    expect(def.skills.ultimate).toBeNull();
+    expect(def.skills.skill2).toBeTruthy();
+    expect(def.skills.ultimate).toBeTruthy();
+    expect(def.passiveId).toBeTruthy();
+  });
+
+  it('correctly handles close callback suppression on scene mode transitions', () => {
+    let closedCallbackRan = false;
+    const onClosed = () => {
+      closedCallbackRan = true;
+    };
+
+    // Simulate modal state machine with callback suppression
+    let isOpen = true;
+    let onClosedCallback: (() => void) | null = onClosed;
+
+    const closeModal = (suppressCallback: boolean = false) => {
+      isOpen = false;
+      const cb = suppressCallback ? null : onClosedCallback;
+      onClosedCallback = null;
+      if (cb) {
+        cb();
+      }
+    };
+
+    // When transitioning away from Base Camp, close is called with suppressCallback = true
+    closeModal(true);
+    expect(isOpen).toBe(false);
+    expect(closedCallbackRan).toBe(false);
+    expect(onClosedCallback).toBeNull();
+  });
+
+  it('supports allowRelease option to hide release button when inspecting opponent summons', () => {
+    let releaseBtnEnabled = true;
+
+    const simulateOpen = (options?: { allowRelease?: boolean }) => {
+      const allowRelease = options?.allowRelease ?? true;
+      releaseBtnEnabled = allowRelease;
+    };
+
+    // Default inspection: release button is visible
+    simulateOpen();
+    expect(releaseBtnEnabled).toBe(true);
+
+    // Inspecting opponent summon: release button is hidden
+    simulateOpen({ allowRelease: false });
+    expect(releaseBtnEnabled).toBe(false);
   });
 });

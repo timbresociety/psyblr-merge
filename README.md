@@ -1,6 +1,6 @@
 # PSYBLR
 
-PSYBLR is a landscape-first incremental anime-style auto battler built around a fixed 6x6 Summon inventory, merging, configurable Pachinko spawning, persistent Campaign progression and risk-bearing asynchronous Raids.
+PSYBLR is a landscape-first incremental anime-style auto battler built around a fixed 6x6 Summon inventory, merging, configurable Pachinko spawning, persistent Campaign progression, and risk-bearing asynchronous Raids.
 
 ## Source of truth
 
@@ -28,10 +28,11 @@ If implementation and `PRODUCT_FINAL.md` disagree, the product document wins unt
 
 ```text
 apps/
-└── game/                 Direct PlayCanvas client
+└── game/                 Direct PlayCanvas client and game assets
 
 packages/
 ├── contracts/            Shared schemas and API contracts
+│   └── src/catalog.ts    Canonical 36-Summon launch catalog contract
 ├── game-content/         Versioned static content
 ├── game-rules/           Pure progression/inventory/formation rules
 ├── combat-core/          Deterministic combat simulator and event log
@@ -45,7 +46,21 @@ supabase/
 tests/e2e/                User-path Playwright tests
 ```
 
-See `AGENTS.md` for the target internal structure under `apps/game/src` as the V2 client is decomposed.
+See `AGENTS.md` for the target internal structure under `apps/game/src` as the client is decomposed.
+
+## Launch content contract
+
+The final content sheet plugs into `@psyblr/contracts/catalog`.
+
+It expects:
+
+- exactly 36 active Summon definitions,
+- exactly 10 ordered progression tiers,
+- four required skills per Summon: `basic`, `skill1`, `skill2`, `ultimate`,
+- exactly one `allianceId` per Summon,
+- Alliance thresholds at exactly 2, 4, and 6 deployed Summons.
+
+The current six-character prototype content still uses legacy Origin/Combat Function fields. Do not extend that taxonomy. It will be cut over when the final 36-character balance sheet is supplied.
 
 ## First run
 
@@ -80,8 +95,8 @@ npm run local-db         # Local development authority shim
 
 Vercel builds the root workspace and serves `apps/game/dist`.
 
-Production economy, Campaign progression and Raid ownership mutations must use server-authoritative gateways. Local client simulation is development-only and must never be a silent production fallback.
+Production economy, Campaign progression, and Raid ownership mutations must use server-authoritative gateways. Local client simulation is development-only and must never be a silent production fallback.
 
 ## Content note
 
-Current anime character names and likeness references are prototype placeholders. Commercial content must be licensed or replaced by original IP. Summon identity, stats, Alliances, abilities and assets are deliberately data-driven so replacement does not require a combat rewrite.
+Current anime character names and likeness references are prototype placeholders. Commercial content must be licensed or replaced by original IP. Summon identity, stats, Alliance, abilities, tier labels, and assets are deliberately data-driven so replacement does not require a combat rewrite.

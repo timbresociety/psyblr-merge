@@ -7,9 +7,9 @@ If code conflicts with `PRODUCT_FINAL.md`, migrate the code. Do not reinterpret 
 ## Runtime ownership
 
 1. `apps/game` is the only gameplay client and deployable frontend.
-2. Gameplay is pure TypeScript using the PlayCanvas Engine directly. Do not introduce React, `@playcanvas/react`, DOM gameplay overlays, or a second UI framework.
+2. Gameplay is pure TypeScript using the PlayCanvas Engine directly. Do not introduce React, `@playcanvas/react`, DOM gameplay overlays, or a second gameplay UI framework.
 3. Keep one PlayCanvas `Application`. Worlds and Base focus modes are logical states, not separate applications.
-4. `GameApp` is a composition root. It wires routers, state, gateways, scenes, presentation systems, and lifecycle. It must not become the owner of campaign rules, raid rules, economy rules, matchmaking, or persistent player state.
+4. `GameApp` is a composition root. It wires routers, state, gateways, scenes, presentation systems, and lifecycle. It must not own Campaign rules, Raid rules, economy rules, matchmaking, or persistent player state.
 
 ## Canonical state hierarchy
 
@@ -42,11 +42,11 @@ WORLD
     └── RAID_SHIELD_APPLIED
 ```
 
-A Base focus mode such as Dealer or Spawn Machine is not a standalone world. It retains Base spatial continuity and reframes the camera/UI around a structure.
+Dealer, Spawn Machine, Defense, and Summon Inspect are Base focus modes. Preserve Base spatial continuity when entering them.
 
 ## Target client structure
 
-New work should converge on this shape rather than adding more feature logic to broad `app`, `world`, `economy`, or HUD files.
+New work should converge on this shape in tested slices:
 
 ```text
 apps/game/src/
@@ -82,57 +82,70 @@ apps/game/src/
 └── dev/
 ```
 
-Move toward this incrementally with compiling, tested slices. Do not perform mechanical moves that leave broken imports.
+Do not perform mechanical moves that leave broken imports.
 
 ## Shared domain boundaries
 
-- `packages/contracts`: canonical schemas, snapshots, request/result contracts and serialization types.
-- `packages/game-content`: versioned static Summon, Alliance, ability, enemy, Spawn and Arc content.
-- `packages/game-rules`: pure inventory, merge, Alliance, formation, power-score, protection and progression rules.
-- `packages/combat-core`: deterministic combat simulation and event log. No PlayCanvas, browser API, database, network or wall-clock dependencies.
-- `packages/raid-core`: deterministic Raid snapshots, seeds, round construction and series resolution.
+- `packages/contracts`: shared schemas, snapshots, request/result contracts, and serialization types.
+- `packages/contracts/src/catalog.ts`: canonical launch catalog contract for 36 Summons, 10 ordered tiers, four required skills, one Alliance per Summon, and exact 2/4/6 Alliance thresholds.
+- `packages/game-content`: versioned Summon, Alliance, ability, enemy, Spawn, and Arc content.
+- `packages/game-rules`: pure inventory, merge, Alliance, formation, power-score, protection, and progression rules.
+- `packages/combat-core`: deterministic combat simulation and event log. No PlayCanvas, browser API, database, network, or wall-clock dependencies.
+- `packages/raid-core`: deterministic Raid snapshots, seeds, round construction, and series resolution.
 - `packages/tutorial-core`: tutorial state and completion rules, not presentation.
-- Add `campaign-core` or `spawn-core` when those domains become substantial enough to justify pure packages. Do not hide domain rules inside PlayCanvas scenes.
-- `supabase/functions`: privileged mutations, matchmaking, timers, reward resolution and ownership transfers.
+- Add `campaign-core` or `spawn-core` only when those domains justify a pure package.
+- `supabase/functions`: privileged mutations, matchmaking, timers, reward resolution, and ownership transfers.
+
+## Launch catalog invariants
+
+1. Launch content contains exactly 36 active Summon definitions.
+2. Progression contains exactly 10 ordered tiers. Tier labels are content-defined and must not be hard-coded into client architecture.
+3. Each Summon definition spans all 10 tiers. Tier is instance progression state, not a separate character definition.
+4. Every Summon has exactly four required skill references: `basic`, `skill1`, `skill2`, `ultimate`.
+5. Every Summon has exactly one `allianceId`.
+6. Every Alliance defines exactly three thresholds: 2, 4, and 6 deployed Summons.
+7. Alliance modifiers may only target the approved stat families defined by the catalog contract: offense, defense, mobility, skill economy, status control, and sustain.
+8. The old Origin and Combat Function taxonomy is legacy prototype schema. Do not add new content or product behavior that depends on it. Cut current runtime callers over when the final 36-character content sheet lands.
 
 ## Authority model
 
 Production economy and PvP are server authoritative.
 
-Use explicit gateway interfaces such as `PlayerGateway`, `SpawnGateway`, `CampaignGateway`, `DefenseGateway` and `RaidGateway`. A dev mock adapter may be selected explicitly in development. Production must never silently fall back from a failed server call to `Math.random`, `localStorage`, or client-side mutation.
+Use explicit gateway interfaces such as `PlayerGateway`, `SpawnGateway`, `CampaignGateway`, `DefenseGateway`, and `RaidGateway`. A dev mock adapter may be selected explicitly in development. Production must never silently fall back from a failed server call to `Math.random`, `localStorage`, or client-side mutation.
 
 Every persistent mutation requires an idempotent `clientActionId` or equivalent action key. Ownership-changing operations must be atomic.
 
 The server owns at minimum:
 
-- Summon creation, merge consumption and release.
+- Summon creation, merge consumption, and release.
 - Ball balances and Dealer refill timing.
 - Daily Spawn pool and Spawn rewards.
 - Time Shield and Illuminati entitlement state.
 - Campaign progress and milestone rewards.
 - Defense snapshots.
 - Raid matchmaking and exclusive player locks.
-- Raid combat inputs, deterministic seeds and final outcomes.
+- Raid combat inputs, deterministic seeds, and final outcomes.
 - Steal and surrender transfers.
 - Defense reward FIFO.
 
-## Hard invariants
+## Hard gameplay invariants
 
 1. `BATTLE_CAMP_CAPACITY = 36`. No production mutation may create Summon number 37 in the Camp.
 2. Base Illuminati protects 6 Camp cells. The permanent paid entitlement protects 12 total cells while Camp capacity remains 36.
-3. A Raid cannot start without at least one free Camp slot. Reserve one slot for the attacker for the duration of the Raid so another mutation cannot consume the win destination.
-4. Pending defense rewards are not Camp inventory. They cannot battle, merge, be reordered, count toward Power or Alliances, or participate in any gameplay until the FIFO head is claimed into a free Camp cell.
+3. A Raid cannot start without at least one free Camp slot. Reserve one slot for the attacker for the duration of the Raid.
+4. Pending Defense rewards are not Camp inventory. They cannot battle, merge, be reordered, count toward Power or Alliances, or participate in gameplay until the FIFO head is claimed into a free Camp cell.
 5. A Summon instance has one owner at a time. Raid transfer settlement is atomic and idempotent.
-6. Alliances are the only player-facing synergy taxonomy. Do not introduce separate Origin, class, role or Combat Function synergy systems.
-7. Tier is instance progression state. One Summon definition spans F, E, D, C, B, A, S, SS and SSS.
+6. Alliance is the only player-facing synergy taxonomy.
+7. Starting an outgoing Raid breaks the attacker's Time Shield.
+8. `1x`, `2x`, and `4x` are presentation speeds only.
 
 ## Combat and replay
 
 Combat is automatic after formation lock. The deterministic simulator resolves combat. PlayCanvas presents the returned event stream.
 
-`1x`, `2x` and `4x` are replay/presentation speeds only. They must never change seed, targeting, cooldowns, simulated time, damage, movement decisions or outcome.
+Replay speed must never change seed, targeting, cooldowns, simulated time, damage, movement decisions, event ordering, or winner.
 
-A scene being hidden or destroyed must not mutate an authoritative combat result. Conversely, leaving Campaign while server Auto Progress is enabled must not accidentally stop the Campaign session.
+A scene being hidden or destroyed must not mutate an authoritative combat result. Leaving Campaign while server Auto Progress is enabled must not accidentally stop that Campaign session.
 
 ## Input and direct manipulation
 
@@ -145,22 +158,22 @@ blocking system modal
 → camera gesture
 ```
 
-The Battle Camp is direct manipulation first:
+Battle Camp behavior:
 
 - Drag to empty cell moves.
 - Drag to another non-mergeable Summon swaps.
-- Drag identical definition + identical tier merges.
+- Drag identical definition and identical tier merges.
 - Tap selects and opens the non-modal Summon drawer.
-- Tap-to-move is supported as a mobile/accessibility fallback.
+- Tap-to-move is supported as a mobile-friendly fallback.
 
-The Summon drawer must not block the Camp grid. Do not add a fullscreen backdrop for inspection.
+The Summon drawer must not block the Camp grid.
 
 ## Scene and asset lifecycle
 
-- Lazy-load heavy world and character asset bundles. Do not instantiate every future world and every heavy asset at bootstrap.
-- A scene/focus mode must own and clean up its listeners, transient entities, timers and presentation resources.
-- Persistent/server sessions are not owned by scene visibility.
-- Every Summon uses a data-driven asset manifest. The manifest must be able to define a world model, portrait/icon, idle/run/basic/skill/hit/death clips, scale, ground offset, attack/projectile origin, VFX anchors and optional tier-form overrides.
+- Lazy-load heavy world and character asset bundles.
+- A scene or focus mode must clean up listeners, transient entities, timers, and presentation resources it owns.
+- Persistent server sessions are not owned by scene visibility.
+- Every Summon uses a data-driven asset manifest with model, portrait, animation clips, scale, ground offset, attack/projectile origin, VFX anchors, and optional tier-form overrides.
 - Procedural placeholder presenters are fallbacks, not the long-term content architecture.
 
 ## UX constraints
@@ -168,7 +181,7 @@ The Summon drawer must not block the Camp grid. Do not add a fullscreen backdrop
 - Landscape first, desktop and mobile landscape both supported.
 - World remains the visual anchor wherever possible.
 - Prefer direct spatial interaction over modal pickers and confirmation flows.
-- Combat should read like an anime battle, with clear movement, retargeting, attacks, skills, hit reactions and deaths without compromising deterministic simulation.
+- Combat should read like an anime battle without compromising deterministic simulation.
 - New-player bootstrap begins in Campaign tutorial. Returning players begin in Base.
 
 ## Testing definition of done
@@ -177,19 +190,31 @@ A feature is not complete because an internal method can be called. Test the use
 
 Required layers:
 
-- Vitest for pure rules, deterministic simulations and idempotency helpers.
-- Playwright for real pointer/touch interaction.
+- Vitest for pure rules, deterministic simulations, schema validation, and idempotency helpers.
+- Playwright for real pointer and touch interaction.
 - Visual regression at desktop `1280x720` and mobile landscape around `844x390` for important spatial states.
 - Server tests for transactional ownership and matchmaking locks.
 
-Critical regression cases include Camp capacity, full-Camp Spawn rejection without Ball consumption, Dealer refill semantics, Raid slot reservation, shield break/reset, parallel Raid prevention, setup timeout auto-deploy, steal/surrender timeout settlement, FIFO restrictions, Campaign boss pauses, Campaign continuation after navigation, and `1x/2x/4x` replay invariance.
+Critical regression cases include:
+
+- Camp capacity and full-Camp Spawn rejection without Ball consumption.
+- Dealer refill semantics.
+- Raid slot reservation, Time Shield break/reset, and parallel Raid prevention.
+- Setup timeout auto-deploy.
+- Random steal timeout and weakest-used surrender timeout.
+- FIFO restrictions.
+- Campaign boss pauses and continuation after in-app navigation.
+- `1x/2x/4x` replay invariance.
+- Catalog validation for 36 Summons, 10 tiers, four skills, one Alliance, and 2/4/6 thresholds.
 
 ## Product change protocol
 
-If a task intentionally changes a locked product rule, update `PRODUCT_FINAL.md` in the same change before encoding the new behavior. Do not create competing product specs or completion documents. The permanent root documentation set is:
+If a task intentionally changes a locked product rule, update `PRODUCT_FINAL.md` in the same change before encoding the new behavior. Do not create competing product specs or completion documents.
+
+The permanent root documentation set is:
 
 - `PRODUCT_FINAL.md`
 - `AGENTS.md`
 - `README.md`
 
-Anime names and likenesses in current content are placeholders for prototyping. Production content must be licensed or original and remain replaceable through content and asset contracts.
+Current anime names and likenesses are prototype content. Commercial content must be licensed or original and remain replaceable through content and asset contracts.

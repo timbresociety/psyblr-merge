@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 export const LAUNCH_SUMMON_COUNT = 36;
+export const LAUNCH_ALLIANCE_COUNT = 6;
+export const SUMMONS_PER_ALLIANCE = 6;
 export const TIER_COUNT = 10;
 export const ALLIANCE_THRESHOLDS = [2, 4, 6] as const;
 
@@ -117,6 +119,7 @@ export const CatalogSummonDefinitionSchema = z.object({
   allianceId: z.string().min(1),
   stats: CatalogSummonStatsSchema,
   skills: CatalogSummonSkillsSchema,
+  passiveId: z.string().min(1),
   assetManifest: z.string().min(1),
   portraitUrl: z.string().min(1).optional(),
 });
@@ -134,17 +137,30 @@ export type LaunchSummonCatalog = z.infer<typeof LaunchSummonCatalogSchema>;
 
 export const GameCatalogSchema = z.object({
   tiers: CatalogTierProgressionSchema,
-  alliances: z.array(CatalogAllianceDefinitionSchema).min(1),
+  alliances: z.array(CatalogAllianceDefinitionSchema).length(LAUNCH_ALLIANCE_COUNT),
   summons: LaunchSummonCatalogSchema,
 }).superRefine((catalog, ctx) => {
   const allianceIds = new Set(catalog.alliances.map((alliance) => alliance.id));
-  if (allianceIds.size !== catalog.alliances.length) {
-    ctx.addIssue({ code: 'custom', message: 'Alliance ids must be unique.' });
+  if (allianceIds.size !== LAUNCH_ALLIANCE_COUNT) {
+    ctx.addIssue({ code: 'custom', message: 'Launch Alliance ids must be unique.' });
   }
 
+  const summonCountByAlliance = new Map<string, number>();
   for (const summon of catalog.summons) {
     if (!allianceIds.has(summon.allianceId)) {
       ctx.addIssue({ code: 'custom', message: `Summon ${summon.id} references unknown Alliance ${summon.allianceId}.` });
+      continue;
+    }
+    summonCountByAlliance.set(summon.allianceId, (summonCountByAlliance.get(summon.allianceId) ?? 0) + 1);
+  }
+
+  for (const alliance of catalog.alliances) {
+    const count = summonCountByAlliance.get(alliance.id) ?? 0;
+    if (count !== SUMMONS_PER_ALLIANCE) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Alliance ${alliance.id} must contain exactly ${SUMMONS_PER_ALLIANCE} launch Summons; received ${count}.`,
+      });
     }
   }
 });

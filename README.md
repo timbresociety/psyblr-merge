@@ -32,10 +32,10 @@ apps/
 
 packages/
 ├── contracts/            Shared schemas and API contracts
-│   └── src/catalog.ts    Canonical 36-Summon launch catalog contract
+│   └── src/catalog.ts    Canonical launch catalog contract
 ├── game-content/         Versioned static content
 ├── game-rules/           Pure progression/inventory/formation rules
-├── combat-core/          Deterministic combat simulator and event log
+├── combat-core/          Deterministic automatic combat and event log
 ├── raid-core/            Deterministic Raid construction and resolution
 └── tutorial-core/        Tutorial state rules
 
@@ -50,17 +50,22 @@ See `AGENTS.md` for the target internal structure under `apps/game/src` as the c
 
 ## Launch content contract
 
-The final content sheet plugs into `@psyblr/contracts/catalog`.
+The final character sheet plugs into `@psyblr/contracts/catalog`.
 
 It expects:
 
 - exactly 36 active Summon definitions,
+- exactly 6 Alliances,
+- exactly 6 Summons in each Alliance,
 - exactly 10 ordered progression tiers,
-- four required skills per Summon: `basic`, `skill1`, `skill2`, `ultimate`,
+- four required skill references per Summon: `basic`, `skill1`, `skill2`, `ultimate`,
+- one separate required `passiveId` per Summon,
 - exactly one `allianceId` per Summon,
 - Alliance thresholds at exactly 2, 4, and 6 deployed Summons.
 
-The current six-character prototype content still uses legacy Origin/Combat Function fields. Do not extend that taxonomy. It will be cut over when the final 36-character balance sheet is supplied.
+Tier IDs, tier labels, final Alliance names, stats, skill coefficients, passives, and exact balance values remain content data until the final 36-character sheet locks them.
+
+The current six-character prototype still uses legacy Origin/Combat Function fields, nine hard-coded tiers, nullable later skills, and a Skill-1-only combat path. Do not extend those assumptions. They are migration-only.
 
 ## First run
 
@@ -71,7 +76,7 @@ npm run validate:content
 npm run dev
 ```
 
-The game dev server runs through the `@psyblr/game` Vite workspace, currently on port `5174`.
+The game dev server runs through the `@psyblr/game` Vite workspace on port `5174`.
 
 For the local development authority shim:
 
@@ -91,12 +96,30 @@ npm run validate:content # Validate versioned static content
 npm run local-db         # Local development authority shim
 ```
 
+## Current branch hygiene
+
+Before the current cleanup PR can merge, regenerate `package-lock.json` from the root package manifest. The existing lockfile still records the removed `apps/web` workspace and React-era dependencies.
+
+After regenerating the lockfile, the required verification sequence is:
+
+```bash
+npm run validate:content
+npm run typecheck
+npm run test
+npm run build
+npm run test:e2e
+```
+
+Do not mark the cleanup PR ready until these commands pass against the regenerated lockfile.
+
 ## Deployment
 
 Vercel builds the root workspace and serves `apps/game/dist`.
 
-Production economy, Campaign progression, and Raid ownership mutations must use server-authoritative gateways. Local client simulation is development-only and must never be a silent production fallback.
+Production economy, Campaign progression, and Raid ownership mutations must use server-authoritative gateways. Local simulation, `localStorage`, localhost authority shims, and client randomness are development-only and must never be silent production fallbacks.
+
+Authoritative Campaign and Raid sessions pin a content version when they start so a later content deployment cannot change an in-flight result.
 
 ## Content note
 
-Current anime character names and likeness references are prototype placeholders. Commercial content must be licensed or replaced by original IP. Summon identity, stats, Alliance, abilities, tier labels, and assets are deliberately data-driven so replacement does not require a combat rewrite.
+Current anime character names and likeness references are prototype placeholders. Commercial content must be licensed or replaced by original IP. Summon identity, stats, Alliance, passive, abilities, tier labels, and assets are deliberately data-driven so replacement does not require a combat rewrite.

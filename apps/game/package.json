@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@psyblr/combat-core": "0.1.0",
     "@psyblr/contracts": "0.1.0",
     "@psyblr/game-content": "0.1.0",
     "@psyblr/game-rules": "0.1.0",
